@@ -4,3 +4,6 @@
 .htpasswd
 *.key
 *.pem
+
+# Локальные настройки инструментов.
+.claude/settings.local.json
