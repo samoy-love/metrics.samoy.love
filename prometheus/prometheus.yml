@@ -50,11 +50,37 @@ scrape_configs:
         labels:
           instance: snakes
 
-  # ChillHub (chillhub-api :55700, chillhub-admin :55777) в сборе НЕ участвует.
-  # Его пакет metrics — это приём продуктовой телеметрии лаунчера
-  # (/metrics/report) и агрегат для админки за авторизацией; эндпоинта в
-  # формате Prometheus у сервисов нет, все проверенные пути отдают 404.
-  # Живость самих сервисов видна через node_systemd_unit_state.
+  # --- ChillHub -------------------------------------------------------------
+  # Оба сервиса отдают метрики на СВОЁМ порту по /internal/metrics — отдельно
+  # от API, который проксирует nginx. Это сделано затем, чтобы продуктовые
+  # числа нельзя было открыть наружу забытым location.
+  #
+  # Адрес — docker-мост, а не 127.0.0.1: этот Prometheus живёт в контейнере,
+  # в своём сетевом namespace, и до loopback хоста не достаёт. Сервисы поэтому
+  # запускаются с *_METRICS_LISTEN_ADDR=172.17.0.1:*, см. docs/configuration.md
+  # в репозитории лаунчера. Мост доступен только с хоста и его контейнеров.
+  - job_name: chillhub-api
+    metrics_path: /internal/metrics
+    static_configs:
+      - targets: ["host.docker.internal:55701"]
+        labels:
+          instance: chillhub-api
+
+  - job_name: chillhub-admin
+    metrics_path: /internal/metrics
+    static_configs:
+      - targets: ["host.docker.internal:55778"]
+        labels:
+          instance: chillhub-admin
+
+  # --- Посещаемость статики -------------------------------------------------
+  # Экспортёр журнала nginx: samoy.love и metro.samoy.love. Клиентских
+  # счётчиков на этих сайтах нет и не будет — см. nginxlog/nginxlog.yml.
+  - job_name: nginxlog
+    static_configs:
+      - targets: ["nginxlog-exporter:4040"]
+        labels:
+          instance: samoy-oracle
 
   # --- Доступность сайтов ---------------------------------------------------
   - job_name: blackbox-http
