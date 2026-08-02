@@ -90,7 +90,92 @@ namespaces:
             replacement: "/api/"
           - regexp: "^/content/.*$"
             replacement: "/content/"
+          # Скачивание установщика лаунчера. Без этого правила .exe попадал бы
+          # в "other" вместе с чем угодно, а это единственное число, ради
+          # которого лендинг вообще существует.
+          - regexp: "^/downloads/.*$"
+            replacement: "/downloads/"
           - regexp: '^.*\.(css|js|mjs|map|png|jpg|jpeg|webp|avif|gif|svg|ico|woff2?|ttf|eot)(\?.*)?$'
             replacement: "static"
+          - regexp: "^.*$"
+            replacement: "other"
+
+  # -------------------------------------------------------------------------
+  # СОБЫТИЯ ИНТЕРФЕЙСА
+  # -------------------------------------------------------------------------
+  # Отдельный namespace и отдельный файл журнала, а не ещё одна метка в
+  # samoylove_site. Причина простая: там считаются просмотры страниц, и
+  # события, попав в тот же счётчик, раздули бы посещаемость и стали бы от
+  # неё неотличимы. Формат строки тот же — пишет его тот же log_format.
+  #
+  # Что в этих строках есть: домен, имя события, код 204, ноль байт. Чего нет:
+  # IP, User-Agent, Referer, cookie, параметров запроса и тела. Восстановить
+  # по ним путь одного посетителя нельзя — пересекать нечего.
+  #
+  # Приёмник объявлен в deploy-kit/nginx/snippets/samoylove-events.conf.
+  - name: samoylove_event
+    format: '$host "$request" $status $body_bytes_sent $request_time'
+    source:
+      files:
+        - /var/log/nginx/samoylove_events.log
+    # Гистограмма времени ответа тут не нужна: 204 без тела отдаётся за
+    # микросекунды, мерить нечего.
+    histogram_buckets: [0.005, 0.05, 0.5]
+    relabel_configs:
+      - target_label: host
+        from: host
+        whitelist:
+          - samoy.love
+          - www.samoy.love
+          - metro.samoy.love
+          - snakes.samoy.love
+          - status.samoy.love
+          - launcher.samoy.love
+
+      # Имя события. Список ЗАКРЫТ: путь приходит из интернета, и без явного
+      # перечисления любой, кто дёрнет /e/чтоугодно, завёл бывременной ряд
+      # навсегда. Незнакомое сворачивается в "other" — один ряд, по которому
+      # видно, что кто-то стучится мимо словаря.
+      #
+      # Добавляя событие на клиенте, добавьте его СЮДА: иначе оно молча
+      # свалится в "other" и потеряется среди чужих запросов.
+      - target_label: event
+        from: request
+        split: 2
+        matches:
+          # Главная
+          - regexp: "^/e/project_open$"
+            replacement: "project_open"
+          - regexp: "^/e/contact_open$"
+            replacement: "contact_open"
+          - regexp: "^/e/source_open$"
+            replacement: "source_open"
+          # Метро
+          - regexp: "^/e/route_built$"
+            replacement: "route_built"
+          - regexp: "^/e/station_pick$"
+            replacement: "station_pick"
+          - regexp: "^/e/pwa_install$"
+            replacement: "pwa_install"
+          # Статус-страница
+          - regexp: "^/e/check_expand$"
+            replacement: "check_expand"
+          # Snakes. Имена не выдуманы под мониторинг: они уже были в клиенте,
+          # но складывались в localStorage и никем не читались. Теперь
+          # доходят. Игровые события (заходы, убийства, захват) шлёт сам
+          # сервер — здесь только то, что происходит ДО подключения.
+          - regexp: "^/e/quick_start$"
+            replacement: "quick_start"
+          - regexp: "^/e/join_room$"
+            replacement: "join_room"
+          - regexp: "^/e/create_room$"
+            replacement: "create_room"
+          - regexp: "^/e/refresh_rooms$"
+            replacement: "refresh_rooms"
+          - regexp: "^/e/first_capture$"
+            replacement: "first_capture"
+          # Лаунчер
+          - regexp: "^/e/download_click$"
+            replacement: "download_click"
           - regexp: "^.*$"
             replacement: "other"

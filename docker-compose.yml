@@ -128,13 +128,15 @@ services:
     logging: *default-logging
 
   nginxlog-exporter:
-    # Посещаемость всех пяти сайтов домена — из журнала nginx.
-    # Клиентских счётчиков на этих сайтах нет и не будет: в README главной
-    # обещан ноль трекеров. Журнал — единственный источник, который ничего не
-    # обещает посетителю и ничего у него не спрашивает.
+    # Посещаемость всех пяти сайтов домена и события их интерфейсов — из
+    # журналов nginx. Читаются ДВА отдельных журнала: samoylove_metrics.log
+    # (просмотры) и samoylove_events.log (нажатия). Разделены потому, что
+    # события, попав в счётчик просмотров, раздули бы посещаемость и стали бы
+    # от неё неотличимы.
     #
-    # Читается ОТДЕЛЬНЫЙ журнал samoylove_metrics.log, где нет ни IP, ни
-    # User-Agent: см. nginxlog/nginxlog.yml и deploy-kit/nginx/conf.d.
+    # Ни в одном из них нет ни IP, ни User-Agent, ни cookie, ни строки
+    # запроса — их нет в самом log_format. Считается, ЧТО произошло, а не КТО
+    # это сделал: см. nginxlog/nginxlog.yml и deploy-kit/nginx/conf.d.
     image: quay.io/martinhelmich/prometheus-nginxlog-exporter:v1.11.0
     container_name: samoylove-nginxlog
     restart: unless-stopped

@@ -20,10 +20,21 @@ do not match, or a page nobody has opened in a week. So the stack collects both
 layers at once: host and unit state on one dashboard, product numbers on the
 other.
 
-The second constraint is privacy. The homepage promises zero trackers, so
-traffic cannot be counted in the browser. It is counted from a separate nginx
-log that physically has no IP, no User-Agent, no Referer and no query string —
-a process that never saw personal data cannot leak it by accident.
+The second constraint is privacy. Traffic is counted from a separate nginx log
+that physically has no IP, no User-Agent, no Referer and no query string — a
+process that never saw personal data cannot leak it by accident.
+
+Some things never reach the server at all: metro computes routes in the
+browser and works offline, a PWA is installed straight from the cache, a
+"Play" press happens before any connection. Those are counted by an empty
+`POST /e/<event>` answered with 204 — no body, no parameters, no cookie, no
+session or visitor id. The log line holds the host, the event name and zero
+bytes, so one person's path cannot be reconstructed: there is nothing to join
+the lines on. What happened is counted; who did it is not.
+
+The homepage used to promise "zero trackers". Once these counters appeared
+that stopped being literally true, so the promise now names what is actually
+absent instead.
 
 ![Overview dashboard](docs/dashboard-overview.png)
 
@@ -56,7 +67,7 @@ flowchart LR
 
     svc -->|"pull /internal/metrics"| prom
     timer -->|".prom into textfile"| node
-    nginx -->|"samoylove_metrics.log"| nglog
+    nginx -->|"traffic and event<br/>logs"| nglog
     node --> prom
     nglog --> prom
     bb -->|"probes from outside"| prom
@@ -130,7 +141,7 @@ no reason to restore them from.
 | Grafana | 13.1.1 | dashboards |
 | node_exporter | v1.12.1 | CPU, memory, disk, network, systemd unit state, textfile |
 | blackbox_exporter | v0.28.0 | availability, response time and certificate expiry |
-| nginxlog_exporter | v1.11.0 | site traffic from the nginx log |
+| nginxlog_exporter | v1.11.0 | site traffic and interface events from nginx logs |
 
 Docker Compose, scrape interval 30 s. Resource limits are set in
 `docker-compose.yml` (Prometheus 1 CPU / 1 GB, Grafana 1 CPU / 768 MB,
@@ -262,7 +273,7 @@ One domain, one server, one pipeline, one status page, one monitoring stack.
 
 | Project | What it is |
 |---|---|
-| [samoy.love](https://github.com/tr0llex/samoy.love) | Homepage and project showcase: Astro, WebGL background, zero trackers |
+| [samoy.love](https://github.com/tr0llex/samoy.love) | Homepage and project showcase: Astro, WebGL background, no cookies or third parties |
 | [chillhub](https://github.com/tr0llex/chillhub) | ChillHub — Windows game launcher: diff updates, hash control, Go admin panel |
 | [snakes](https://github.com/tr0llex/snakes) | Browser territory-capture multiplayer: Go, WebSocket, binary protocol |
 | [metro-map](https://github.com/tr0llex/metro-map) | Offline PWA with the Moscow metro map: routing on the client, Canvas 2D |
