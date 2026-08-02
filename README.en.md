@@ -12,11 +12,14 @@ it all up.
 ![Grafana](https://img.shields.io/badge/Grafana-13.1.1-f46800)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-<!--
-  Dashboard screenshots go here. Drop them into docs/ and uncomment:
-  ![Product dashboard](docs/dashboard-product.png)
-  ![Overview dashboard](docs/dashboard-overview.png)
--->
+![Overview dashboard](docs/dashboard-overview.png)
+
+![Product dashboard](docs/dashboard-product.png)
+
+<sub>Captured from the live stack by
+[`docs/render-dashboards.sh`](docs/render-dashboards.sh). The empty panels in
+the ChillHub section are not a fault: the deployed launcher binary predates its
+own exporter, and those metrics will appear with the next release.</sub>
 
 ## What makes this interesting
 

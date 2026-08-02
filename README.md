@@ -12,11 +12,14 @@
 ![Grafana](https://img.shields.io/badge/Grafana-13.1.1-f46800)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-<!--
-  Место для скриншотов панелей. Положить в docs/ и раскомментировать:
-  ![Дашборд «Продукт»](docs/dashboard-product.png)
-  ![Дашборд «Обзор»](docs/dashboard-overview.png)
--->
+![Дашборд «Обзор»](docs/dashboard-overview.png)
+
+![Дашборд «Продукт»](docs/dashboard-product.png)
+
+<sub>Кадры сняты с живого стенда скриптом
+[`docs/render-dashboards.sh`](docs/render-dashboards.sh). Пустые панели
+раздела ChillHub — не поломка: развёрнутый бинарь лаунчера старше своего
+экспортёра, и метрики появятся с ближайшей выкаткой.</sub>
 
 ## Что здесь интересного
 
