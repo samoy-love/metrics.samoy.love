@@ -1,0 +1,69 @@
+# Конфиги здесь ломаются молча: опечатка в правиле или разъехавшийся uid
+# источника данных не роняют ничего при выкатке — просто панель показывает
+# пустоту, а алерт никогда не срабатывает. Поэтому проверки простые, но есть.
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Проверка конфигов
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Синтаксис YAML
+        run: |
+          pipx install yamllint
+          yamllint -d '{extends: relaxed, rules: {line-length: {max: 120}}}' \
+            prometheus blackbox nginxlog grafana/provisioning .github
+
+      # Версия promtool берётся из docker-compose.yml, а не пишется здесь
+      # отдельно: два места с версией разъезжаются, одно — нет.
+      - name: Версия Prometheus из compose
+        id: prom
+        run: |
+          version=$(sed -n 's|.*image: prom/prometheus:\(v[0-9.]*\).*|\1|p' docker-compose.yml)
+          test -n "$version" || { echo "не нашёл версию prometheus в docker-compose.yml"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # prometheus.yml ссылается на правила абсолютным путём — тем самым, по
+      # которому они лежат в контейнере. Раскладываем их так же, иначе
+      # promtool честно ругнётся на несуществующий glob.
+      - name: Проверка конфигурации Prometheus
+        run: |
+          docker run --rm --entrypoint promtool \
+            -v "$PWD/prometheus:/etc/prometheus:ro" \
+            prom/prometheus:${{ steps.prom.outputs.version }} \
+            check config /etc/prometheus/prometheus.yml
+
+      - name: Проверка правил оповещений
+        run: |
+          docker run --rm --entrypoint promtool \
+            -v "$PWD/prometheus:/etc/prometheus:ro" \
+            prom/prometheus:${{ steps.prom.outputs.version }} \
+            check rules /etc/prometheus/rules/product.yml /etc/prometheus/rules/samoy.yml
+
+      - name: Проверка docker-compose
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+
+      # Дашборд провижинится из файла, и если uid источника данных в нём не
+      # совпадёт с провижинингом, все панели молча покажут «No data».
+      - name: Дашборды и uid источника данных
+        run: |
+          uid=$(sed -n 's/^ *uid: *//p' grafana/provisioning/datasources/prometheus.yml)
+          test -n "$uid" || { echo "не нашёл uid источника данных"; exit 1; }
+          for f in grafana/dashboards/*.json; do
+            jq -e . "$f" > /dev/null || { echo "$f: не разбирается как JSON"; exit 1; }
+            bad=$(jq -r --arg uid "$uid" \
+              '[.. | objects | select(has("uid") and has("type") and .type == "prometheus") | .uid]
+               | unique | map(select(. != $uid)) | join(", ")' "$f")
+            test -z "$bad" || { echo "$f: чужие uid источника данных: $bad (ожидался $uid)"; exit 1; }
+          done

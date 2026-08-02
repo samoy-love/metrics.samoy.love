@@ -6,11 +6,15 @@
 # Общее для всех правил ниже: у каждого есть защита от малых чисел. Доля
 # ошибок на выборке из трёх запросов скачет от 0 до 33% сама по себе, и алерт,
 # который срабатывает от одного визита робота, отключают через неделю.
+#
+# Группы названы product-*, чтобы не совпадать с группами из samoy.yml:
+# уникальность имени группы Prometheus требует только внутри файла, но два
+# «samoy-sites» в /prometheus/alerts различаются лишь путём к файлу.
 
 groups:
-  - name: samoy-sites
+  - name: product-sites
     rules:
-      - alert: РостОшибокНаСайте
+      - alert: SiteErrorRateHigh
         # 5xx — это всегда мы. 4xx намеренно НЕ считаем: на статике их делает
         # кто угодно, перебирая /wp-login.php, и порог по ним ловил бы
         # сканеров, а не поломку.
@@ -24,9 +28,9 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "{{ $labels.host }}: больше 5% ответов — 5xx"
+          summary: "{{ $labels.host }}: more than 5% of responses are 5xx"
 
-      - alert: ОбвалПосещаемости
+      - alert: TrafficCollapse
         # Сравнение с тем же часом неделю назад, а не с абсолютным порогом:
         # у личного сайта нет «нормального» числа визитов, зато есть недельный
         # ритм. Нижняя граница на базу нужна, чтобы правило молчало на сайте,
@@ -41,17 +45,19 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.host }}: посещаемость впятеро ниже, чем неделю назад"
+          summary: "{{ $labels.host }}: traffic is five times lower than a week ago"
 
-      - alert: СайтОтвечаетМедленно
+      # Время ответа самого сервера, из журнала nginx. Внешняя проба — это
+      # ProbeLatencyHigh в samoy.yml, она меряет ещё и сеть с TLS.
+      - alert: SiteLatencyHigh
         expr: histogram_quantile(0.95, sum by (le, host) (rate(samoy_site_http_response_time_seconds_hist_bucket[15m]))) > 1
         for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.host }}: p95 времени ответа больше секунды"
+          summary: "{{ $labels.host }}: p95 response time above one second"
 
-      - alert: ЖурналМетрикНеРазбирается
+      - alert: AccessLogParseFailing
         # Формат журнала объявлен в deploy-kit, а строка разбора — в конфиге
         # экспортёра. Разойтись они могут молча: метрики просто перестанут
         # обновляться, и дашборд будет показывать ровную линию вместо правды.
@@ -60,11 +66,11 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Экспортёр не разбирает строки журнала nginx — разъехались log_format и format"
+          summary: "nginx log lines are not parsed — log_format and exporter format have diverged"
 
-  - name: samoy-chillhub
+  - name: product-chillhub
     rules:
-      - alert: ВсплескСорванныхУстановок
+      - alert: InstallFailureRateHigh
         # result!="ok" — это и ошибка, и отмена: пользователь, бросивший
         # установку на середине, для продукта тоже неудача.
         expr: |
@@ -77,9 +83,9 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Больше 40% установок за час не дошли до конца"
+          summary: "More than 40% of installs in the last hour did not finish"
 
-      - alert: ОбновленияКачаютСборкуЦеликом
+      - alert: DiffUpdatesNotWorking
         # Весь смысл лаунчера в том, что обновление скачивает изменившиеся
         # файлы. Если mode=full стал нормой, дифф не работает — например,
         # сборка пересобирается целиком и хеши не совпадают ни у кого.
@@ -93,9 +99,9 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Больше 80% обновлений скачали сборку целиком — экономия диффа пропала"
+          summary: "Over 80% of updates downloaded the full build — diff savings are gone"
 
-      - alert: РасхожденияХешей
+      - alert: HashMismatchesHigh
         # Единичное расхождение — обычно битый диск у одного пользователя.
         # Десяток за час означает, что не сходится сама сборка.
         expr: sum(increase(chillhub_hash_mismatches_total[1h])) > 10
@@ -103,9 +109,9 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "За час больше десяти файлов не сошлись с манифестом"
+          summary: "More than ten files failed to match the manifest within an hour"
 
-      - alert: ЛаунчерОтвечаетОшибками
+      - alert: LauncherErrorRateHigh
         expr: |
           sum(rate(chillhub_http_requests_total{code=~"5.."}[15m]))
             /
@@ -114,9 +120,9 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Больше 5% ответов лаунчера — 5xx"
+          summary: "More than 5% of launcher responses are 5xx"
 
-      - alert: ТелеметриюНеПринимают
+      - alert: TelemetryRejected
         # Клиент шлёт события «выстрелил и забыл» и отказа не заметит. Рост
         # отклонений означает либо разъехавшийся контракт после выкатки
         # клиента, либо переполненный диск.
@@ -125,11 +131,11 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Больше 20 отклонённых обращений к /metrics/report за час"
+          summary: "More than 20 rejected calls to /metrics/report within an hour"
 
-  - name: samoy-status
+  - name: product-status
     rules:
-      - alert: АгентСтатусаЗамер
+      - alert: StatusAgentStale
         # Все метрики статус-страницы приходят из файла, который пишет агент.
         # Пока файл лежит, они выглядят здоровыми — «всё зелено, потому что
         # никто не смотрит» ловится только здесь.
@@ -137,22 +143,23 @@ groups:
         for: 5m
         labels:
           severity: critical
-          summary_source: textfile
+          source: textfile
         annotations:
-          summary: "Агент статус-страницы не обходил сервисы больше 10 минут"
+          summary: "Status page agent has not polled services for over 10 minutes"
 
-      - alert: БотМолчит
+      - alert: StatusBotStale
         expr: time() - statusbot_heartbeat_timestamp_seconds > 600
         for: 5m
         labels:
           severity: warning
+          source: textfile
         annotations:
-          summary: "Телеграм-бот не обновлял свои метрики больше 10 минут"
+          summary: "Telegram bot has not updated its metrics for over 10 minutes"
 
-      - alert: TelegramНеПринимаетСообщения
+      - alert: TelegramDeliveryFailing
         expr: increase(statusbot_send_failures_total[1h]) > 3
         for: 15m
         labels:
           severity: critical
         annotations:
-          summary: "Бот не может отправить сообщение: уведомления об авариях не дойдут"
+          summary: "Bot cannot send messages: incident notifications will not arrive"
