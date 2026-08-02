@@ -104,12 +104,17 @@ exactly the moment it is needed.
   result, update mode (`diff`/`full`), bytes actually downloaded versus full
   build size, integrity checks and hash mismatches, feedback, maintenance
   windows, version activations, response codes and timings.
+- **Snakes** — game metrics: humans and bots counted separately, joins, match
+  duration and room size at start, causes of death, cells captured and kills,
+  power-ups picked up, contracts and mutators. Separately, the health of the
+  real-time part: game tick duration, WebSocket closes by reason, dropped
+  messages, rejected handshakes.
 - **Status page and bot** — check results, response time, certificate
   headroom, incidents, freshness of the agent's data and notifications sent.
 - **The monitoring itself** — Prometheus and Grafana metrics.
 
 There are two dashboards: **overview** (host, services, site availability) and
-**product** (traffic, launcher downloads and installs, status-page health).
+**product** (traffic, launcher, snakes, metro, status-page health).
 One rule governs both: a panel answers a question somebody actually asks.
 "Pretty, but pointless" is a reason to delete a panel, not to add one.
 
