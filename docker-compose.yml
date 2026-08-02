@@ -5,6 +5,17 @@
 # уезжает вперёд остальных архитектур, и обновление, которого никто не просил,
 # ломало бы мониторинг ровно тогда, когда он нужен.
 #
+# ВЕРСИЯ И DIGEST ВМЕСТЕ. Тег мутабелен: v3.13.2 можно перезалить, и `docker
+# compose pull` молча привёз бы другой образ под тем же именем — «закреплено
+# по версии» перестаёт быть правдой в момент, когда это важнее всего. Digest
+# закрепляет содержимое; тег рядом с ним оставлен для человека, чтобы версия
+# читалась глазами (и чтобы CI мог достать её оттуда для promtool).
+#
+# Обновление образа — правка обеих частей строки. Digest берётся так:
+#   docker buildx imagetools inspect <образ>:<тег> --format '{{.Manifest.Digest}}'
+# Это digest СПИСКА манифестов (multi-arch), поэтому одна строка одинаково
+# верна и для arm64 сервера, и для amd64 раннера CI.
+#
 # Наружу не публикуется НИЧЕГО. Порты биндятся на 127.0.0.1, снаружи доступ
 # идёт только через nginx (metrics.samoy.love) под basic-auth.
 
@@ -12,7 +23,7 @@ name: samoylove-metrics
 
 services:
   prometheus:
-    image: prom/prometheus:v3.13.2
+    image: prom/prometheus:v3.13.2@sha256:508729e0e2d18e11fd742a5a5ca70e557b940a93948c3c95fd0123a6fd538b69
     container_name: samoylove-prometheus
     restart: unless-stopped
     user: "65534:65534"
@@ -28,6 +39,15 @@ services:
       # ему нужно знать свой внешний адрес — иначе его редиректы и ссылки
       # в UI будут вести на корень, то есть в Grafana.
       - --web.external-url=https://metrics.samoy.love/prometheus/
+      # Включает POST на /-/reload и /-/quit. Ручка нужна: перечитывание
+      # конфига без рестарта описано в README и делается С ХОСТА, curl'ом на
+      # 127.0.0.1:9090 по SSH.
+      #
+      # Снаружи она закрыта не здесь, а в nginx: location ^~ /prometheus/-/ в
+      # deploy-kit/nginx/sites/metrics.samoy.love.conf отдаёт 404 на всё, кроме
+      # /-/healthy и /-/ready. Иначе любой, кто знает общий пароль basic-auth,
+      # мог бы одним запросом остановить сбор метрик — basic-auth здесь один
+      # на всю панель и правами не разграничивает.
       - --web.enable-lifecycle
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -50,7 +70,7 @@ services:
         max-file: "3"
 
   grafana:
-    image: grafana/grafana:13.1.1
+    image: grafana/grafana:13.1.1@sha256:7cb8c64c4d57a57e734073f3cc94620adb24a0acb929bd80ba9f14017e3a975b
     container_name: samoylove-grafana
     restart: unless-stopped
     depends_on:
@@ -90,7 +110,7 @@ services:
     logging: *default-logging
 
   node-exporter:
-    image: prom/node-exporter:v1.12.1
+    image: prom/node-exporter:v1.12.1@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0
     container_name: samoylove-node-exporter
     restart: unless-stopped
     pid: host
@@ -99,8 +119,17 @@ services:
     # («An AppArmor policy prevents this sender...»), и коллектор systemd
     # молча отдаёт ноль метрик. Контейнер при этом монтирует хост только
     # на чтение и своих портов наружу не имеет.
+    #
+    # apparmor=unconfined снять нельзя, но можно убрать всё остальное, что
+    # делало этот контейнер самым привилегированным в стеке. Экспортёр только
+    # читает: ни одной привилегии ему не нужно, повышать их он тоже не должен.
+    # Процесс в образе и так идёт от nobody, поэтому обе строки ничего не
+    # ломают — они закрывают путь наверх, если однажды сломается что-то ещё.
     security_opt:
       - apparmor=unconfined
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     command:
       - --path.rootfs=/host
       # Textfile-коллектор: сюда кладут .prom процессы, которым нечем слушать
@@ -137,7 +166,7 @@ services:
     # Ни в одном из них нет ни IP, ни User-Agent, ни cookie, ни строки
     # запроса — их нет в самом log_format. Считается, ЧТО произошло, а не КТО
     # это сделал: см. nginxlog/nginxlog.yml и deploy-kit/nginx/conf.d.
-    image: quay.io/martinhelmich/prometheus-nginxlog-exporter:v1.11.0
+    image: quay.io/martinhelmich/prometheus-nginxlog-exporter:v1.11.0@sha256:b36976cb58584529381a92404a7ba9868b03e1a321c9dc7228cc9ecd93a80440
     container_name: samoylove-nginxlog
     restart: unless-stopped
     command:
@@ -156,7 +185,7 @@ services:
     logging: *default-logging
 
   blackbox-exporter:
-    image: prom/blackbox-exporter:v0.28.0
+    image: prom/blackbox-exporter:v0.28.0@sha256:e753ff9f3fc458d02cca5eddab5a77e1c175eee484a8925ac7d524f04366c2fc
     container_name: samoylove-blackbox
     restart: unless-stopped
     command:
