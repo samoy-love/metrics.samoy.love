@@ -94,7 +94,8 @@ exactly the moment it is needed.
   not `active` — that is normal, not an outage.
 - **Sites** — samoy.love, metro, launcher, snakes, status: status code,
   response time, certificate expiry.
-- **Static-site traffic** — samoy.love and metro: requests by host and path,
+- **Site traffic** — all five hosts: samoy.love, metro, snakes, status and
+  launcher. Requests by host and path,
   status codes, response time, bytes served. The source is a separate nginx
   log, `samoylove_metrics.log` (its format is declared in
   [deploy-kit](https://github.com/tr0llex/deploy-kit)), which contains no IP

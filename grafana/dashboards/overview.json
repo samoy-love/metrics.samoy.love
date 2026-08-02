@@ -2,22 +2,39 @@
   "uid": "samoylove-overview",
   "title": "samoy.love — обзор",
   "description": "Хост, сервисы и сайты samoy.love на одном экране",
-  "tags": ["samoy.love"],
+  "tags": [
+    "samoy.love"
+  ],
   "timezone": "browser",
   "editable": true,
   "schemaVersion": 39,
   "version": 1,
   "refresh": "1m",
-  "time": { "from": "now-6h", "to": "now" },
-  "templating": { "list": [] },
-  "annotations": { "list": [] },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
   "panels": [
     {
       "type": "stat",
       "title": "CPU",
       "id": 1,
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -26,7 +43,13 @@
         }
       ],
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "colorMode": "background",
         "graphMode": "area"
       },
@@ -39,9 +62,18 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 70 },
-              { "color": "red", "value": 90 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
             ]
           }
         },
@@ -52,8 +84,16 @@
       "type": "stat",
       "title": "Память",
       "id": 2,
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -62,7 +102,13 @@
         }
       ],
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "colorMode": "background",
         "graphMode": "area"
       },
@@ -75,9 +121,18 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 75 },
-              { "color": "red", "value": 90 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
             ]
           }
         },
@@ -88,8 +143,16 @@
       "type": "stat",
       "title": "Диск /",
       "id": 3,
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -98,7 +161,13 @@
         }
       ],
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "colorMode": "background",
         "graphMode": "area"
       },
@@ -111,9 +180,18 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 80 },
-              { "color": "red", "value": 90 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
             ]
           }
         },
@@ -124,13 +202,31 @@
       "type": "stat",
       "title": "Аптайм",
       "id": 4,
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
       "targets": [
-        { "refId": "A", "expr": "time() - node_boot_time_seconds", "legendFormat": "аптайм" }
+        {
+          "refId": "A",
+          "expr": "time() - node_boot_time_seconds",
+          "legendFormat": "аптайм"
+        }
       ],
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "colorMode": "none",
         "graphMode": "none"
       },
@@ -138,7 +234,15 @@
         "defaults": {
           "unit": "s",
           "decimals": 0,
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       }
@@ -147,12 +251,20 @@
       "type": "timeseries",
       "title": "CPU по режимам",
       "id": 5,
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (mode) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m])) / on() count(count by (cpu) (node_cpu_seconds_total)) * 100",
+          "expr": "100 * sum by (mode) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m])) / scalar(count(count by (cpu) (node_cpu_seconds_total)))",
           "legendFormat": "{{mode}}"
         }
       ],
@@ -160,39 +272,94 @@
         "defaults": {
           "unit": "percent",
           "min": 0,
-          "custom": { "fillOpacity": 25, "stacking": { "mode": "normal", "group": "A" }, "showPoints": "never" }
+          "custom": {
+            "fillOpacity": 25,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "showPoints": "never"
+          }
         },
         "overrides": []
       },
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } }
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "type": "timeseries",
       "title": "Память",
       "id": 6,
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
       "targets": [
-        { "refId": "A", "expr": "node_memory_MemTotal_bytes", "legendFormat": "всего" },
+        {
+          "refId": "A",
+          "expr": "node_memory_MemTotal_bytes",
+          "legendFormat": "всего"
+        },
         {
           "refId": "B",
           "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
           "legendFormat": "занято"
         },
-        { "refId": "C", "expr": "node_memory_Cached_bytes + node_memory_Buffers_bytes", "legendFormat": "кэш" }
+        {
+          "refId": "C",
+          "expr": "node_memory_Cached_bytes + node_memory_Buffers_bytes",
+          "legendFormat": "кэш"
+        }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "bytes", "min": 0, "custom": { "fillOpacity": 10, "showPoints": "never" } },
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
         "overrides": []
       },
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
     },
     {
       "type": "timeseries",
       "title": "Свободно на диске",
       "id": 7,
-      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 11 },
-      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 11
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -201,17 +368,40 @@
         }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "bytes", "min": 0, "custom": { "fillOpacity": 10, "showPoints": "never" } },
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
         "overrides": []
       },
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
     },
     {
       "type": "timeseries",
       "title": "Сеть",
       "id": 8,
-      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 11 },
-      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 11
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -225,35 +415,92 @@
         }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "bps", "custom": { "fillOpacity": 10, "showPoints": "never" } },
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
         "overrides": []
       },
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
     },
     {
       "type": "timeseries",
       "title": "Load average",
       "id": 9,
-      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 11 },
-      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 11
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
       "targets": [
-        { "refId": "A", "expr": "node_load1", "legendFormat": "1 мин" },
-        { "refId": "B", "expr": "node_load5", "legendFormat": "5 мин" },
-        { "refId": "C", "expr": "node_load15", "legendFormat": "15 мин" }
+        {
+          "refId": "A",
+          "expr": "node_load1",
+          "legendFormat": "1 мин"
+        },
+        {
+          "refId": "B",
+          "expr": "node_load5",
+          "legendFormat": "5 мин"
+        },
+        {
+          "refId": "C",
+          "expr": "node_load15",
+          "legendFormat": "15 мин"
+        }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "short", "min": 0, "custom": { "fillOpacity": 0, "showPoints": "never" } },
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 0,
+            "showPoints": "never"
+          }
+        },
         "overrides": []
       },
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
     },
     {
       "type": "state-timeline",
       "title": "Живость сервисов (systemd)",
       "description": "status-agent и *-backup запускаются по таймеру и большую часть времени неактивны — это норма, а не авария.",
       "id": 10,
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
-      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -264,18 +511,52 @@
       "options": {
         "mergeValues": true,
         "showValue": "never",
-        "legend": { "displayMode": "list", "placement": "bottom" },
-        "tooltip": { "mode": "single" }
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
       },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
           "mappings": [
-            { "type": "value", "options": { "0": { "text": "не активен", "color": "red", "index": 0 } } },
-            { "type": "value", "options": { "1": { "text": "активен", "color": "green", "index": 1 } } }
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "не активен",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "активен",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
           ],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }] },
-          "custom": { "fillOpacity": 80, "lineWidth": 0 }
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 0
+          }
         },
         "overrides": []
       }
@@ -284,11 +565,31 @@
       "type": "stat",
       "title": "Доступность сайтов",
       "id": 11,
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
-      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
-      "targets": [{ "refId": "A", "expr": "probe_success", "legendFormat": "{{instance}}" }],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "probe_success",
+          "legendFormat": "{{instance}}"
+        }
+      ],
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "colorMode": "background",
         "graphMode": "none",
         "textMode": "auto",
@@ -297,14 +598,36 @@
       "fieldConfig": {
         "defaults": {
           "mappings": [
-            { "type": "value", "options": { "0": { "text": "не отвечает", "index": 0 } } },
-            { "type": "value", "options": { "1": { "text": "ОК", "index": 1 } } }
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "не отвечает",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "ОК",
+                  "index": 1
+                }
+              }
+            }
           ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "red", "value": null },
-              { "color": "green", "value": 1 }
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
             ]
           }
         },
@@ -315,23 +638,59 @@
       "type": "timeseries",
       "title": "Время ответа сайтов",
       "id": 12,
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 26 },
-      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 26
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
       "targets": [
-        { "refId": "A", "expr": "probe_duration_seconds", "legendFormat": "{{instance}}" }
+        {
+          "refId": "A",
+          "expr": "probe_duration_seconds",
+          "legendFormat": "{{instance}}"
+        }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "s", "min": 0, "custom": { "fillOpacity": 0, "showPoints": "never" } },
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 0,
+            "showPoints": "never"
+          }
+        },
         "overrides": []
       },
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } }
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "type": "timeseries",
       "title": "Дней до истечения сертификата",
       "id": 13,
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 26 },
-      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 26
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
       "targets": [
         {
           "refId": "A",
@@ -343,19 +702,39 @@
         "defaults": {
           "unit": "d",
           "decimals": 0,
-          "custom": { "fillOpacity": 0, "showPoints": "never" },
+          "custom": {
+            "fillOpacity": 0,
+            "showPoints": "never"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "red", "value": null },
-              { "color": "yellow", "value": 14 },
-              { "color": "green", "value": 30 }
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 14
+              },
+              {
+                "color": "green",
+                "value": 30
+              }
             ]
           }
         },
         "overrides": []
       },
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
     }
   ]
 }
