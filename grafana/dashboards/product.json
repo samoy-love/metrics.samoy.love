@@ -9,7 +9,7 @@
   "timezone": "browser",
   "editable": true,
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "1m",
   "time": {
     "from": "now-24h",
@@ -3028,6 +3028,483 @@
             "showPoints": "never",
             "stacking": {
               "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "row",
+      "title": "Действия в интерфейсе",
+      "id": 57,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 129
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Маршрутов построено за сутки",
+      "id": 58,
+      "description": "Метро считает маршруты на клиенте и работает офлайн: до сервера не доходит ничего, и это единственное число, по которому видно, что приложением пользуются, а не просто открывают.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 130
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(samoylove_event_http_response_count_total{event=\"route_built\"}[24h])) or vector(0)",
+          "legendFormat": "Маршрутов построено за сутки",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Нажатий «Играть» за сутки",
+      "id": 59,
+      "description": "Намерение сыграть. Рядом с серверным snakes_joins_total даёт отвал на подключении: нажал, но в игру не попал.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 130
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(samoylove_event_http_response_count_total{event=\"quick_start\"}[24h])) or vector(0)",
+          "legendFormat": "Нажатий «Играть» за сутки",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Нажатий «Скачать» за сутки",
+      "id": 60,
+      "description": "Клик по кнопке на лендинге. Сама загрузка установщика видна отдельно, по пути /downloads/ в посещаемости — разница между числами и есть те, кто передумал.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 130
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(samoylove_event_http_response_count_total{event=\"download_click\"}[24h])) or vector(0)",
+          "legendFormat": "Нажатий «Скачать» за сутки",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Установок метро как приложения",
+      "id": 61,
+      "description": "Браузер ставит PWA из уже скачанного кеша, не спрашивая сервер. Иначе об установке узнать неоткуда.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 130
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(samoylove_event_http_response_count_total{event=\"pwa_install\"}[24h])) or vector(0)",
+          "legendFormat": "Установок метро как приложения",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "События по сайтам",
+      "id": 62,
+      "description": "Считается, ЧТО произошло, а не кто это сделал: ни cookie, ни идентификатора, ни IP, ни User-Agent. Связать два события одного человека не по чему.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 134
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "60 * sum(rate(samoylove_event_http_response_count_total[10m])) by (host)",
+          "legendFormat": "{{host}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqpm",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Какие именно события",
+      "id": 63,
+      "description": "Ряд other — обращения к /e/ с именем не из словаря: либо забыли добавить новое событие в nginxlog.yml, либо кто-то стучится наугад.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 134
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(samoylove_event_http_response_count_total[1h])) by (event)",
+          "legendFormat": "{{event}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Snakes: путь до игры",
+      "id": 64,
+      "description": "Четыре шага, три из которых видны только с клиента, а один — только с сервера. Провал между «нажал» и «подключился» это сорвавшиеся подключения; между «подключился» и «первой клеткой» — те, кто не разобрался в управлении.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 142
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(samoylove_event_http_response_count_total{event=\"quick_start\"}[1h])) or vector(0)",
+          "legendFormat": "нажал «Играть»"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(samoylove_event_http_response_count_total{event=\"join_room\"}[1h])) or vector(0)",
+          "legendFormat": "выбрал комнату"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(increase(snakes_joins_total{actor=\"player\"}[1h]))",
+          "legendFormat": "подключился (сервер)"
+        },
+        {
+          "refId": "D",
+          "expr": "sum(increase(samoylove_event_http_response_count_total{event=\"first_capture\"}[1h])) or vector(0)",
+          "legendFormat": "захватил первую клетку"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Главная и метро: куда нажимают",
+      "id": 65,
+      "description": "station_pick — выбор станции прямо на карте вместо ввода названия; какой из двух способов в ходу, из журнала не видно.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 142
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(samoylove_event_http_response_count_total{event=~\"project_open|contact_open|source_open\"}[1h])) by (event)",
+          "legendFormat": "{{event}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(samoylove_event_http_response_count_total{event=\"station_pick\"}[1h])) or vector(0)",
+          "legendFormat": "станция на схеме"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
               "group": "A"
             }
           },
