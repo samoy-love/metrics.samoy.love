@@ -125,7 +125,6 @@ What is deliberately absent:
   their state is visible at `/prometheus/alerts`.
 - **Metric backups.** Deliberately: this is operational data, there is nowhere
   and no reason to restore it from.
-- **Snakes.** The target is configured but currently `down` — see below.
 
 ## Alert rules
 
@@ -171,12 +170,18 @@ image has no `/var/run` → `/run` symlink while the exporter looks for the bus
 at `/var/run/dbus/...`, so the socket is mounted at that exact path.
 
 **`IPAddressDeny=any` on somebody else's unit.** `snakes.service` runs with
-`IPAddressAllow=localhost`, so the kernel drops any connection that is not
-from `127.0.0.1`. Prometheus lives in its own network namespace and arrives
-from the docker bridge address — it gets a timeout. This can only be lifted on
-the snakes side, via a unit drop-in; working around another service's
-deliberate restriction from the monitoring stack was not an option, so the
-target honestly sits `down`. For the same reason the ChillHub services expose
+`IPAddressAllow=localhost` and `IPAddressDeny=any`, so the kernel drops any
+connection that is not from `127.0.0.1`. Prometheus lives in its own network
+namespace and arrives from the docker bridge address, so instead of metrics it
+got a timeout — silently, since the kernel drops the packets and the service
+log stays empty. Working around another service's deliberate restriction from
+the monitoring stack was not an option: the whole point of it is that the game
+process is reachable only by nginx on the same machine. It was untangled on
+the snakes side, in two parts: a unit drop-in opens exactly the docker bridge
+subnets, and the game brings up a separate listener on the bridge address that
+serves `/metrics` and nothing else — otherwise `/ws` and the static files
+would have opened to containers along with it, bypassing nginx. The target has
+been `up` since. For the same reason the ChillHub services expose
 metrics on `172.17.0.1` rather than `127.0.0.1`: that address is reachable
 from the host and its containers and does not answer on the server's public
 address.
@@ -298,7 +303,7 @@ pipeline.
 | [chillhub](https://github.com/tr0llex/chillhub) | the game launcher, source of every product metric |
 | [deploy-kit](https://github.com/tr0llex/deploy-kit) | the shared release pipeline; also the nginx config and the log format |
 | [metro-map](https://github.com/tr0llex/metro-map) | offline metro map; its traffic is counted here |
-| [snakes](https://github.com/tr0llex/snakes) | target configured, currently `down` (see the traps) |
+| [snakes](https://github.com/tr0llex/snakes) | the game; it exposes metrics through a separate listener on the bridge address (see the traps) |
 
 ## License
 
