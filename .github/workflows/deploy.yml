@@ -46,16 +46,22 @@ jobs:
       #
       # promtool берётся той же версии, что в docker-compose.yml: два места с
       # версией разъезжаются, одно — нет.
+      #
+      # ОТСТУП ВНУТРИ ЭТОГО БЛОКА ОБЯЗАН БЫТЬ ОДИНАКОВЫМ. В свёрнутом скаляре
+      # YAML (>-) строка с бо́льшим отступом не сворачивается с предыдущей, а
+      # остаётся отдельной. Продолжения команд были отбиты вправо «для
+      # читаемости» — и список каталогов уехал от `yamllint` на свою строку,
+      # то есть команда осталась без аргументов вовсе.
       gates: >-
         pipx install yamllint &&
         yamllint -d '{extends: relaxed, rules: {line-length: {max: 120}}}'
-          prometheus blackbox nginxlog grafana/provisioning .github &&
+        prometheus blackbox nginxlog grafana/provisioning .github &&
         PROM=$(sed -n 's|.*image: prom/prometheus:\(v[0-9.]*\).*|\1|p' docker-compose.yml) &&
         test -n "$PROM" &&
         docker run --rm --entrypoint promtool -v "$PWD/prometheus:/etc/prometheus:ro"
-          prom/prometheus:$PROM check config /etc/prometheus/prometheus.yml &&
+        prom/prometheus:$PROM check config /etc/prometheus/prometheus.yml &&
         docker run --rm --entrypoint promtool -v "$PWD/prometheus:/etc/prometheus:ro"
-          prom/prometheus:$PROM check rules /etc/prometheus/rules/product.yml /etc/prometheus/rules/infra.yml &&
+        prom/prometheus:$PROM check rules /etc/prometheus/rules/product.yml /etc/prometheus/rules/infra.yml &&
         sudo install -D -m 644 .env.example /opt/samoylove-metrics/.env &&
         docker compose config --quiet
       dry-run: ${{ inputs.dry-run == true }}
