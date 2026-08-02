@@ -47,7 +47,7 @@ jobs:
           docker run --rm --entrypoint promtool \
             -v "$PWD/prometheus:/etc/prometheus:ro" \
             prom/prometheus:${{ steps.prom.outputs.version }} \
-            check rules /etc/prometheus/rules/product.yml /etc/prometheus/rules/samoy.yml
+            check rules /etc/prometheus/rules/product.yml /etc/prometheus/rules/infra.yml
 
       - name: Проверка docker-compose
         run: |

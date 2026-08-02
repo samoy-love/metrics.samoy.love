@@ -8,7 +8,7 @@ global:
   scrape_timeout: 10s
   evaluation_interval: 30s
   external_labels:
-    server: samoy-oracle
+    server: samoylove-oracle
 
 rule_files:
   - /etc/prometheus/rules/*.yml
@@ -25,7 +25,7 @@ scrape_configs:
     static_configs:
       - targets: ["node-exporter:9100"]
         labels:
-          instance: samoy-oracle
+          instance: samoylove-oracle
 
   # --- Grafana --------------------------------------------------------------
   - job_name: grafana
@@ -80,7 +80,7 @@ scrape_configs:
     static_configs:
       - targets: ["nginxlog-exporter:4040"]
         labels:
-          instance: samoy-oracle
+          instance: samoylove-oracle
 
   # --- Доступность сайтов ---------------------------------------------------
   - job_name: blackbox-http

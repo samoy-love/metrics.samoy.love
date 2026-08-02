@@ -59,7 +59,7 @@ flowchart LR
 
     svc -->|"pull /internal/metrics"| prom
     timer -->|".prom via textfile"| node
-    nginx -->|"samoy_metrics.log"| nglog
+    nginx -->|"samoylove_metrics.log"| nglog
     node --> prom
     nglog --> prom
     bb -->|"external probes"| prom
@@ -96,7 +96,7 @@ exactly the moment it is needed.
   response time, certificate expiry.
 - **Static-site traffic** — samoy.love and metro: requests by host and path,
   status codes, response time, bytes served. The source is a separate nginx
-  log, `samoy_metrics.log` (its format is declared in
+  log, `samoylove_metrics.log` (its format is declared in
   [deploy-kit](https://github.com/tr0llex/deploy-kit)), which contains no IP
   and no User-Agent: client-side counters are not an option on these sites,
   the homepage README promises zero trackers.
@@ -116,7 +116,7 @@ One rule governs both: a panel answers a question somebody actually asks.
 What is deliberately absent:
 
 - **Client-side analytics.** Traffic is counted from server logs; the visitor
-  runs nothing for it. `samoy_metrics.log` is rotated by the standard
+  runs nothing for it. `samoylove_metrics.log` is rotated by the standard
   `/var/log/nginx/*.log` rule (14 days) and the exporter reopens the file on
   its own.
 - **Alertmanager.** The 19 rules in `prometheus/rules/` exist, notification
@@ -134,13 +134,13 @@ threshold looks the way it does are in Russian, next to the rules.
 
 | Group | Alert | Fires when |
 |---|---|---|
-| `samoy-host` | `DiskSpaceLow` | less than 10% free on `/` for 15 min |
-| `samoy-host` | `MemoryLow` | less than 10% memory available for 15 min |
-| `samoy-host` | `CpuSaturated` | CPU above 90% for 30 min |
-| `samoy-services` | `ServiceDown` | an always-on systemd unit is not `active` |
-| `samoy-sites` | `SiteDown` | external probe fails for 5 min |
-| `samoy-sites` | `CertificateExpiringSoon` | certificate expires within 14 days |
-| `samoy-sites` | `ProbeLatencyHigh` | probe (DNS + TLS + response) over 3 s |
+| `infra-host` | `DiskSpaceLow` | less than 10% free on `/` for 15 min |
+| `infra-host` | `MemoryLow` | less than 10% memory available for 15 min |
+| `infra-host` | `CpuSaturated` | CPU above 90% for 30 min |
+| `infra-services` | `ServiceDown` | an always-on systemd unit is not `active` |
+| `infra-sites` | `SiteDown` | external probe fails for 5 min |
+| `infra-sites` | `CertificateExpiringSoon` | certificate expires within 14 days |
+| `infra-sites` | `ProbeLatencyHigh` | probe (DNS + TLS + response) over 3 s |
 | `product-sites` | `SiteErrorRateHigh` | over 5% of responses are 5xx |
 | `product-sites` | `TrafficCollapse` | traffic 5× below the same hours a week ago |
 | `product-sites` | `SiteLatencyHigh` | server-side p95 above 1 s |
@@ -194,24 +194,21 @@ The nginx config does not live here but in
 [deploy-kit](https://github.com/tr0llex/deploy-kit), which stays the single
 source of truth for nginx.
 
-The directory on the server is `/opt/samoy-monitoring`, the name this
-repository started with. Renaming the repository does not touch it: the TSDB
-and Grafana volumes would have to be migrated next, and that is not something
-you do for cosmetics.
+The directory on the server is `/opt/samoylove-metrics`.
 
 ```bash
 # 1. Code to the server
-rsync -a --exclude .git --exclude .env ./ ubuntu@SERVER:/opt/samoy-monitoring/
+rsync -a --exclude .git --exclude .env ./ ubuntu@SERVER:/opt/samoylove-metrics/
 
 # 2. Secrets (once; a second run overwrites nothing)
-ssh ubuntu@SERVER 'bash /opt/samoy-monitoring/server/bootstrap.sh'
+ssh ubuntu@SERVER 'bash /opt/samoylove-metrics/server/bootstrap.sh'
 
 # 3. Start
-ssh ubuntu@SERVER 'cd /opt/samoy-monitoring && sudo docker compose up -d'
+ssh ubuntu@SERVER 'cd /opt/samoylove-metrics && sudo docker compose up -d'
 
 # 4. nginx — through deploy-kit only, never by hand in /etc/nginx
 sudo /opt/deploy-kit/server/nginx-apply.sh \
-    --app samoy-monitoring \
+    --app samoylove-metrics \
     --conf /opt/deploy-kit/nginx/sites/metrics.samoy.love.conf \
     --dest /etc/nginx/sites-available/metrics.samoy.love.conf --enable
 ```
@@ -237,7 +234,7 @@ Dashboards: **https://metrics.samoy.love/** (Grafana), Prometheus at
 Two gates: nginx basic auth first, then the Grafana login. Passwords live on
 the server only and are not in this repository: basic auth in
 `/etc/nginx/.htpasswd-metrics`, the Grafana admin in
-`/opt/samoy-monitoring/.env`.
+`/opt/samoylove-metrics/.env`.
 
 **Adding a target.** Edit `prometheus/prometheus.yml`, then reload without a
 restart (Prometheus runs with `--web.enable-lifecycle`):
@@ -277,8 +274,8 @@ change included.
 
 | Volume | Contents |
 |---|---|
-| `samoy-monitoring_prometheus-data` | TSDB, 90 days or 8 GB |
-| `samoy-monitoring_grafana-data` | Grafana database |
+| `samoylove-metrics_prometheus-data` | TSDB, 90 days or 8 GB |
+| `samoylove-metrics_grafana-data` | Grafana database |
 
 Dashboards and the datasource are not stored in that database: they are
 provisioned from `grafana/` on every start, so losing the Grafana volume does

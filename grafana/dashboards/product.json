@@ -1,9 +1,9 @@
 {
-  "uid": "samoy-product",
+  "uid": "samoylove-product",
   "title": "samoy.love — продукт",
   "description": "Как пользуются вещами: посещаемость сайтов, загрузки и установки лаунчера, состояние статус-страницы",
   "tags": [
-    "samoy",
+    "samoy.love",
     "продукт"
   ],
   "timezone": "browser",
@@ -48,12 +48,12 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(samoy_site_http_response_count_total{path=\"/\"}[24h]))",
+          "expr": "sum(increase(samoylove_site_http_response_count_total{path=\"/\"}[24h]))",
           "legendFormat": "Просмотры страниц за сутки",
           "instant": true
         }
@@ -100,12 +100,12 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(samoy_site_http_response_size_bytes[24h]))",
+          "expr": "sum(increase(samoylove_site_http_response_size_bytes[24h]))",
           "legendFormat": "Отдано трафика за сутки",
           "instant": true
         }
@@ -152,12 +152,12 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum(increase(samoy_site_http_response_count_total{status=~\"[45]..\"}[24h])) / clamp_min(sum(increase(samoy_site_http_response_count_total[24h])), 1)",
+          "expr": "100 * sum(increase(samoylove_site_http_response_count_total{status=~\"[45]..\"}[24h])) / clamp_min(sum(increase(samoylove_site_http_response_count_total[24h])), 1)",
           "legendFormat": "Доля ошибок за сутки",
           "instant": true
         }
@@ -212,12 +212,12 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum(rate(samoy_site_http_response_time_seconds_hist_bucket[1h])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(samoylove_site_http_response_time_seconds_hist_bucket[1h])) by (le))",
           "legendFormat": "Время ответа, p95",
           "instant": true
         }
@@ -272,12 +272,12 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum(rate(samoy_site_http_response_count_total[10m])) by (host)",
+          "expr": "60 * sum(rate(samoylove_site_http_response_count_total[10m])) by (host)",
           "legendFormat": "{{host}}"
         }
       ],
@@ -331,12 +331,12 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum(rate(samoy_site_http_response_count_total[10m])) by (status)",
+          "expr": "60 * sum(rate(samoylove_site_http_response_count_total[10m])) by (status)",
           "legendFormat": "{{status}}"
         }
       ],
@@ -390,12 +390,12 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum(rate(samoy_site_http_response_count_total[10m])) by (path)",
+          "expr": "60 * sum(rate(samoylove_site_http_response_count_total[10m])) by (path)",
           "legendFormat": "{{path}}"
         }
       ],
@@ -449,17 +449,17 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum(rate(samoy_site_http_response_time_seconds_hist_bucket[10m])) by (le, host))",
+          "expr": "histogram_quantile(0.95, sum(rate(samoylove_site_http_response_time_seconds_hist_bucket[10m])) by (le, host))",
           "legendFormat": "p95 {{host}}"
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.50, sum(rate(samoy_site_http_response_time_seconds_hist_bucket[10m])) by (le, host))",
+          "expr": "histogram_quantile(0.50, sum(rate(samoylove_site_http_response_time_seconds_hist_bucket[10m])) by (le, host))",
           "legendFormat": "p50 {{host}}"
         }
       ],
@@ -526,7 +526,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -586,7 +586,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -638,7 +638,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -698,7 +698,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -758,7 +758,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -822,7 +822,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -881,7 +881,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -940,7 +940,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -1004,7 +1004,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -1056,7 +1056,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -1108,7 +1108,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -1164,7 +1164,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -1220,7 +1220,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -1297,7 +1297,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -1357,7 +1357,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -1416,7 +1416,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -1476,7 +1476,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -1532,7 +1532,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {
@@ -1584,7 +1584,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "samoy-prometheus"
+        "uid": "samoylove-prometheus"
       },
       "targets": [
         {

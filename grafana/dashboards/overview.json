@@ -1,8 +1,8 @@
 {
-  "uid": "samoy-overview",
+  "uid": "samoylove-overview",
   "title": "samoy.love — обзор",
   "description": "Хост, сервисы и сайты samoy.love на одном экране",
-  "tags": ["samoy"],
+  "tags": ["samoy.love"],
   "timezone": "browser",
   "editable": true,
   "schemaVersion": 39,
@@ -17,7 +17,7 @@
       "title": "CPU",
       "id": 1,
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "samoy-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
       "targets": [
         {
           "refId": "A",
@@ -53,7 +53,7 @@
       "title": "Память",
       "id": 2,
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "samoy-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
       "targets": [
         {
           "refId": "A",
@@ -89,7 +89,7 @@
       "title": "Диск /",
       "id": 3,
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "samoy-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
       "targets": [
         {
           "refId": "A",
@@ -125,7 +125,7 @@
       "title": "Аптайм",
       "id": 4,
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "samoy-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
       "targets": [
         { "refId": "A", "expr": "time() - node_boot_time_seconds", "legendFormat": "аптайм" }
       ],
@@ -148,7 +148,7 @@
       "title": "CPU по режимам",
       "id": 5,
       "gridPos": { "h": 7, "w": 12, "x": 0, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "samoy-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
       "targets": [
         {
           "refId": "A",
@@ -171,7 +171,7 @@
       "title": "Память",
       "id": 6,
       "gridPos": { "h": 7, "w": 12, "x": 12, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "samoy-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
       "targets": [
         { "refId": "A", "expr": "node_memory_MemTotal_bytes", "legendFormat": "всего" },
         {
@@ -192,7 +192,7 @@
       "title": "Свободно на диске",
       "id": 7,
       "gridPos": { "h": 7, "w": 8, "x": 0, "y": 11 },
-      "datasource": { "type": "prometheus", "uid": "samoy-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
       "targets": [
         {
           "refId": "A",
@@ -211,7 +211,7 @@
       "title": "Сеть",
       "id": 8,
       "gridPos": { "h": 7, "w": 8, "x": 8, "y": 11 },
-      "datasource": { "type": "prometheus", "uid": "samoy-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
       "targets": [
         {
           "refId": "A",
@@ -235,7 +235,7 @@
       "title": "Load average",
       "id": 9,
       "gridPos": { "h": 7, "w": 8, "x": 16, "y": 11 },
-      "datasource": { "type": "prometheus", "uid": "samoy-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
       "targets": [
         { "refId": "A", "expr": "node_load1", "legendFormat": "1 мин" },
         { "refId": "B", "expr": "node_load5", "legendFormat": "5 мин" },
@@ -253,7 +253,7 @@
       "description": "status-agent и *-backup запускаются по таймеру и большую часть времени неактивны — это норма, а не авария.",
       "id": 10,
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
-      "datasource": { "type": "prometheus", "uid": "samoy-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
       "targets": [
         {
           "refId": "A",
@@ -285,7 +285,7 @@
       "title": "Доступность сайтов",
       "id": 11,
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
-      "datasource": { "type": "prometheus", "uid": "samoy-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
       "targets": [{ "refId": "A", "expr": "probe_success", "legendFormat": "{{instance}}" }],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -316,7 +316,7 @@
       "title": "Время ответа сайтов",
       "id": 12,
       "gridPos": { "h": 7, "w": 12, "x": 0, "y": 26 },
-      "datasource": { "type": "prometheus", "uid": "samoy-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
       "targets": [
         { "refId": "A", "expr": "probe_duration_seconds", "legendFormat": "{{instance}}" }
       ],
@@ -331,7 +331,7 @@
       "title": "Дней до истечения сертификата",
       "id": 13,
       "gridPos": { "h": 7, "w": 12, "x": 12, "y": 26 },
-      "datasource": { "type": "prometheus", "uid": "samoy-prometheus" },
+      "datasource": { "type": "prometheus", "uid": "samoylove-prometheus" },
       "targets": [
         {
           "refId": "A",

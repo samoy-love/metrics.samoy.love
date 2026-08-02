@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Первичная настройка секретов на сервере. Запускается ОДИН раз, на сервере,
-# из каталога /opt/samoy-monitoring.
+# из каталога /opt/samoylove-metrics.
 #
 # Скрипт умышленно ничего не перезаписывает: повторный запуск с уже
 # существующими .env или .htpasswd — это, скорее всего, ошибка, а не
@@ -8,9 +8,9 @@
 
 set -Eeuo pipefail
 
-APP_DIR=/opt/samoy-monitoring
+APP_DIR=/opt/samoylove-metrics
 HTPASSWD=/etc/nginx/.htpasswd-metrics
-BASIC_USER=samoy
+BASIC_USER=samoy.love
 
 cd "$APP_DIR"
 
