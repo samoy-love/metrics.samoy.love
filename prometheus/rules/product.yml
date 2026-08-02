@@ -7,9 +7,10 @@
 # ошибок на выборке из трёх запросов скачет от 0 до 33% сама по себе, и алерт,
 # который срабатывает от одного визита робота, отключают через неделю.
 #
-# Группы названы product-*, чтобы не совпадать с группами из samoy.yml:
-# уникальность имени группы Prometheus требует только внутри файла, но два
-# «samoy-sites» в /prometheus/alerts различаются лишь путём к файлу.
+# Группы здесь product-*, в infra.yml — infra-*. Уникальности имени группы
+# Prometheus требует только внутри файла, но две одноимённые группы в
+# /prometheus/alerts различались бы лишь путём к файлу, и это ровно тот
+# случай, когда экономия на префиксе стоит десяти минут в аварию.
 
 groups:
   - name: product-sites
@@ -19,11 +20,11 @@ groups:
         # кто угодно, перебирая /wp-login.php, и порог по ним ловил бы
         # сканеров, а не поломку.
         expr: |
-          sum by (host) (rate(samoy_site_http_response_count_total{status=~"5.."}[15m]))
+          sum by (host) (rate(samoylove_site_http_response_count_total{status=~"5.."}[15m]))
             /
-          sum by (host) (rate(samoy_site_http_response_count_total[15m])) > 0.05
+          sum by (host) (rate(samoylove_site_http_response_count_total[15m])) > 0.05
           and
-          sum by (host) (increase(samoy_site_http_response_count_total[15m])) > 20
+          sum by (host) (increase(samoylove_site_http_response_count_total[15m])) > 20
         for: 10m
         labels:
           severity: critical
@@ -36,11 +37,11 @@ groups:
         # ритм. Нижняя граница на базу нужна, чтобы правило молчало на сайте,
         # куда и неделю назад никто не заходил.
         expr: |
-          sum by (host) (increase(samoy_site_http_response_count_total{path="/"}[6h]))
+          sum by (host) (increase(samoylove_site_http_response_count_total{path="/"}[6h]))
             <
-          0.2 * sum by (host) (increase(samoy_site_http_response_count_total{path="/"}[6h] offset 1w))
+          0.2 * sum by (host) (increase(samoylove_site_http_response_count_total{path="/"}[6h] offset 1w))
           and
-          sum by (host) (increase(samoy_site_http_response_count_total{path="/"}[6h] offset 1w)) > 50
+          sum by (host) (increase(samoylove_site_http_response_count_total{path="/"}[6h] offset 1w)) > 50
         for: 2h
         labels:
           severity: warning
@@ -48,9 +49,9 @@ groups:
           summary: "{{ $labels.host }}: traffic is five times lower than a week ago"
 
       # Время ответа самого сервера, из журнала nginx. Внешняя проба — это
-      # ProbeLatencyHigh в samoy.yml, она меряет ещё и сеть с TLS.
+      # ProbeLatencyHigh в infra.yml, она меряет ещё и сеть с TLS.
       - alert: SiteLatencyHigh
-        expr: histogram_quantile(0.95, sum by (le, host) (rate(samoy_site_http_response_time_seconds_hist_bucket[15m]))) > 1
+        expr: histogram_quantile(0.95, sum by (le, host) (rate(samoylove_site_http_response_time_seconds_hist_bucket[15m]))) > 1
         for: 15m
         labels:
           severity: warning
@@ -61,7 +62,7 @@ groups:
         # Формат журнала объявлен в deploy-kit, а строка разбора — в конфиге
         # экспортёра. Разойтись они могут молча: метрики просто перестанут
         # обновляться, и дашборд будет показывать ровную линию вместо правды.
-        expr: increase(samoy_site_parse_errors_total[30m]) > 0
+        expr: increase(samoylove_site_parse_errors_total[30m]) > 0
         for: 30m
         labels:
           severity: warning

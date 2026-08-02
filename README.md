@@ -57,7 +57,7 @@ flowchart LR
 
     svc -->|"pull /internal/metrics"| prom
     timer -->|".prom в textfile"| node
-    nginx -->|"samoy_metrics.log"| nglog
+    nginx -->|"samoylove_metrics.log"| nglog
     node --> prom
     nglog --> prom
     bb -->|"пробы снаружи"| prom
@@ -94,7 +94,7 @@ HTTP-эндпоинт, у других только журнал, у треть�
   ответа, срок действия сертификата.
 - **Посещаемость статики** — samoy.love и metro: запросы по домену и пути,
   коды ответов, время ответа, отданный объём. Источник — отдельный журнал
-  nginx `samoy_metrics.log` (формат объявлен в
+  nginx `samoylove_metrics.log` (формат объявлен в
   [deploy-kit](https://github.com/tr0llex/deploy-kit)), в котором нет ни IP,
   ни User-Agent: клиентские счётчики на этих сайтах ставить нельзя, в README
   главной обещан ноль трекеров.
@@ -114,7 +114,7 @@ HTTP-эндпоинт, у других только журнал, у треть�
 Чего нет и почему:
 
 - **Клиентской аналитики.** Посещаемость считается из журналов сервера, и
-  посетитель ничего для этого не выполняет. Журнал `samoy_metrics.log`
+  посетитель ничего для этого не выполняет. Журнал `samoylove_metrics.log`
   ротируется штатным правилом `/var/log/nginx/*.log` (14 дней), экспортёр
   переоткрывает файл сам.
 - **Alertmanager.** 19 правил в `prometheus/rules/` есть, маршрутизации
@@ -159,23 +159,21 @@ ChillHub слушают экспортёром `172.17.0.1`, а не `127.0.0.1`
 [deploy-kit](https://github.com/tr0llex/deploy-kit) — он остаётся единственным
 источником правды по nginx.
 
-Каталог на сервере — `/opt/samoy-monitoring`, по имени, с которого репозиторий
-начинался. Переименование репозитория его не трогает: следом пришлось бы
-переносить тома с TSDB и базой Grafana, а ради косметики этого не делают.
+Каталог на сервере — `/opt/samoylove-metrics`.
 
 ```bash
 # 1. Код на сервер
-rsync -a --exclude .git --exclude .env ./ ubuntu@СЕРВЕР:/opt/samoy-monitoring/
+rsync -a --exclude .git --exclude .env ./ ubuntu@СЕРВЕР:/opt/samoylove-metrics/
 
 # 2. Секреты (один раз; повторный запуск ничего не перезапишет)
-ssh ubuntu@СЕРВЕР 'bash /opt/samoy-monitoring/server/bootstrap.sh'
+ssh ubuntu@СЕРВЕР 'bash /opt/samoylove-metrics/server/bootstrap.sh'
 
 # 3. Запуск
-ssh ubuntu@СЕРВЕР 'cd /opt/samoy-monitoring && sudo docker compose up -d'
+ssh ubuntu@СЕРВЕР 'cd /opt/samoylove-metrics && sudo docker compose up -d'
 
 # 4. nginx — только через deploy-kit, руками в /etc/nginx не ходим
 sudo /opt/deploy-kit/server/nginx-apply.sh \
-    --app samoy-monitoring \
+    --app samoylove-metrics \
     --conf /opt/deploy-kit/nginx/sites/metrics.samoy.love.conf \
     --dest /etc/nginx/sites-available/metrics.samoy.love.conf --enable
 ```
@@ -202,7 +200,7 @@ sudo certbot certonly --webroot -w /var/www/metrics-acme -d metrics.samoy.love
 Два рубежа: сначала basic-auth nginx, затем логин Grafana. Пароли лежат только
 на сервере — в репозитории их нет и быть не должно: basic-auth в
 `/etc/nginx/.htpasswd-metrics`, администратор Grafana в
-`/opt/samoy-monitoring/.env`.
+`/opt/samoylove-metrics/.env`.
 
 **Добавить цель.** Правится `prometheus/prometheus.yml`, дальше — перечитать
 конфиг без перезапуска (Prometheus запущен с `--web.enable-lifecycle`):
@@ -242,8 +240,8 @@ sudo docker compose up -d --force-recreate prometheus
 
 | Том | Что внутри |
 |---|---|
-| `samoy-monitoring_prometheus-data` | TSDB, 90 дней или 8 ГБ |
-| `samoy-monitoring_grafana-data` | база Grafana |
+| `samoylove-metrics_prometheus-data` | TSDB, 90 дней или 8 ГБ |
+| `samoylove-metrics_grafana-data` | база Grafana |
 
 Дашборды и источник данных в этой базе не хранятся: они провижинятся из
 `grafana/` при каждом старте, поэтому потеря тома Grafana не потеряет панели.

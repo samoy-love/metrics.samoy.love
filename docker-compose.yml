@@ -1,6 +1,6 @@
 # Мониторинг samoy.love: Prometheus + Grafana + экспортёры.
 #
-# Разворачивается в /opt/samoy-monitoring на одном сервере (Oracle Ampere,
+# Разворачивается в /opt/samoylove-metrics на одном сервере (Oracle Ampere,
 # aarch64). Все образы закреплены по версии: «latest» на arm64 периодически
 # уезжает вперёд остальных архитектур, и обновление, которого никто не просил,
 # ломало бы мониторинг ровно тогда, когда он нужен.
@@ -8,12 +8,12 @@
 # Наружу не публикуется НИЧЕГО. Порты биндятся на 127.0.0.1, снаружи доступ
 # идёт только через nginx (metrics.samoy.love) под basic-auth.
 
-name: samoy-monitoring
+name: samoylove-metrics
 
 services:
   prometheus:
     image: prom/prometheus:v3.13.2
-    container_name: samoy-prometheus
+    container_name: samoylove-prometheus
     restart: unless-stopped
     user: "65534:65534"
     command:
@@ -51,7 +51,7 @@ services:
 
   grafana:
     image: grafana/grafana:13.1.1
-    container_name: samoy-grafana
+    container_name: samoylove-grafana
     restart: unless-stopped
     depends_on:
       - prometheus
@@ -85,7 +85,7 @@ services:
 
   node-exporter:
     image: prom/node-exporter:v1.12.1
-    container_name: samoy-node-exporter
+    container_name: samoylove-node-exporter
     restart: unless-stopped
     pid: host
     # Сбор состояния systemd-юнитов идёт через системную шину dbus, а профиль
@@ -127,10 +127,10 @@ services:
     # обещан ноль трекеров. Журнал — единственный источник, который ничего не
     # обещает посетителю и ничего у него не спрашивает.
     #
-    # Читается ОТДЕЛЬНЫЙ журнал samoy_metrics.log, где нет ни IP, ни
+    # Читается ОТДЕЛЬНЫЙ журнал samoylove_metrics.log, где нет ни IP, ни
     # User-Agent: см. nginxlog/nginxlog.yml и deploy-kit/nginx/conf.d.
     image: quay.io/martinhelmich/prometheus-nginxlog-exporter:v1.11.0
-    container_name: samoy-nginxlog
+    container_name: samoylove-nginxlog
     restart: unless-stopped
     command:
       - -config-file=/etc/nginxlog/nginxlog.yml
@@ -149,7 +149,7 @@ services:
 
   blackbox-exporter:
     image: prom/blackbox-exporter:v0.28.0
-    container_name: samoy-blackbox
+    container_name: samoylove-blackbox
     restart: unless-stopped
     command:
       - --config.file=/etc/blackbox/blackbox.yml
