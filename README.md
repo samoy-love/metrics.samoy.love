@@ -3,9 +3,9 @@
 English · [Русский](README.ru.md)
 
 [![CI](https://github.com/tr0llex/metrics.samoy.love/actions/workflows/ci.yml/badge.svg)](https://github.com/tr0llex/metrics.samoy.love/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Prometheus](https://img.shields.io/badge/Prometheus-v3.13.2-e6522c)
 ![Grafana](https://img.shields.io/badge/Grafana-13.1.1-f46800)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Monitoring and product analytics for the single small server that runs all of
 [samoy.love](https://samoy.love): five sites, several services and a desktop
