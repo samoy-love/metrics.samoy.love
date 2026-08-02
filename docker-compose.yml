@@ -57,8 +57,14 @@ services:
       - prometheus
     env_file:
       # Пароль администратора лежит ТОЛЬКО на сервере, в репозитории его нет.
-      # Файл создаётся из .env.example при первой установке.
-      - .env
+      # Файл создаётся из .env.example при первой установке (server/bootstrap.sh).
+      #
+      # Путь абсолютный и намеренно ведёт РЯДОМ с каталогом релизов, а не
+      # внутрь него: стек катится через deploy-kit, и compose-файл работает из
+      # /opt/samoylove-metrics/current/, который меняется с каждой выкаткой.
+      # Относительный `.env` пришлось бы класть в артефакт — то есть возить
+      # пароль Grafana через сборку и хранить его в пяти копиях по releases/.
+      - /opt/samoylove-metrics/.env
     environment:
       GF_SERVER_ROOT_URL: https://metrics.samoy.love/
       # Снаружи стоит basic-auth nginx, но собственную форму логина Grafana

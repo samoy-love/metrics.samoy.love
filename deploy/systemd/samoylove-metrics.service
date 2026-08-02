@@ -1,0 +1,68 @@
+# Обёртка над docker compose для стека мониторинга.
+#
+# Ставится один раз:
+#   sudo cp deploy/systemd/samoylove-metrics.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now samoylove-metrics
+#
+# Зачем юнит, если стек и так поднимается `docker compose up -d`.
+#
+# Контракт deploy-kit ровно один: релиз раскладывается в releases/<версия>,
+# симлинк current переключается атомарно, изменения применяются перезапуском
+# юнита. Compose в этот контракт не входит — у него нет ни релизов, ни
+# отката. Юнит-обёртка переводит одно в другое: current указывает на новый
+# каталог, release.sh делает systemctl restart, юнит поднимает compose уже
+# оттуда. Откат — то же самое в обратную сторону, без пересборки: каталоги
+# прошлых релизов лежат рядом.
+#
+# Побочная выгода: стек поднимается при загрузке хоста как обычный сервис, а
+# не только политикой restart:unless-stopped у контейнеров, и виден в
+# `systemctl status` вместе с остальными.
+
+[Unit]
+Description=Мониторинг samoy.love (Prometheus, Grafana, экспортёры)
+Documentation=https://github.com/tr0llex/metrics.samoy.love
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+# Oneshot + RemainAfterExit: `docker compose up -d` завершается сразу, а сам
+# сервис при этом работает. Без RemainAfterExit systemd считал бы юнит
+# остановившимся через секунду после старта и никогда не вызвал бы ExecStop —
+# то есть restart на выкатке не перечитывал бы compose-файл нового релиза.
+Type=oneshot
+RemainAfterExit=yes
+
+# Рабочий каталог — симлинк: systemd разрешает его при каждом запуске, поэтому
+# после переключения current юнит стартует уже из нового релиза.
+WorkingDirectory=/opt/samoylove-metrics/current
+
+# Пароль администратора Grafana лежит рядом с releases/, а не внутри релиза:
+# в артефакте секрета нет, и выкатка его не перезаписывает. Путь абсолютный —
+# см. env_file в docker-compose.yml.
+
+# --wait: команда возвращает управление, когда контейнеры действительно
+# поднялись. Иначе healthcheck выкатки успел бы опросить ещё не запущенный
+# Prometheus, получить 502 и откатить исправный релиз.
+# --remove-orphans: если из compose-файла убрали сервис, его контейнер должен
+# исчезнуть, а не остаться работать от прошлого релиза.
+ExecStart=/usr/bin/docker compose up -d --remove-orphans --wait
+
+# Перечитать конфиги без пересоздания контейнеров, если менялись только они.
+ExecReload=/usr/bin/docker compose up -d --remove-orphans
+
+# `down` БЕЗ -v: именованные тома (история Prometheus, настройки Grafana)
+# переживают и перезапуск, и откат. Флаг -v здесь означал бы потерю всей
+# истории при каждой выкатке.
+#
+# Проект compose назван явно (name: samoylove-metrics в docker-compose.yml),
+# поэтому остановка находит контейнеры по имени проекта, а не по каталогу —
+# и корректно отрабатывает даже когда current уже переключён на новый релиз.
+ExecStop=/usr/bin/docker compose down
+
+# Скачивание образов при первом запуске новой версии занимает минуты.
+TimeoutStartSec=600
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target
