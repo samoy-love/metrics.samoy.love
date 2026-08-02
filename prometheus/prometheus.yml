@@ -1,0 +1,80 @@
+# Конфигурация сбора метрик samoy.love.
+#
+# Интервал 30 с, а не 15: сервер один и маленький, а разрешение выше
+# минутного здесь всё равно никто не смотрит.
+
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+  external_labels:
+    server: samoy-oracle
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  # --- Сам Prometheus -------------------------------------------------------
+  - job_name: prometheus
+    metrics_path: /prometheus/metrics
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # --- Хост: CPU, память, диск, сеть, состояние systemd-юнитов --------------
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          instance: samoy-oracle
+
+  # --- Grafana --------------------------------------------------------------
+  - job_name: grafana
+    static_configs:
+      - targets: ["grafana:3000"]
+
+  # --- Приложения -----------------------------------------------------------
+  # Snakes отдаёт /metrics на хосте, порт 8090. Цель заведена заранее, но
+  # сейчас она down по двум причинам, и обе снимаются не здесь:
+  #
+  # 1. Формат. Эндпоинт пока отвечает JSON; перевод в формат Prometheus идёт
+  #    параллельно, и как только он доедет, разбор заработает без правок тут.
+  # 2. Сеть. snakes.service запущен с IPAddressAllow=localhost и
+  #    IPAddressDeny=any, то есть ядро режет любое подключение не с 127.0.0.1.
+  #    Контейнер сидит в своём сетевом namespace и приходит с адреса
+  #    docker-моста, поэтому получает таймаут. Снять это можно только на
+  #    стороне snakes — drop-in к юниту, разрешающий подсеть моста. Обходить
+  #    намеренное ограничение чужого сервиса из мониторинга мы не стали.
+  - job_name: snakes
+    static_configs:
+      - targets: ["host.docker.internal:8090"]
+        labels:
+          instance: snakes
+
+  # ChillHub (chillhub-api :55700, chillhub-admin :55777) в сборе НЕ участвует.
+  # Его пакет metrics — это приём продуктовой телеметрии лаунчера
+  # (/metrics/report) и агрегат для админки за авторизацией; эндпоинта в
+  # формате Prometheus у сервисов нет, все проверенные пути отдают 404.
+  # Живость самих сервисов видна через node_systemd_unit_state.
+
+  # --- Доступность сайтов ---------------------------------------------------
+  - job_name: blackbox-http
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://samoy.love/
+          - https://metro.samoy.love/
+          - https://launcher.samoy.love/
+          - https://snakes.samoy.love/
+          - https://status.samoy.love/
+    relabel_configs:
+      # Классическая тройка для blackbox: адрес сайта уезжает в параметр
+      # target, а сам запрос — в экспортёр. Без неё Prometheus пошёл бы
+      # скрести сам сайт и получил бы HTML вместо метрик.
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115

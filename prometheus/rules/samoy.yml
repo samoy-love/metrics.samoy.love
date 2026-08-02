@@ -1,0 +1,70 @@
+# Правила записи и оповещений.
+#
+# Alertmanager не разворачивается: уведомлять некуда и некого, владелец
+# смотрит панель. Правила здесь нужны как явный список того, что считается
+# аварией — их состояние видно в /prometheus/alerts.
+
+groups:
+  - name: samoy-host
+    rules:
+      - alert: ДискЗаканчивается
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.10
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "На / осталось меньше 10% места"
+
+      - alert: ПамятьНаИсходе
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Доступной памяти меньше 10%"
+
+      - alert: ВысокаяЗагрузкаCPU
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU держится выше 90% полчаса"
+
+  - name: samoy-services
+    rules:
+      # status-agent и *-backup — oneshot по таймеру, для них «не active» это
+      # норма, поэтому в правило берутся только постоянно работающие юниты.
+      - alert: СервисУпал
+        expr: node_systemd_unit_state{name=~"(snakes|chillhub-api|chillhub-admin|nginx|docker)\\.service",state="active"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Юнит {{ $labels.name }} не в состоянии active"
+
+  - name: samoy-sites
+    rules:
+      - alert: СайтНеОтвечает
+        expr: probe_success == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.instance }} не отвечает"
+
+      - alert: СертификатИстекает
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 14
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Сертификат {{ $labels.instance }} истекает меньше чем через 14 дней"
+
+      - alert: СайтОтвечаетМедленно
+        expr: probe_duration_seconds > 3
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} отвечает дольше 3 секунд"

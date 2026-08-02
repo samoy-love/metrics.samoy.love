@@ -1,0 +1,4 @@
+# Конфиги и скрипты едут на Linux-сервер. CRLF в bash-скрипте даёт
+# «bad interpreter: /usr/bin/env bash^M», а в YAML — тихие сюрпризы.
+* text=auto eol=lf
+*.json text eol=lf

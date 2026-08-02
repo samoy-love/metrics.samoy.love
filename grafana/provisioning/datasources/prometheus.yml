@@ -1,0 +1,18 @@
+# Источник данных. Заводится автоматически при старте Grafana, руками
+# в интерфейсе ничего добавлять не нужно.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: samoy-prometheus
+    type: prometheus
+    access: proxy
+    # Внутри compose-сети, а не через nginx: ходить наружу и обратно ради
+    # соседнего контейнера значит завязать панель на живость basic-auth.
+    url: http://prometheus:9090/prometheus
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 30s
+      httpMethod: POST

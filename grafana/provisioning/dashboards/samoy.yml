@@ -1,0 +1,19 @@
+# Подключение дашбордов из файлов. Дашборд — код в репозитории, а не
+# состояние в базе Grafana: пересоздание контейнера не должно означать
+# восстановление панелей мышкой.
+
+apiVersion: 1
+
+providers:
+  - name: samoy
+    orgId: 1
+    folder: samoy.love
+    type: file
+    disableDeletion: false
+    # Правки в UI не запрещены (иногда быстрее покрутить прямо там), но
+    # источником правды остаётся файл: он перезатрёт изменения при рестарте.
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

@@ -1,0 +1,144 @@
+# Мониторинг samoy.love: Prometheus + Grafana + экспортёры.
+#
+# Разворачивается в /opt/samoy-monitoring на одном сервере (Oracle Ampere,
+# aarch64). Все образы закреплены по версии: «latest» на arm64 периодически
+# уезжает вперёд остальных архитектур, и обновление, которого никто не просил,
+# ломало бы мониторинг ровно тогда, когда он нужен.
+#
+# Наружу не публикуется НИЧЕГО. Порты биндятся на 127.0.0.1, снаружи доступ
+# идёт только через nginx (metrics.samoy.love) под basic-auth.
+
+name: samoy-monitoring
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.13.2
+    container_name: samoy-prometheus
+    restart: unless-stopped
+    user: "65534:65534"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # 90 дней истории при таком количестве целей — это единицы гигабайт;
+      # ограничение по размеру стоит вторым рубежом, чтобы TSDB не смогла
+      # выесть диск, если целей вдруг станет сильно больше.
+      - --storage.tsdb.retention.time=90d
+      - --storage.tsdb.retention.size=8GB
+      # Prometheus отдаётся по подпути /prometheus/ того же домена, поэтому
+      # ему нужно знать свой внешний адрес — иначе его редиректы и ссылки
+      # в UI будут вести на корень, то есть в Grafana.
+      - --web.external-url=https://metrics.samoy.love/prometheus/
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    extra_hosts:
+      # Цели вроде snakes слушают на хосте, а не в этой сети.
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+    logging: &default-logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  grafana:
+    image: grafana/grafana:13.1.1
+    container_name: samoy-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    env_file:
+      # Пароль администратора лежит ТОЛЬКО на сервере, в репозитории его нет.
+      # Файл создаётся из .env.example при первой установке.
+      - .env
+    environment:
+      GF_SERVER_ROOT_URL: https://metrics.samoy.love/
+      # Снаружи стоит basic-auth nginx, но собственную форму логина Grafana
+      # оставляем: два независимых рубежа дешевле, чем разбираться потом,
+      # почему открытая панель оказалась открытой для всех.
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      # 3000 и 3001 на этом хосте уже заняты openspeedtest.
+      - "127.0.0.1:3002:3000"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768m
+    logging: *default-logging
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    container_name: samoy-node-exporter
+    restart: unless-stopped
+    pid: host
+    # Сбор состояния systemd-юнитов идёт через системную шину dbus, а профиль
+    # AppArmor по умолчанию запрещает контейнеру с ней разговаривать
+    # («An AppArmor policy prevents this sender...»), и коллектор systemd
+    # молча отдаёт ноль метрик. Контейнер при этом монтирует хост только
+    # на чтение и своих портов наружу не имеет.
+    security_opt:
+      - apparmor=unconfined
+    command:
+      - --path.rootfs=/host
+      - --collector.systemd
+      - --collector.systemd.unit-include=(snakes|snakes-backup-profiles|chillhub-api|chillhub-admin|chillhub-backup|status-agent|nginx|docker)\.service
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|var/lib/docker/.+)($$|/)
+      - --no-collector.wifi
+      - --no-collector.hwmon
+    volumes:
+      - /:/host:ro,rslave
+      - /run/systemd:/run/systemd:ro
+      # В образе node_exporter нет симлинка /var/run -> /run, а сам экспортёр
+      # ищет шину именно по /var/run/dbus/... Монтируем сразу по нужному пути.
+      - /run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket:ro
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256m
+    logging: *default-logging
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.28.0
+    container_name: samoy-blackbox
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    dns:
+      # Пробы ходят на публичные адреса сайтов, то есть наружу и обратно.
+      # Системный resolver внутри контейнера указывает на 127.0.0.53 хоста,
+      # которого в сетевом namespace контейнера нет.
+      - 1.1.1.1
+      - 8.8.8.8
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256m
+    logging: *default-logging
+
+volumes:
+  # Именованные тома, а не bind-каталоги: история должна пережить полное
+  # пересоздание контейнеров (docker compose down/up), в том числе с заменой
+  # версии образа.
+  prometheus-data:
+  grafana-data:

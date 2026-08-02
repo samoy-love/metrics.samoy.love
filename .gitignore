@@ -1,0 +1,6 @@
+# Секреты живут только на сервере.
+.env
+*.htpasswd
+.htpasswd
+*.key
+*.pem
