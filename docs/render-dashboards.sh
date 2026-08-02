@@ -26,7 +26,11 @@
 set -euo pipefail
 
 FROM="${1:-now-1h}"
-STACK=/opt/samoylove-metrics
+# Стек катится через deploy-kit, поэтому compose-файл лежит в текущем релизе,
+# а .env — рядом с каталогом релизов и переживает выкатки.
+ROOT=/opt/samoylove-metrics
+STACK="$ROOT/current"
+ENV_FILE="$ROOT/.env"
 OUT=/tmp
 TAG=3.12.9
 NET=samoylove-metrics_default
@@ -71,7 +75,7 @@ sleep 15
 # минуту.
 ENVC=$(mktemp)
 chmod 600 "$ENVC"
-sudo cat "$STACK/.env" > "$ENVC"
+sudo cat "$ENV_FILE" > "$ENVC"
 set -a; . "$ENVC"; set +a
 shred -u "$ENVC"
 
@@ -86,8 +90,13 @@ shot() {
     "http://127.0.0.1:3002/render/d/$uid/x?orgId=1&from=$FROM&to=now&width=1400&height=$height&scale=2&kiosk&theme=dark"
 }
 
-shot samoylove-overview dashboard-overview.png 1330
-shot samoylove-product  dashboard-product.png  4980
+# Высоты пересчитываются при добавлении панелей — иначе кадр молча обрежется
+# по нижнему краю, и раздела на нём просто не окажется. Считается так:
+#   python -c "import json;d=json.load(open('grafana/dashboards/product.json',
+#     encoding='utf-8'));print(max(p['gridPos']['y']+p['gridPos']['h']
+#     for p in d['panels'])*38+90)"
+shot samoylove-overview dashboard-overview.png 1350
+shot samoylove-product  dashboard-product.png  5790
 
 echo
 echo "Готово. Забрать к себе и положить в docs/ репозитория:"
