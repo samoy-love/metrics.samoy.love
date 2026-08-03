@@ -164,3 +164,33 @@ groups:
           severity: critical
         annotations:
           summary: "Bot cannot send messages: incident notifications will not arrive"
+
+  # Игра до сих пор была единственным сервисом вообще без правил: всё, что о
+  # ней знал мониторинг, — жив ли юнит и отвечает ли сайт. Оба состояния ниже
+  # выглядят снаружи полностью здоровыми, и увидеть их можно только по этим
+  # двум метрикам.
+  - name: product-snakes
+    rules:
+      - alert: SnakesProfilesReadOnly
+        # Хранилище профилей ушло в read-only после неудачной загрузки:
+        # сервер отвечает 200, игроки играют, счётчики растут — и весь
+        # заработанный «Стиль» вместе с покупками пропадает на ближайшем
+        # рестарте. Гейдж залипает в 1 до вмешательства оператора, поэтому
+        # ждать здесь дольше нескольких минут нечего.
+        expr: snakes_profiles_read_only == 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Snakes profile storage is read-only — player progress will not survive a restart"
+
+      - alert: SnakesProfileSavesFailing
+        # Предвестник того же: автосейв не долетает до диска. Порог «хоть
+        # одна ошибка за полчаса» — потерянное сохранение это уже потерянный
+        # прогресс, усреднять тут нечего.
+        expr: increase(snakes_profiles_save_errors_total[30m]) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Snakes cannot write profiles.json — progress is being lost"

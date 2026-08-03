@@ -1272,6 +1272,218 @@
       }
     },
     {
+      "type": "timeseries",
+      "title": "Лаунчер: запуски и телеметрия",
+      "id": 66,
+      "description": "Сколько раз лаунчер вообще запускали и сколько событий он прислал. Без этого ряда падение установок не отличить от того, что лаунчер просто перестали открывать.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 54
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(chillhub_launcher_starts_total[1h]))",
+          "legendFormat": "запуски лаунчера"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(chillhub_game_launches_total[1h])) by (game)",
+          "legendFormat": "старты игры: {{game}}"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(increase(chillhub_telemetry_events_total[1h])) by (event)",
+          "legendFormat": "события: {{event}}"
+        },
+        {
+          "refId": "D",
+          "expr": "sum(increase(chillhub_telemetry_rejected_total[1h])) by (reason)",
+          "legendFormat": "отклонено: {{reason}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Админка: входы и режим техработ",
+      "id": 67,
+      "description": "result=fail у входов — это либо подбор пароля, либо забытый пароль владельца; переключения техработ объясняют провалы на продуктовых графиках рядом.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 54
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(chillhub_admin_logins_total[1h])) by (result)",
+          "legendFormat": "вход: {{result}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(chillhub_maintenance_changes_total[1h])) by (action, result)",
+          "legendFormat": "техработы: {{action}} / {{result}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Длительность установки и обновления",
+      "id": 68,
+      "description": "Время успешной операции у клиента. Отвечает на «стало ли медленнее», чего не видно ни по числу установок, ни по доле неудач.",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 62
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(chillhub_install_duration_seconds_bucket[1h])) by (le))",
+          "legendFormat": "установка, p95"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.50, sum(rate(chillhub_install_duration_seconds_bucket[1h])) by (le))",
+          "legendFormat": "установка, медиана"
+        },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.95, sum(rate(chillhub_update_duration_seconds_bucket[1h])) by (le))",
+          "legendFormat": "обновление, p95"
+        },
+        {
+          "refId": "D",
+          "expr": "histogram_quantile(0.50, sum(rate(chillhub_update_duration_seconds_bucket[1h])) by (le))",
+          "legendFormat": "обновление, медиана"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
       "type": "row",
       "title": "Статус-страница и бот",
       "id": 24,
@@ -1279,7 +1491,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 54
+        "y": 70
       },
       "collapsed": false,
       "panels": []
@@ -1293,7 +1505,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 55
+        "y": 71
       },
       "datasource": {
         "type": "prometheus",
@@ -1353,7 +1565,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 55
+        "y": 71
       },
       "datasource": {
         "type": "prometheus",
@@ -1412,7 +1624,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 63
+        "y": 79
       },
       "datasource": {
         "type": "prometheus",
@@ -1472,7 +1684,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 63
+        "y": 79
       },
       "datasource": {
         "type": "prometheus",
@@ -1528,7 +1740,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 63
+        "y": 79
       },
       "datasource": {
         "type": "prometheus",
@@ -1580,7 +1792,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 63
+        "y": 79
       },
       "datasource": {
         "type": "prometheus",
@@ -1632,6 +1844,203 @@
       }
     },
     {
+      "type": "timeseries",
+      "title": "Бот: отказы Telegram",
+      "id": 69,
+      "description": "Отправка — сообщение, которое Telegram не принял: уведомление об аварии не дойдёт. Опрос — обрыв длинного опроса, с ним бот не слышит команд.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 83
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(statusbot_send_failures_total[1h])",
+          "legendFormat": "отказы отправки"
+        },
+        {
+          "refId": "B",
+          "expr": "increase(statusbot_poll_failures_total[1h])",
+          "legendFormat": "отказы опроса"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(increase(statusbot_commands_total[1h])) by (command)",
+          "legendFormat": "команда: {{command}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Проверки в обходе агента",
+      "id": 70,
+      "description": "Сколько критичных проверок агент считает доступными из общего числа. Расхождение линий — это и есть авария, о которой говорит статус-страница.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 83
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "status_checks_up",
+          "legendFormat": "критичных доступно"
+        },
+        {
+          "refId": "B",
+          "expr": "status_checks_total",
+          "legendFormat": "критичных всего"
+        },
+        {
+          "refId": "C",
+          "expr": "status_checks_aux_down",
+          "legendFormat": "второстепенных не в порядке"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Аптайм проверок за окна",
+      "id": 71,
+      "description": "Те же доли, что печатает статус-страница: d1, d7, d90. Здесь они видны историей, а не одним числом «сейчас».",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 91
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "status_check_uptime_ratio",
+          "legendFormat": "{{check}} / {{window}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
       "type": "row",
       "title": "Snakes — игра",
       "id": 31,
@@ -1639,7 +2048,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 67
+        "y": 99
       },
       "collapsed": false,
       "panels": []
@@ -1653,7 +2062,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 68
+        "y": 100
       },
       "datasource": {
         "type": "prometheus",
@@ -1705,7 +2114,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 68
+        "y": 100
       },
       "datasource": {
         "type": "prometheus",
@@ -1757,7 +2166,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 68
+        "y": 100
       },
       "datasource": {
         "type": "prometheus",
@@ -1809,7 +2218,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 68
+        "y": 100
       },
       "datasource": {
         "type": "prometheus",
@@ -1861,7 +2270,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 72
+        "y": 104
       },
       "datasource": {
         "type": "prometheus",
@@ -1930,7 +2339,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 72
+        "y": 104
       },
       "datasource": {
         "type": "prometheus",
@@ -1989,7 +2398,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 80
+        "y": 112
       },
       "datasource": {
         "type": "prometheus",
@@ -2053,7 +2462,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 80
+        "y": 112
       },
       "datasource": {
         "type": "prometheus",
@@ -2117,7 +2526,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 88
+        "y": 120
       },
       "datasource": {
         "type": "prometheus",
@@ -2176,7 +2585,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 88
+        "y": 120
       },
       "datasource": {
         "type": "prometheus",
@@ -2240,7 +2649,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 96
+        "y": 128
       },
       "datasource": {
         "type": "prometheus",
@@ -2304,7 +2713,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 96
+        "y": 128
       },
       "datasource": {
         "type": "prometheus",
@@ -2363,7 +2772,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 104
+        "y": 136
       },
       "datasource": {
         "type": "prometheus",
@@ -2415,7 +2824,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 104
+        "y": 136
       },
       "datasource": {
         "type": "prometheus",
@@ -2471,7 +2880,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 104
+        "y": 136
       },
       "datasource": {
         "type": "prometheus",
@@ -2527,7 +2936,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 104
+        "y": 136
       },
       "datasource": {
         "type": "prometheus",
@@ -2579,7 +2988,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 108
+        "y": 140
       },
       "datasource": {
         "type": "prometheus",
@@ -2638,7 +3047,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 108
+        "y": 140
       },
       "datasource": {
         "type": "prometheus",
@@ -2694,6 +3103,365 @@
       }
     },
     {
+      "type": "stat",
+      "title": "Профили: только чтение",
+      "id": 72,
+      "description": "1 — хранилище профилей ушло в read-only: сервер жив и зелён, но весь заработанный «Стиль» и все покупки пропадут на ближайшем рестарте.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 148
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(snakes_profiles_read_only)",
+          "legendFormat": "профили",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "сохраняются",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "НЕ сохраняются",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Ошибки сохранения профилей за сутки",
+      "id": 73,
+      "description": "Автосейв не долетел до диска. Ненулевое значение — предвестник того же, что показывает панель слева.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 148
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(snakes_profiles_save_errors_total[24h]))",
+          "legendFormat": "ошибки сохранения",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Сообщений в чате за сутки",
+      "id": 74,
+      "description": "В пустой комнате не пишут: счётчик отвечает не на «сколько играют», а на «живая ли игра».",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 148
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(snakes_chat_messages_total[24h]))",
+          "legendFormat": "сообщения в чате",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Срабатываний rate-limit за сутки",
+      "id": 75,
+      "description": "Поток команд от одного адреса выше разрешённого. Ноль — норма, устойчивый рост — либо бот, либо разъехавшийся клиент.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 148
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(snakes_ratelimit_triggered_total[24h]))",
+          "legendFormat": "срабатывания rate-limit",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Экономика: начисления «Стиля»",
+      "id": 76,
+      "description": "За что игроки получают валюту. Перекос в один повод означает, что остальные источники не работают или не окупаются.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 152
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(snakes_style_awarded_total[1h])) by (reason)",
+          "legendFormat": "{{reason}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Покупки косметики и ежедневные задания",
+      "id": 77,
+      "description": "Куда «Стиль» тратится и доходят ли игроки до заданий. Начисления без покупок — это валюта, которую некуда деть.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 152
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(snakes_cosmetics_purchased_total[1h])) by (category)",
+          "legendFormat": "покупки: {{category}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(snakes_dailies_completed_total[1h])) by (type)",
+          "legendFormat": "задания: {{type}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
       "type": "row",
       "title": "Метро — витрина",
       "id": 50,
@@ -2701,7 +3469,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 116
+        "y": 160
       },
       "collapsed": false,
       "panels": []
@@ -2715,7 +3483,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 117
+        "y": 161
       },
       "datasource": {
         "type": "prometheus",
@@ -2767,7 +3535,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 117
+        "y": 161
       },
       "datasource": {
         "type": "prometheus",
@@ -2819,7 +3587,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 117
+        "y": 161
       },
       "datasource": {
         "type": "prometheus",
@@ -2879,7 +3647,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 117
+        "y": 161
       },
       "datasource": {
         "type": "prometheus",
@@ -2935,7 +3703,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 121
+        "y": 165
       },
       "datasource": {
         "type": "prometheus",
@@ -2994,7 +3762,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 121
+        "y": 165
       },
       "datasource": {
         "type": "prometheus",
@@ -3052,7 +3820,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 129
+        "y": 173
       },
       "collapsed": false,
       "panels": []
@@ -3066,7 +3834,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 130
+        "y": 174
       },
       "datasource": {
         "type": "prometheus",
@@ -3118,7 +3886,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 130
+        "y": 174
       },
       "datasource": {
         "type": "prometheus",
@@ -3170,7 +3938,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 130
+        "y": 174
       },
       "datasource": {
         "type": "prometheus",
@@ -3222,7 +3990,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 130
+        "y": 174
       },
       "datasource": {
         "type": "prometheus",
@@ -3274,7 +4042,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 134
+        "y": 178
       },
       "datasource": {
         "type": "prometheus",
@@ -3333,7 +4101,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 134
+        "y": 178
       },
       "datasource": {
         "type": "prometheus",
@@ -3392,7 +4160,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 142
+        "y": 186
       },
       "datasource": {
         "type": "prometheus",
@@ -3466,7 +4234,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 142
+        "y": 186
       },
       "datasource": {
         "type": "prometheus",
