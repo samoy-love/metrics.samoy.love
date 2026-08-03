@@ -38,8 +38,6 @@ absent instead.
 
 ![Overview dashboard](docs/dashboard-overview.png)
 
-![Product dashboard](docs/dashboard-product.png)
-
 <sub>Frames captured from the live stand with
 [`docs/render-dashboards.sh`](docs/render-dashboards.sh). Empty panels in the
 ChillHub section are not a fault: the deployed launcher binary is older than
@@ -201,8 +199,13 @@ Credentials exist only on the server — basic auth in
 | `prometheus/prometheus.yml` | scrape targets and intervals |
 | `prometheus/rules/infra.yml` | alert rules: host, units, certificates, availability |
 | `prometheus/rules/product.yml` | alert rules: launcher, snakes, traffic, status page |
-| `grafana/dashboards/overview.json` | host, services, site availability |
-| `grafana/dashboards/product.json` | traffic, launcher, snakes, metro, game, status page |
+| `grafana/dashboards/overview.json` | summary: project availability, traffic, server resources |
+| `grafana/dashboards/chillhub.json` | launcher: site, public API, admin panel, client telemetry |
+| `grafana/dashboards/snakes.json` | snakes: matches, combat, connections, server tick |
+| `grafana/dashboards/die.json` | Double or Die: availability and traffic |
+| `grafana/dashboards/metro.json` | metro: availability and traffic |
+| `grafana/dashboards/samoylove.json` | personal site: traffic and UI events |
+| `grafana/dashboards/status.json` | status page, probe agent and Telegram bot |
 | `grafana/provisioning/` | data source and dashboard provisioning |
 | `blackbox/blackbox.yml` | probe modules for blackbox_exporter |
 | `nginxlog/nginxlog.yml` | log format and cardinality limits for the traffic exporter |

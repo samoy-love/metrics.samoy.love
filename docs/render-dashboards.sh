@@ -92,12 +92,17 @@ shot() {
 
 # Высоты пересчитываются при добавлении панелей — иначе кадр молча обрежется
 # по нижнему краю, и раздела на нём просто не окажется. Считается так:
-#   python -c "import json;d=json.load(open('grafana/dashboards/product.json',
-#     encoding='utf-8'));print(max(p['gridPos']['y']+p['gridPos']['h']
-#     for p in d['panels'])*38+90)"
-shot samoylove-overview dashboard-overview.png 1350
-shot samoylove-product  dashboard-product.png  5790
+#   for f in grafana/dashboards/*.json; do python -c "import json,sys;d=json.load(
+#     open(sys.argv[1],encoding='utf-8'));print(d['uid'], max(p['gridPos']['y']+
+#     p['gridPos']['h'] for p in d['panels'])*38+90)" "$f"; done
+shot samoylove-overview   dashboard-overview.png 1876
+shot samoylove-chillhub   dashboard-chillhub.png 3054
+shot samoylove-snakes     dashboard-snakes.png 2256
+shot samoylove-die        dashboard-die.png 926
+shot samoylove-metro      dashboard-metro.png 774
+shot samoylove-site       dashboard-samoylove.png 1116
+shot samoylove-status     dashboard-status.png 2294
 
 echo
 echo "Готово. Забрать к себе и положить в docs/ репозитория:"
-echo "  scp oracle:$OUT/dashboard-overview.png oracle:$OUT/dashboard-product.png docs/"
+echo "  scp oracle:$OUT/dashboard-overview.png oracle:$OUT/dashboard-chillhub.png oracle:$OUT/dashboard-snakes.png oracle:$OUT/dashboard-die.png oracle:$OUT/dashboard-metro.png oracle:$OUT/dashboard-samoylove.png oracle:$OUT/dashboard-status.png docs/"
