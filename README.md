@@ -182,6 +182,11 @@ sudo certbot certonly --webroot -w /var/www/metrics-acme -d metrics.samoy.love
 Без сертификата `nginx -t` упадёт на отсутствующем файле, и `nginx-apply.sh`
 честно откатит конфиг.
 
+Шаг 4 нужен только при первой установке. Дальше конфиг едет сам: цель задаёт
+`NGINX_CONF` и `NGINX_DEST` (см. `.deploy-kit/prod.env`), и каждая выкатка
+применяет его тем же `nginx-apply.sh` — с диффом в логе, бэкапом и откатом,
+если `nginx -t` не прошёл.
+
 Доступ — два рубежа: сначала basic-auth nginx, затем логин Grafana. Пароли
 лежат только на сервере: basic-auth в `/etc/nginx/.htpasswd-metrics`,
 администратор Grafana в `/opt/samoylove-metrics/.env`. В репозитории их нет и
