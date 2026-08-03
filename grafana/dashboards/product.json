@@ -3814,13 +3814,364 @@
     },
     {
       "type": "row",
+      "title": "Double or Die — игра",
+      "id": 78,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 173
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Открытий карты за сутки",
+      "id": 79,
+      "description": "Карта — офлайн-приложение: маршруты считаются на клиенте и запросов не порождают. Поэтому мера пользования — открытия страницы.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 174
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(samoylove_site_http_response_count_total{host=\"die.samoy.love\", path=\"/\"}[24h]))",
+          "legendFormat": "Открытий карты за сутки",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Отдано трафика за сутки",
+      "id": 80,
+      "description": "",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 174
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(samoylove_site_http_response_size_bytes{host=\"die.samoy.love\"}[24h]))",
+          "legendFormat": "Отдано трафика за сутки",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Доля ошибок за сутки",
+      "id": 81,
+      "description": "",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 174
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * (sum(increase(samoylove_site_http_response_count_total{host=\"die.samoy.love\", status=~\"[45]..\"}[24h])) or vector(0)) / clamp_min(sum(increase(samoylove_site_http_response_count_total{host=\"die.samoy.love\"}[24h])), 1)",
+          "legendFormat": "Доля ошибок за сутки",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Время ответа, p95",
+      "id": 82,
+      "description": "",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 174
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(samoylove_site_http_response_time_seconds_hist_bucket{host=\"die.samoy.love\"}[1h])) by (le))",
+          "legendFormat": "Время ответа, p95",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.5
+              }
+            ]
+          },
+          "decimals": 3
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Игра: запросы по типу содержимого",
+      "id": 83,
+      "description": "Разделение страницы, ассетов сборки и статики. Приложение устанавливается как PWA, поэтому у вернувшихся оно берёт файлы из кеша и до сервера не доходит вовсе.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 178
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "60 * sum(rate(samoylove_site_http_response_count_total{host=\"die.samoy.love\"}[10m])) by (path)",
+          "legendFormat": "{{path}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqpm",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Игра: коды ответов",
+      "id": 84,
+      "description": "",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 178
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "60 * sum(rate(samoylove_site_http_response_count_total{host=\"die.samoy.love\"}[10m])) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqpm",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "row",
       "title": "Действия в интерфейсе",
       "id": 57,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 173
+        "y": 186
       },
       "collapsed": false,
       "panels": []
@@ -3834,7 +4185,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 174
+        "y": 187
       },
       "datasource": {
         "type": "prometheus",
@@ -3886,7 +4237,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 174
+        "y": 187
       },
       "datasource": {
         "type": "prometheus",
@@ -3938,7 +4289,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 174
+        "y": 187
       },
       "datasource": {
         "type": "prometheus",
@@ -3990,7 +4341,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 174
+        "y": 187
       },
       "datasource": {
         "type": "prometheus",
@@ -4042,7 +4393,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 178
+        "y": 191
       },
       "datasource": {
         "type": "prometheus",
@@ -4101,7 +4452,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 178
+        "y": 191
       },
       "datasource": {
         "type": "prometheus",
@@ -4160,7 +4511,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 186
+        "y": 199
       },
       "datasource": {
         "type": "prometheus",
@@ -4234,7 +4585,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 186
+        "y": 199
       },
       "datasource": {
         "type": "prometheus",

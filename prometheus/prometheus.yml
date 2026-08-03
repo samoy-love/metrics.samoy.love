@@ -78,7 +78,7 @@ scrape_configs:
           instance: chillhub-admin
 
   # --- Посещаемость статики -------------------------------------------------
-  # Экспортёр журнала nginx: samoy.love и metro.samoy.love. Клиентских
+  # Экспортёр журнала nginx: статика всех сайтов домена. Клиентских
   # счётчиков на этих сайтах нет и не будет — см. nginxlog/nginxlog.yml.
   - job_name: nginxlog
     static_configs:
@@ -98,6 +98,7 @@ scrape_configs:
           - https://launcher.samoy.love/
           - https://snakes.samoy.love/
           - https://status.samoy.love/
+          - https://die.samoy.love/
     relabel_configs:
       # Классическая тройка для blackbox: адрес сайта уезжает в параметр
       # target, а сам запрос — в экспортёр. Без неё Prometheus пошёл бы

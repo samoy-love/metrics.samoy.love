@@ -201,7 +201,7 @@ sudo certbot certonly --webroot -w /var/www/metrics-acme -d metrics.samoy.love
 | `prometheus/rules/infra.yml` | правила: хост, юниты, сертификаты, доступность |
 | `prometheus/rules/product.yml` | правила: лаунчер, snakes, посещаемость, статус-страница |
 | `grafana/dashboards/overview.json` | хост, сервисы, доступность сайтов |
-| `grafana/dashboards/product.json` | посещаемость, лаунчер, snakes, метро, статус-страница |
+| `grafana/dashboards/product.json` | посещаемость, лаунчер, snakes, метро, игра, статус-страница |
 | `grafana/provisioning/` | провижининг источника данных и дашбордов |
 | `blackbox/blackbox.yml` | модули проб для blackbox_exporter |
 | `nginxlog/nginxlog.yml` | формат журнала и ограничение кардинальности |
@@ -283,6 +283,7 @@ sudo docker compose up -d --force-recreate prometheus
 | [chillhub](https://github.com/tr0llex/chillhub) | ChillHub — лаунчер игр для Windows: обновления по диффу, хеш-контроль, админка на Go |
 | [snakes](https://github.com/tr0llex/snakes) | Мультиплеерный захват территории в браузере: Go, WebSocket, бинарный протокол |
 | [metro-map](https://github.com/tr0llex/metro-map) | Офлайн-PWA со схемой московского метро: маршруты на клиенте, Canvas 2D |
+| [double-or-die](https://github.com/tr0llex/double-or-die) | Кооп-рогалик со ставками на себя: детерминированное ядро на TypeScript |
 | [status.samoy.love](https://github.com/tr0llex/status.samoy.love) | Статус-страница: аптайм, версии, инциденты; агент на Go и внешний сторож |
 | [metrics.samoy.love](https://github.com/tr0llex/metrics.samoy.love) | Этот репозиторий: мониторинг и продуктовая аналитика |
 | [deploy-kit](https://github.com/tr0llex/deploy-kit) | Общий релизный пайплайн; оттуда же конфиг nginx и формат журнала |
