@@ -29,12 +29,22 @@ fi
 
 # --- Basic-auth для nginx -------------------------------------------------
 # htpasswd из apache2-utils на этом хосте нет, ставить пакет ради одной
-# строки не нужно: nginx понимает формат APR1, который умеет openssl.
+# строки не нужно: nginx проверяет пароль через crypt(3), а нужную строку
+# умеет посчитать openssl.
+#
+# Пароль уезжает в openssl ЧЕРЕЗ stdin, а не аргументом. Аргументы процесса
+# видны в /proc любому локальному пользователю всё время его жизни, так что
+# `openssl passwd -apr1 "$pass"` показывал свежесгенерированный пароль наружу
+# ровно в тот момент, когда его прячут в файл с правами 640.
+#
+# Схема — SHA-512 (-6), а не APR1 (-apr1): APR1 это MD5-crypt, оставленный
+# ради совместимости с Apache, которого здесь нет. glibc-шный crypt(3), через
+# который смотрит nginx, понимает $6$ без каких-либо пакетов.
 if [[ -f "$HTPASSWD" ]]; then
     echo "  $HTPASSWD уже есть — пропускаю"
 else
     pass=$(openssl rand -base64 24 | tr -d '/+=' | cut -c1-20)
-    hash=$(openssl passwd -apr1 "$pass")
+    hash=$(printf '%s' "$pass" | openssl passwd -6 -stdin)
     echo "${BASIC_USER}:${hash}" | sudo tee "$HTPASSWD" >/dev/null
     sudo chown root:www-data "$HTPASSWD"
     sudo chmod 640 "$HTPASSWD"
