@@ -196,7 +196,7 @@ Credentials exist only on the server — basic auth in
 | `prometheus/rules/infra.yml` | alert rules: host, units, certificates, availability |
 | `prometheus/rules/product.yml` | alert rules: launcher, snakes, traffic, status page |
 | `grafana/dashboards/overview.json` | host, services, site availability |
-| `grafana/dashboards/product.json` | traffic, launcher, snakes, metro, status page |
+| `grafana/dashboards/product.json` | traffic, launcher, snakes, metro, game, status page |
 | `grafana/provisioning/` | data source and dashboard provisioning |
 | `blackbox/blackbox.yml` | probe modules for blackbox_exporter |
 | `nginxlog/nginxlog.yml` | log format and cardinality limits for the traffic exporter |
@@ -277,6 +277,7 @@ One domain, one server, one pipeline, one status page, one monitoring stack.
 | [chillhub](https://github.com/tr0llex/chillhub) | ChillHub — Windows game launcher: diff updates, hash control, Go admin panel |
 | [snakes](https://github.com/tr0llex/snakes) | Browser territory-capture multiplayer: Go, WebSocket, binary protocol |
 | [metro-map](https://github.com/tr0llex/metro-map) | Offline PWA with the Moscow metro map: routing on the client, Canvas 2D |
+| [double-or-die](https://github.com/tr0llex/double-or-die) | Co-op roguelike where you bet on yourself: deterministic TypeScript core |
 | [status.samoy.love](https://github.com/tr0llex/status.samoy.love) | Status page: uptime, versions, incidents; Go agent plus an external watchdog |
 | [metrics.samoy.love](https://github.com/tr0llex/metrics.samoy.love) | This repository: monitoring and product analytics |
 | [deploy-kit](https://github.com/tr0llex/deploy-kit) | Shared release pipeline; also the nginx config and the log format |
