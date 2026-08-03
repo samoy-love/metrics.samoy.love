@@ -20,7 +20,18 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: 'deps'
-  - package-ecosystem: 'docker'
+  # Экосистема docker-compose, а НЕ docker. Обновлять здесь нужно образы в
+  # docker-compose.yml, но сборщик файлов экосистемы docker ищет только
+  # Dockerfile и манифесты Kubernetes — compose-файл он не видит вовсе и
+  # падает с «No Dockerfiles nor Kubernetes YAML found in /». Dockerfile в
+  # этом репозитории нет и не будет: стек собран из готовых образов.
+  #
+  # docker-compose — отдельная экосистема (GA с февраля 2025). Она разбирает
+  # строку `image:` целиком, вместе с `@sha256:`, то есть чинит ровно то, чем
+  # закреплены образы здесь: тег и digest правятся одной правкой и не
+  # разъезжаются. Security updates для неё не поддержаны — только version
+  # updates, но именно они тут и нужны.
+  - package-ecosystem: 'docker-compose'
     directory: '/'
     schedule:
       interval: weekly
