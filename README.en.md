@@ -182,6 +182,12 @@ sudo certbot certonly --webroot -w /var/www/metrics-acme -d metrics.samoy.love
 Without the certificate `nginx -t` fails on the missing file and
 `nginx-apply.sh` honestly reverts the config.
 
+Step 4 is only needed for the very first install. After that the config ships
+itself: the target sets `NGINX_CONF` and `NGINX_DEST` (see
+`.deploy-kit/prod.env`), and every deploy applies it through the same
+`nginx-apply.sh` — with a diff in the log, a backup, and a revert if
+`nginx -t` fails.
+
 Access goes through two gates: nginx basic auth first, then the Grafana login.
 Credentials exist only on the server — basic auth in
 `/etc/nginx/.htpasswd-metrics`, the Grafana admin in
