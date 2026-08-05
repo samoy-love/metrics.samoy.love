@@ -23,7 +23,7 @@ on:
       # Документация перечислена ПОИМЁННО, а не шаблоном '**.md'. Шаблон
       # здесь пока ничего не ломал — весь markdown репозитория лежит в корне
       # и в docs/, — но он ставил ловушку: BUILD_CMD увозит в релиз каталоги
-      # целиком (`cp -r prometheus grafana blackbox nginxlog stage/`), поэтому
+      # целиком (`cp -r prometheus grafana blackbox nginxlog alertmanager`), поэтому
       # ЛЮБОЙ файл внутри них едет на прод. Markdown, положенный в grafana/
       # или prometheus/, попадал бы в артефакт и при этом не запускал бы
       # выкатку вовсе: прод молча остался бы со старой копией. Ровно на этом
@@ -90,8 +90,13 @@ jobs:
       # которого весь этот блок и написан: панели показывают «No data», и
       # ничего при этом не падает.
       #
-      # promtool берётся той же версии, что в docker-compose.yml: два места с
-      # версией разъезжаются, одно — нет.
+      # promtool и amtool берутся той же версии, что в docker-compose.yml: два
+      # места с версией разъезжаются, одно — нет.
+      #
+      # amtool здесь по той же причине, что и всё остальное: Alertmanager с
+      # непрошедшим конфигом не стартует, а HEALTH этой цели смотрит на
+      # /healthz Prometheus. То есть выкатка со сломанными маршрутами осталась
+      # бы зелёной, и обнаружилось бы это молчанием в чате во время аварии.
       #
       # ОТСТУП ВНУТРИ ЭТОГО БЛОКА ОБЯЗАН БЫТЬ ОДИНАКОВЫМ. В свёрнутом скаляре
       # YAML (>-) строка с бо́льшим отступом не сворачивается с предыдущей, а
@@ -108,6 +113,14 @@ jobs:
         prom/prometheus:$PROM check config /etc/prometheus/prometheus.yml &&
         docker run --rm --entrypoint promtool -v "$PWD/prometheus:/etc/prometheus:ro"
         prom/prometheus:$PROM check rules /etc/prometheus/rules/product.yml /etc/prometheus/rules/infra.yml &&
+        yamllint -d '{extends: relaxed, rules: {line-length: disable}}' alertmanager &&
+        AM=$(sed -n 's|.*image: prom/alertmanager:\(v[0-9.]*\).*|\1|p' docker-compose.yml) &&
+        test -n "$AM" &&
+        mkdir -p /tmp/am && printf x > /tmp/am/telegram-bot-token &&
+        docker run --rm --entrypoint amtool
+        -v "$PWD/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro"
+        -v "/tmp/am/telegram-bot-token:/etc/alertmanager/telegram-bot-token:ro"
+        prom/alertmanager:$AM check-config /etc/alertmanager/alertmanager.yml &&
         DSUID=$(sed -n 's/^ *uid: *//p' grafana/provisioning/datasources/prometheus.yml) &&
         test -n "$DSUID" &&
         for f in grafana/dashboards/*.json; do

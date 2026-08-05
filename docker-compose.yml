@@ -69,6 +69,39 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  alertmanager:
+    # Доставка оповещений в Telegram. До него правила были списком того, что
+    # считается аварией, и увидеть их состояние мог только тот, кто сам открыл
+    # /prometheus/alerts.
+    image: prom/alertmanager:v0.28.1@sha256:27c475db5fb156cab31d5c18a4251ac7ed567746a2483ff264516437a39b15ba
+    container_name: samoylove-alertmanager
+    restart: unless-stopped
+    user: "65534:65534"
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      # Токен бота — абсолютным серверным путём, РЯДОМ с каталогом релизов, по
+      # той же причине, что и .env Grafana ниже: current/ меняется с каждой
+      # выкаткой, и относительный путь означал бы возить секрет через сборку.
+      - /opt/samoylove-metrics/telegram-bot-token:/etc/alertmanager/telegram-bot-token:ro
+      # Именованный том: здесь живут silence'ы и отметки о том, что уже
+      # отправлено. Без него пересоздание контейнера снимает все заглушки и
+      # заново шлёт всё, что горит, — то есть ровно посреди аварии, когда её
+      # уже осознанно заглушили, чат снова начинает звонить.
+      - alertmanager-data:/alertmanager
+    ports:
+      # Наружу не публикуется: nginx его не проксирует, доступ — по SSH.
+      # Silence ставится из Grafana либо amtool'ом с хоста.
+      - "127.0.0.1:9093:9093"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256m
+    logging: *default-logging
+
   grafana:
     image: grafana/grafana:13.1.1@sha256:7cb8c64c4d57a57e734073f3cc94620adb24a0acb929bd80ba9f14017e3a975b
     container_name: samoylove-grafana
@@ -211,3 +244,4 @@ volumes:
   # версии образа.
   prometheus-data:
   grafana-data:
+  alertmanager-data:

@@ -1,8 +1,10 @@
 # Правила оповещений: инфраструктура.
 #
-# Alertmanager не разворачивается: уведомлять некуда и некого, владелец
-# смотрит панель. Правила здесь нужны как явный список того, что считается
-# аварией — их состояние видно в /prometheus/alerts.
+# Сработавшее правило уходит в Alertmanager и оттуда в Telegram
+# (alertmanager/alertmanager.yml); состояние всех правил по-прежнему видно
+# в /prometheus/alerts. Отсюда требование к severity: critical означает
+# «разбудить», warning — «прочитать утром». Метка обязательна у каждого
+# правила, по ней и только по ней разводятся маршруты.
 #
 # Имена правил и текст summary — на английском: это то, что видно в UI и в
 # API, и на них смотрят не только отсюда. Объяснения «почему именно так»
@@ -53,6 +55,10 @@ groups:
       # неполному снимку, и заметили это только когда на диске кончилось место.
       # failed держится до следующего удачного запуска или reset-failed, так
       # что достаточно посмотреть на панель хотя бы раз в сутки.
+      #
+      # Теперь смотреть на панель для этого не требуется: правило уходит в
+      # Telegram, как и все остальные, — а тот случай начался ровно с того,
+      # что четыре ночи подряд никто не смотрел.
       - alert: UnitFailed
         expr: node_systemd_unit_state{state="failed"} == 1
         for: 5m
@@ -60,6 +66,30 @@ groups:
           severity: critical
         annotations:
           summary: "Unit {{ $labels.name }} is in failed state"
+
+  # Канал доставки, наблюдающий за собой. Оба правила ниже сообщить о себе не
+  # смогут — сломан ровно тот путь, которым они бы уходили. Это не делает их
+  # бесполезными: молчащий мониторинг неотличим от спокойного, и «почему за
+  # неделю ни одного сообщения» проверяется здесь за десять секунд.
+  - name: infra-alerting
+    rules:
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager is down — no alert can reach Telegram"
+
+      - alert: AlertNotificationsFailing
+        # Телеграм отвечает 400 на сломанной разметке и 403, если бота
+        # заблокировали. И то и другое выглядит как тишина в чате.
+        expr: increase(alertmanager_notifications_failed_total[1h]) > 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager cannot deliver via {{ $labels.integration }} — alerts are being lost"
 
   - name: infra-sites
     rules:
