@@ -47,6 +47,20 @@ groups:
         annotations:
           summary: "Unit {{ $labels.name }} is not active"
 
+      # Обратная сторона правила выше: раз с oneshot-юнитов не спрашивают
+      # active, то без этого правила их падение не видно ВООБЩЕ. Так и вышло —
+      # chillhub-backup падал четыре ночи подряд молча, оставляя каждый раз по
+      # неполному снимку, и заметили это только когда на диске кончилось место.
+      # failed держится до следующего удачного запуска или reset-failed, так
+      # что достаточно посмотреть на панель хотя бы раз в сутки.
+      - alert: UnitFailed
+        expr: node_systemd_unit_state{state="failed"} == 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Unit {{ $labels.name }} is in failed state"
+
   - name: infra-sites
     rules:
       - alert: SiteDown
