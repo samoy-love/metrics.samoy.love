@@ -61,6 +61,7 @@ flowchart LR
         bb["blackbox_exporter"]
         prom["Prometheus<br/>90 days"]
         graf["Grafana"]
+        am["Alertmanager"]
     end
 
     svc -->|"pull /internal/metrics"| prom
@@ -70,6 +71,8 @@ flowchart LR
     nglog --> prom
     bb -->|"probes from outside"| prom
     prom --> graf
+    prom -->|"firing rules"| am
+    am -->|"critical now,<br/>warning in the morning"| tg["Telegram"]
     graf --> gate["nginx + basic auth<br/>metrics.samoy.love"]
 ```
 
@@ -127,9 +130,19 @@ activations); Snakes gameplay and real-time health (humans and bots counted
 separately, match length, causes of death, tick duration, WebSocket drops by
 reason); status page and bot results; and the monitoring stack itself. Two
 dashboards, one rule for both: a panel answers a question that actually gets
-asked. Deliberately absent are client-side analytics, an Alertmanager and
-backups of the metrics themselves — those are operational data with nowhere and
-no reason to restore them from.
+asked. Deliberately absent are client-side analytics and backups of the metrics
+themselves — those are operational data with nowhere and no reason to restore
+them from.
+
+**Failures are announced, not displayed.** A firing rule goes to Alertmanager
+and from there to Telegram. Rules used to light up in `/prometheus/alerts` and
+go out there as well: the only way to learn about a failure was to open the
+panel yourself — and the panel gets opened exactly when something has already
+been noticed. Splitting on `severity` is not cosmetic: critical wakes you up
+(site unreachable, unit dead, disk filling up, player progress being lost) and
+repeats every four hours, while warning arrives with a delay and repeats once
+a day. Grouping is by rule name, because a dead nginx is one incident, not six
+messages about six domains.
 
 ## Stack
 
@@ -137,13 +150,14 @@ no reason to restore them from.
 |---|---|---|
 | Prometheus | v3.13.2 | metric storage, 90 days or 8 GB |
 | Grafana | 13.1.1 | dashboards |
+| Alertmanager | v0.28.1 | grouping and delivery of alerts to Telegram |
 | node_exporter | v1.12.1 | CPU, memory, disk, network, systemd unit state, textfile |
 | blackbox_exporter | v0.28.0 | availability, response time and certificate expiry |
 | nginxlog_exporter | v1.11.0 | site traffic and interface events from nginx logs |
 
 Docker Compose, scrape interval 30 s. Resource limits are set in
 `docker-compose.yml` (Prometheus 1 CPU / 1 GB, Grafana 1 CPU / 768 MB,
-exporters 0.5 CPU / 256 MB each): the server is small, and monitoring must not
+Alertmanager and the exporters 0.5 CPU / 256 MB each): the server is small, and monitoring must not
 become the cause of the outage it is supposed to report.
 
 ## Quick start
@@ -157,8 +171,10 @@ source of truth for nginx. The directory on the server is
 # 1. Code onto the server
 rsync -a --exclude .git --exclude .env ./ ubuntu@SERVER:/opt/samoylove-metrics/
 
-# 2. Secrets (once; a repeated run overwrites nothing)
-ssh ubuntu@SERVER 'bash /opt/samoylove-metrics/server/bootstrap.sh'
+# 2. Secrets (once; a repeated run overwrites nothing).
+#    The bot token comes from @BotFather — the script has no way to invent it,
+#    so without the variable it stops: Alertmanager will not start without it.
+ssh ubuntu@SERVER "TELEGRAM_BOT_TOKEN='...' bash /opt/samoylove-metrics/server/bootstrap.sh"
 
 # 3. Start
 ssh ubuntu@SERVER 'cd /opt/samoylove-metrics && sudo docker compose up -d'
@@ -189,7 +205,25 @@ itself: the target sets `NGINX_CONF` and `NGINX_DEST` (see
 Access goes through two gates: nginx basic auth first, then the Grafana login.
 Credentials exist only on the server — basic auth in
 `/etc/nginx/.htpasswd-metrics`, the Grafana admin in
-`/opt/samoylove-metrics/.env` — and are never kept in this repository.
+`/opt/samoylove-metrics/.env`, the Telegram bot token in
+`/opt/samoylove-metrics/telegram-bot-token` — and are never kept in this
+repository. All three sit **next to** the releases directory, not inside it:
+`current/` changes with every deploy, and a secret inside would have to travel
+through the build.
+
+Where the alerts go is an address, not a secret: `chat_id` sits right in
+[`alertmanager/alertmanager.yml`](alertmanager/alertmanager.yml). Check that
+the bot can actually reach the chat before the first outage, not during it:
+
+```bash
+curl -s "https://api.telegram.org/bot$(sudo cat /opt/samoylove-metrics/telegram-bot-token)/sendMessage" \
+    -d chat_id=173418650 -d text='connectivity check'
+```
+
+A bot cannot message first: until the recipient has pressed "Start" in the
+chat, Telegram answers 403, and that looks exactly like silence. Such silence
+is caught by the `AlertNotificationsFailing` rule — which of course cannot
+report itself: the broken path is precisely the one it would travel.
 
 ## Structure
 
@@ -199,6 +233,7 @@ Credentials exist only on the server — basic auth in
 | `prometheus/prometheus.yml` | scrape targets and intervals |
 | `prometheus/rules/infra.yml` | alert rules: host, units, certificates, availability |
 | `prometheus/rules/product.yml` | alert rules: launcher, snakes, traffic, status page |
+| `alertmanager/alertmanager.yml` | routes, inhibition and the Telegram message template |
 | `grafana/dashboards/overview.json` | summary: project availability, traffic, server resources |
 | `grafana/dashboards/chillhub.json` | launcher: site, public API, admin panel, client telemetry |
 | `grafana/dashboards/snakes.json` | snakes: matches, combat, connections, server tick |
@@ -209,7 +244,7 @@ Credentials exist only on the server — basic auth in
 | `grafana/provisioning/` | data source and dashboard provisioning |
 | `blackbox/blackbox.yml` | probe modules for blackbox_exporter |
 | `nginxlog/nginxlog.yml` | log format and cardinality limits for the traffic exporter |
-| `server/bootstrap.sh` | one-time secret setup on the server |
+| `server/bootstrap.sh` | one-time secret setup on the server, bot token included |
 | `docs/render-dashboards.sh` | capture dashboard PNGs, run on the server |
 | `.env.example` | template for `.env` (Grafana admin) |
 
@@ -222,7 +257,8 @@ So CI checks exactly that class of failure.
 | Guarantee | Enforced by |
 |---|---|
 | Prometheus config parses and rules are valid | `promtool check config` and `check rules` in CI |
-| The promtool version matches the deployed one | CI reads the version out of `docker-compose.yml` |
+| Routes and the message template parse | `amtool check-config` in CI |
+| The promtool and amtool versions match the deployed ones | CI reads both out of `docker-compose.yml` |
 | Dashboards are valid JSON and point at the real data source | uid comparison against `grafana/provisioning/datasources` in CI |
 | The compose file resolves | `docker compose config --quiet` in CI |
 | YAML across the repository is well formed | `yamllint` in CI |
@@ -230,11 +266,25 @@ So CI checks exactly that class of failure.
 | A scanner cannot flood the TSDB | cardinality limits in `nginxlog/nginxlog.yml` |
 | Metrics are not reachable from the internet | containers bind `127.0.0.1`, nginx with basic auth in front |
 | History survives a container recreate | named Docker volumes, not directories in the repository |
+| A silence set during an outage survives a deploy | Alertmanager silences live in a named volume |
 | Panels survive the loss of the Grafana volume | dashboards and data source are provisioned from files |
 
-19 alert rules exist without an Alertmanager: there is nobody to page, and the
-owner watches the dashboard. They are kept as an explicit list of what counts
-as an incident, and their state is visible at `/prometheus/alerts`.
+The rules are an explicit list of what counts as an incident, and the state of
+every one of them is still visible at `/prometheus/alerts`. Each must carry a
+`severity` label: routing in Alertmanager splits on that label and nothing
+else, so a rule without it quietly joins the slow lane instead of waking
+anyone.
+
+The exact rule count is deliberately absent here. It used to sit in this
+paragraph and drifted away from reality silently — precisely the way of being
+wrong that the rest of this repository guards against. Count them in
+[`prometheus/rules/`](prometheus/rules), not here.
+
+The two delivery rules (`AlertmanagerDown`, `AlertNotificationsFailing`) cannot
+report themselves: the broken path is precisely the one they would travel. That
+does not make them useless — from the outside, monitoring that has gone quiet
+is indistinguishable from monitoring with nothing to say, and "why no messages
+for a week" is answered right here.
 
 ## Adding a scrape target
 
