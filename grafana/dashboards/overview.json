@@ -1302,12 +1302,17 @@
     {
       "type": "state-timeline",
       "title": "Службы (systemd)",
-      "description": "Активность юнитов. Провал полосы — служба падала, даже если сейчас поднялась.",
+      "description": "Провал полосы — служба падала, даже если сейчас поднялась. Постоянные службы меряются активностью, задания по таймеру — результатом последнего запуска: между запусками они штатно неактивны, и требовать от них active означало бы красить их в красное круглые сутки.",
       "targets": [
         {
           "refId": "A",
-          "expr": "node_systemd_unit_state{state=\"active\"}",
+          "expr": "node_systemd_unit_state{name=~\"(snakes|chillhub-api|chillhub-admin|nginx|docker)\\\\.service\",state=\"active\"}",
           "legendFormat": "{{name}}"
+        },
+        {
+          "refId": "B",
+          "expr": "1 - node_systemd_unit_state{name=~\"(status-agent|chillhub-backup|snakes-backup-profiles)\\\\.service\",state=\"failed\"}",
+          "legendFormat": "{{name}} (по таймеру)"
         }
       ],
       "options": {
