@@ -35,11 +35,19 @@ elif [[ -z "${TELEGRAM_BOT_TOKEN:-}" ]]; then
     exit 1
 else
     pass=$(openssl rand -base64 24 | tr -d '/+=' | cut -c1-24)
+    # Токен рендерера, в отличие от бота, придумывать не у кого — генерируем
+    # сами. Значение одно, но записано под двумя именами: Grafana и renderer
+    # ждут его под разными переменными (docker-compose.yml), сверяя на
+    # каждый запрос рендера. Дефолт "-" Grafana 13 запрещает в проде — без
+    # этой пары контейнер не поднимется вовсе.
+    render_token=$(openssl rand -hex 24)
     umask 077
     cat > .env <<EOF
 GF_SECURITY_ADMIN_USER=admin
 GF_SECURITY_ADMIN_PASSWORD=${pass}
 TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+GF_RENDERING_RENDERER_TOKEN=${render_token}
+GIR_AUTH_TOKEN=${render_token}
 EOF
     echo "  .env создан, пароль Grafana: ${pass}"
 fi
