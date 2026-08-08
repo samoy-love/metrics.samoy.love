@@ -214,7 +214,7 @@ sudo certbot certonly --webroot -w /var/www/metrics-acme -d metrics.samoy.love
 отдельно в `/etc/nginx/.htpasswd-metrics`, а в `.env` — администратор Grafana,
 токен телеграм-бота (контактная точка читает его через `$__env{TELEGRAM_BOT_TOKEN}`,
 см. `grafana/provisioning/alerting/contactpoints.yml`) и общий секрет Grafana
-с `renderer` (`GF_RENDERING_RENDERER_TOKEN` / `GIR_AUTH_TOKEN`, одно и то же
+с `renderer` (`GF_RENDERING_RENDERER_TOKEN` / `AUTH_TOKEN`, одно и то же
 значение под двумя именами — без него Grafana 13 отказывается стартовать:
 дефолтный токен `"-"` запрещён в продакшен-режиме). В репозитории их нет и
 быть не должно. Файл лежит **рядом** с каталогом релизов, а не внутри него:

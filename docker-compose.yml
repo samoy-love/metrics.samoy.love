@@ -107,7 +107,7 @@ services:
       GF_RENDERING_SERVER_URL: http://renderer:8081/render
       GF_RENDERING_CALLBACK_URL: http://grafana:3000/
       GF_UNIFIED_ALERTING_SCREENSHOTS_CAPTURE: "true"
-      # GF_RENDERING_RENDERER_TOKEN — из .env выше (GIR_AUTH_TOKEN ниже несёт
+      # GF_RENDERING_RENDERER_TOKEN — из .env выше (AUTH_TOKEN ниже несёт
       # то же значение для renderer). Обе стороны сверяют его при каждом
       # запросе на рендер; без общего секрета Grafana 13 отказывается
       # стартовать вовсе — дефолтный токен "-" запрещён в продакшен-режиме
@@ -135,12 +135,18 @@ services:
     container_name: samoylove-renderer
     restart: unless-stopped
     env_file:
-      # GIR_AUTH_TOKEN — общий секрет с Grafana, см. GF_RENDERING_RENDERER_TOKEN
-      # выше. Файл общий с Grafana: renderer читает из него только эту
-      # переменную, остальные (пароль администратора, токен бота) ему не нужны
-      # и никак не используются — .env один на весь стек по той же причине,
-      # по которой он один у Grafana: секрет живёт рядом с releases/, а не
-      # внутри артефакта выкатки.
+      # AUTH_TOKEN — общий секрет с Grafana, см. GF_RENDERING_RENDERER_TOKEN
+      # выше. Имя переменной задаёт сам бинарь (`--server.auth-token`, флаг
+      # `$AUTH_TOKEN`) — не придумано нами и не переименовать по вкусу.
+      # Первая версия этого файла держала здесь `GIR_AUTH_TOKEN`: токен не
+      # совпадал ни с чем, рендерер тихо принимал дефолтный `-` и отклонял
+      # все настоящие запросы на скриншот 401-м без единой зацепки в логе
+      # Grafana (она видела лишь чужой ответ «Unauthorized», а откуда он —
+      # не говорила). Файл общий с Grafana: renderer читает из него только
+      # эту переменную, остальные (пароль администратора, токен бота) ему не
+      # нужны и никак не используются — .env один на весь стек по той же
+      # причине, по которой он один у Grafana: секрет живёт рядом с
+      # releases/, а не внутри артефакта выкатки.
       - /opt/samoylove-metrics/.env
     environment:
       ENABLE_METRICS: "false"
