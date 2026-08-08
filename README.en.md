@@ -5,7 +5,7 @@
 [![CI](https://github.com/tr0llex/metrics.samoy.love/actions/workflows/ci.yml/badge.svg)](https://github.com/tr0llex/metrics.samoy.love/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Prometheus](https://img.shields.io/badge/Prometheus-v3.13.2-e6522c)
-![Grafana](https://img.shields.io/badge/Grafana-13.1.1-f46800)
+![Grafana](https://img.shields.io/badge/Grafana-13.1.3-f46800)
 
 Monitoring and product analytics for the single small server that runs all of
 [samoy.love](https://samoy.love): five sites, several services and a desktop
@@ -60,8 +60,8 @@ flowchart LR
         nglog["nginxlog_exporter"]
         bb["blackbox_exporter"]
         prom["Prometheus<br/>90 days"]
-        graf["Grafana"]
-        am["Alertmanager"]
+        graf["Grafana<br/>+ built-in alerting"]
+        rnd["renderer<br/>(chart screenshot)"]
     end
 
     svc -->|"pull /internal/metrics"| prom
@@ -71,8 +71,8 @@ flowchart LR
     nglog --> prom
     bb -->|"probes from outside"| prom
     prom --> graf
-    prom -->|"firing rules"| am
-    am -->|"critical now,<br/>warning in the morning"| tg["Telegram"]
+    graf <-->|"PNG for the alert"| rnd
+    graf -->|"critical now,<br/>warning in the morning"| tg["Telegram"]
     graf --> gate["nginx + basic auth<br/>metrics.samoy.love"]
 ```
 
@@ -134,31 +134,36 @@ asked. Deliberately absent are client-side analytics and backups of the metrics
 themselves — those are operational data with nowhere and no reason to restore
 them from.
 
-**Failures are announced, not displayed.** A firing rule goes to Alertmanager
-and from there to Telegram. Rules used to light up in `/prometheus/alerts` and
-go out there as well: the only way to learn about a failure was to open the
-panel yourself — and the panel gets opened exactly when something has already
-been noticed. Splitting on `severity` is not cosmetic: critical wakes you up
-(site unreachable, unit dead, disk filling up, player progress being lost) and
-repeats every four hours, while warning arrives with a delay and repeats once
-a day. Grouping is by rule name, because a dead nginx is one incident, not six
-messages about six domains.
+**Failures are announced, not displayed.** Rules, routing and Telegram
+delivery live entirely inside Grafana (`grafana/provisioning/alerting`) — the
+separate Alertmanager is gone from the stack. Rules used to light up in
+`/prometheus/alerts` and go out there as well: the only way to learn about a
+failure was to open the panel yourself — and the panel gets opened exactly
+when something has already been noticed. Splitting on `severity` is not
+cosmetic: critical wakes you up (site unreachable, unit dead, disk filling up,
+player progress being lost) and repeats every four hours, while warning
+arrives with a delay and repeats once a day. Grouping is by rule name, because
+a dead nginx is one incident, not six messages about six domains. Each message
+carries a chart screenshot — rendered by the neighboring `renderer` container
+(`grafana/grafana-image-renderer`); Grafana only asks for it and attaches the
+result.
 
 ## Stack
 
 | Component | Version | Role |
 |---|---|---|
 | Prometheus | v3.13.2 | metric storage, 90 days or 8 GB |
-| Grafana | 13.1.1 | dashboards |
-| Alertmanager | v0.28.1 | grouping and delivery of alerts to Telegram |
+| Grafana | 13.1.3 | dashboards, alert rules, routing and Telegram delivery |
+| grafana-image-renderer | v5.12.0 | chart screenshot attached to an alert |
 | node_exporter | v1.12.1 | CPU, memory, disk, network, systemd unit state, textfile |
 | blackbox_exporter | v0.28.0 | availability, response time and certificate expiry |
 | nginxlog_exporter | v1.11.0 | site traffic and interface events from nginx logs |
 
 Docker Compose, scrape interval 30 s. Resource limits are set in
 `docker-compose.yml` (Prometheus 1 CPU / 1 GB, Grafana 1 CPU / 768 MB,
-Alertmanager and the exporters 0.5 CPU / 256 MB each): the server is small, and monitoring must not
-become the cause of the outage it is supposed to report.
+renderer 1 CPU / 512 MB, the exporters 0.5 CPU / 256 MB each): the server is
+small, and monitoring must not become the cause of the outage it is supposed
+to report.
 
 ## Quick start
 
@@ -173,7 +178,8 @@ rsync -a --exclude .git --exclude .env ./ ubuntu@SERVER:/opt/samoylove-metrics/
 
 # 2. Secrets (once; a repeated run overwrites nothing).
 #    The bot token comes from @BotFather — the script has no way to invent it,
-#    so without the variable it stops: Alertmanager will not start without it.
+#    so without the variable it stops: Grafana's contact point cannot deliver
+#    a single message without it.
 ssh ubuntu@SERVER "TELEGRAM_BOT_TOKEN='...' bash /opt/samoylove-metrics/server/bootstrap.sh"
 
 # 3. Start
@@ -203,37 +209,42 @@ itself: the target sets `NGINX_CONF` and `NGINX_DEST` (see
 `nginx -t` fails.
 
 Access goes through two gates: nginx basic auth first, then the Grafana login.
-Credentials exist only on the server — basic auth in
-`/etc/nginx/.htpasswd-metrics`, the Grafana admin in
-`/opt/samoylove-metrics/.env`, the Telegram bot token in
-`/opt/samoylove-metrics/telegram-bot-token` — and are never kept in this
-repository. All three sit **next to** the releases directory, not inside it:
-`current/` changes with every deploy, and a secret inside would have to travel
-through the build.
+Credentials and tokens exist only on the server — basic auth in
+`/etc/nginx/.htpasswd-metrics`, the Grafana admin and the Telegram bot token
+both in `/opt/samoylove-metrics/.env` (the contact point reads the token via
+`$__env{TELEGRAM_BOT_TOKEN}`, see
+`grafana/provisioning/alerting/contactpoints.yml`) — and are never kept in
+this repository. The file sits **next to** the releases directory, not inside
+it: `current/` changes with every deploy, and a secret inside would have to
+travel through the build.
 
-Where the alerts go is an address, not a secret: `chat_id` sits right in
-[`alertmanager/alertmanager.yml`](alertmanager/alertmanager.yml). Check that
-the bot can actually reach the chat before the first outage, not during it:
+Where the alerts go is an address, not a secret: `chatid` sits right in
+[`grafana/provisioning/alerting/contactpoints.yml`](grafana/provisioning/alerting/contactpoints.yml).
+Check that the bot can actually reach the chat before the first outage, not
+during it:
 
 ```bash
-curl -s "https://api.telegram.org/bot$(sudo cat /opt/samoylove-metrics/telegram-bot-token)/sendMessage" \
+curl -s "https://api.telegram.org/bot$(sudo grep TELEGRAM_BOT_TOKEN /opt/samoylove-metrics/.env | cut -d= -f2-)/sendMessage" \
     -d chat_id=173418650 -d text='connectivity check'
 ```
 
 A bot cannot message first: until the recipient has pressed "Start" in the
-chat, Telegram answers 403, and that looks exactly like silence. Such silence
-is caught by the `AlertNotificationsFailing` rule — which of course cannot
-report itself: the broken path is precisely the one it would travel.
+chat, Telegram answers 403, and that looks exactly like silence. That silence
+used to be caught by a dedicated `AlertNotificationsFailing` rule watching
+Alertmanager; delivery is now Grafana's own job, and a failure shows up in its
+log or on `/alerting/list` instead — there is no longer a rule that would
+report it into the same Telegram: the broken path is precisely the one it
+would have to travel.
 
 ## Structure
 
 | Path | Purpose |
 |---|---|
 | `docker-compose.yml` | the whole stack: images, limits, volumes, `127.0.0.1` bindings |
-| `prometheus/prometheus.yml` | scrape targets and intervals |
-| `prometheus/rules/infra.yml` | alert rules: host, units, certificates, availability |
-| `prometheus/rules/product.yml` | alert rules: launcher, snakes, traffic, status page |
-| `alertmanager/alertmanager.yml` | routes, inhibition and the Telegram message template |
+| `prometheus/prometheus.yml` | scrape targets and intervals (no rules — those live in Grafana) |
+| `grafana/provisioning/alerting/rules.yml` | alert rules: host, units, sites, launcher, snakes, status page |
+| `grafana/provisioning/alerting/contactpoints.yml` | Telegram receiver, token, message template, screenshot |
+| `grafana/provisioning/alerting/policies.yml` | routing by `severity` |
 | `grafana/dashboards/overview.json` | summary: project availability, traffic, server resources |
 | `grafana/dashboards/chillhub.json` | launcher: site, public API, admin panel, client telemetry |
 | `grafana/dashboards/snakes.json` | snakes: matches, combat, connections, server tick |
@@ -256,35 +267,44 @@ So CI checks exactly that class of failure.
 
 | Guarantee | Enforced by |
 |---|---|
-| Prometheus config parses and rules are valid | `promtool check config` and `check rules` in CI |
-| Routes and the message template parse | `amtool check-config` in CI |
-| The promtool and amtool versions match the deployed ones | CI reads both out of `docker-compose.yml` |
+| Prometheus config (targets, intervals) parses | `promtool check config` in CI |
 | Dashboards are valid JSON and point at the real data source | uid comparison against `grafana/provisioning/datasources` in CI |
 | The compose file resolves | `docker compose config --quiet` in CI |
-| YAML across the repository is well formed | `yamllint` in CI |
+| YAML syntax across the repository is well formed | `yamllint` in CI |
 | Personal data cannot leak into metrics | the log format has no IP, User-Agent, Referer or query string |
 | A scanner cannot flood the TSDB | cardinality limits in `nginxlog/nginxlog.yml` |
 | Metrics are not reachable from the internet | containers bind `127.0.0.1`, nginx with basic auth in front |
 | History survives a container recreate | named Docker volumes, not directories in the repository |
-| A silence set during an outage survives a deploy | Alertmanager silences live in a named volume |
-| Panels survive the loss of the Grafana volume | dashboards and data source are provisioned from files |
+| Panels and alert rules survive the loss of the Grafana volume | dashboards, data source and alerting are provisioned from files |
+
+**What CI does NOT check** after the move to Grafana: `rules.yml`,
+`contactpoints.yml` and `policies.yml` only get YAML syntax checked. Semantics
+— the right node type inside `data`, a real datasource uid, the condition
+schema — used to be `promtool check rules` / `amtool check-config` for
+Prometheus/Alertmanager; there is no equivalent CLI for Grafana's provisioning
+format at hand. A typo in these three files only surfaces when Grafana starts
+(check its logs) or on `/alerting/list` — before shipping an alerting change,
+bring the stack up and look, a green CI run is not the full guarantee here.
 
 The rules are an explicit list of what counts as an incident, and the state of
-every one of them is still visible at `/prometheus/alerts`. Each must carry a
-`severity` label: routing in Alertmanager splits on that label and nothing
-else, so a rule without it quietly joins the slow lane instead of waking
-anyone.
+every one of them is visible in Grafana at `/alerting/list`. Each must carry a
+`severity` label: routing splits on that label and nothing else, so a rule
+without it quietly joins the slow lane instead of waking anyone.
 
 The exact rule count is deliberately absent here. It used to sit in this
 paragraph and drifted away from reality silently — precisely the way of being
 wrong that the rest of this repository guards against. Count them in
-[`prometheus/rules/`](prometheus/rules), not here.
+[`grafana/provisioning/alerting/rules.yml`](grafana/provisioning/alerting/rules.yml), not here.
 
-The two delivery rules (`AlertmanagerDown`, `AlertNotificationsFailing`) cannot
-report themselves: the broken path is precisely the one they would travel. That
-does not make them useless — from the outside, monitoring that has gone quiet
-is indistinguishable from monitoring with nothing to say, and "why no messages
-for a week" is answered right here.
+The two delivery rules (`AlertmanagerDown`, `AlertNotificationsFailing`) are
+gone: they watched a separate Alertmanager that no longer exists in the
+stack — rules and delivery are now one process, and if that process is down
+there is nobody left to report it either way. The `inhibit_rules` from the old
+`alertmanager.yml` (SiteDown suppressed ProbeLatencyHigh on the same instance,
+critical suppressed warning on the same alertname+instance) are also gone and
+have no direct equivalent in Grafana Alerting — see the comment at the top of
+`rules.yml`. In practice: one dead site can now produce more than one message
+in the chat.
 
 ## Adding a scrape target
 

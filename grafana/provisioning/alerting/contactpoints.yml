@@ -1,0 +1,48 @@
+# Доставка алертов в Telegram — раньше этим занимался отдельный Alertmanager
+# (alertmanager/alertmanager.yml, теперь удалён), маршрутизация в policies.yml.
+#
+# ТОКЕН СЮДА НЕ ПИШЕТСЯ. $__env{TELEGRAM_BOT_TOKEN} — макрос провижининга
+# Grafana, подставляющий значение переменной окружения контейнера при
+# чтении файла; секрет остаётся только в /opt/samoylove-metrics/.env на
+# сервере (server/bootstrap.sh), в git ничего не попадает.
+#
+# chat_id, наоборот, здесь открыто. Это идентификатор, а не секрет: без
+# токена он не даёт ничего, а адресат — владелец репозитория, чей телеграм
+# и так указан в README.
+#
+# uploadImage: true — то, ради чего затевался renderer в docker-compose.yml:
+# Grafana рендерит график правила в PNG и прикладывает его к сообщению вместо
+# одного текста. Требует поднятого GF_RENDERING_SERVER_URL (docker-compose.yml)
+# и хотя бы одной панели, которую алерт может отрисовать — то есть данные
+# правила (data: A) должны быть тем же запросом, что виден на дашборде.
+#
+# Сообщение — БЕЗ HTML-разметки, хотя раньше в Alertmanager она была. Причина
+# та же, что заставила исходный шаблон экранировать значения через `| html`:
+# instance и host в конечном счёте приходят из журнала nginx, то есть из
+# интернета, а сломанная разметка — это 400 от Telegram и авария, уехавшая в
+# никуда. У Alertmanager был готовый фильтр `html`; funcmap шаблонов Grafana
+# его не гарантирует, а рисковать доставкой ради жирного шрифта не стоит.
+# Раз тегов нет — экранировать нечего, а Telegram эмодзи в plain text
+# принимает как есть.
+
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: telegram
+    receivers:
+      - uid: telegram-main
+        type: telegram
+        settings:
+          bottoken: $__env{TELEGRAM_BOT_TOKEN}
+          chatid: "173418650"
+          disable_notifications: false
+          uploadImage: true
+          message: |-
+            {{ if eq .Status "firing" }}🔴{{ else }}✅{{ end }} {{ .CommonLabels.severity | toUpper }}{{ if eq .Status "resolved" }} — восстановлено{{ end }}
+            {{ range .Alerts }}
+            {{ .Labels.alertname }}{{ if .Labels.instance }} · {{ .Labels.instance }}{{ end }}
+            {{ .Annotations.summary }}
+            {{ end }}
+            {{ .ExternalURL }}alerting/list
+        disableResolveMessage: false

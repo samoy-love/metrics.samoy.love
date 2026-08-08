@@ -51,7 +51,6 @@ services:
       - --web.enable-lifecycle
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"
@@ -69,54 +68,22 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  alertmanager:
-    # Доставка оповещений в Telegram. До него правила были списком того, что
-    # считается аварией, и увидеть их состояние мог только тот, кто сам открыл
-    # /prometheus/alerts.
-    image: prom/alertmanager:v0.28.1@sha256:27c475db5fb156cab31d5c18a4251ac7ed567746a2483ff264516437a39b15ba
-    container_name: samoylove-alertmanager
-    restart: unless-stopped
-    user: "65534:65534"
-    command:
-      - --config.file=/etc/alertmanager/alertmanager.yml
-      - --storage.path=/alertmanager
-    volumes:
-      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-      # Токен бота — абсолютным серверным путём, РЯДОМ с каталогом релизов, по
-      # той же причине, что и .env Grafana ниже: current/ меняется с каждой
-      # выкаткой, и относительный путь означал бы возить секрет через сборку.
-      - /opt/samoylove-metrics/telegram-bot-token:/etc/alertmanager/telegram-bot-token:ro
-      # Именованный том: здесь живут silence'ы и отметки о том, что уже
-      # отправлено. Без него пересоздание контейнера снимает все заглушки и
-      # заново шлёт всё, что горит, — то есть ровно посреди аварии, когда её
-      # уже осознанно заглушили, чат снова начинает звонить.
-      - alertmanager-data:/alertmanager
-    ports:
-      # Наружу не публикуется: nginx его не проксирует, доступ — по SSH.
-      # Silence ставится из Grafana либо amtool'ом с хоста.
-      - "127.0.0.1:9093:9093"
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 256m
-    logging: *default-logging
-
   grafana:
-    image: grafana/grafana:13.1.1@sha256:7cb8c64c4d57a57e734073f3cc94620adb24a0acb929bd80ba9f14017e3a975b
+    image: grafana/grafana:13.1.3@sha256:ab5cb380e3ff3172d6c8bd2e7cfd31cce977d2881b260e1f5bc089bf0b759b43
     container_name: samoylove-grafana
     restart: unless-stopped
     depends_on:
       - prometheus
     env_file:
-      # Пароль администратора лежит ТОЛЬКО на сервере, в репозитории его нет.
-      # Файл создаётся из .env.example при первой установке (server/bootstrap.sh).
+      # Пароль администратора и токен телеграм-бота лежат ТОЛЬКО на сервере, в
+      # репозитории их нет. Файл создаётся server/bootstrap.sh при первой
+      # установке.
       #
       # Путь абсолютный и намеренно ведёт РЯДОМ с каталогом релизов, а не
       # внутрь него: стек катится через deploy-kit, и compose-файл работает из
       # /opt/samoylove-metrics/current/, который меняется с каждой выкаткой.
       # Относительный `.env` пришлось бы класть в артефакт — то есть возить
-      # пароль Grafana через сборку и хранить его в пяти копиях по releases/.
+      # секреты через сборку и хранить их в пяти копиях по releases/.
       - /opt/samoylove-metrics/.env
     environment:
       GF_SERVER_ROOT_URL: https://metrics.samoy.love/
@@ -128,6 +95,18 @@ services:
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_NEWS_NEWS_FEED_ENABLED: "false"
+      # Алертинг теперь целиком в Grafana (grafana/provisioning/alerting):
+      # правила, маршрутизация и доставка в Telegram. Отдельный Alertmanager
+      # убран из стека — Grafana несёт встроенный, второй конфигурировать
+      # смысла не было. Токен бота контактная точка читает из переменной
+      # TELEGRAM_BOT_TOKEN — она приходит из .env выше, тем же путём, что
+      # раньше шла к Alertmanager.
+      #
+      # Скриншот графика к алерту: рендерит соседний контейнер, Grafana только
+      # просит и вкладывает результат в сообщение.
+      GF_RENDERING_SERVER_URL: http://renderer:8081/render
+      GF_RENDERING_CALLBACK_URL: http://grafana:3000/
+      GF_UNIFIED_ALERTING_SCREENSHOTS_CAPTURE: "true"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
@@ -140,6 +119,24 @@ services:
         limits:
           cpus: "1.0"
           memory: 768m
+    logging: *default-logging
+
+  renderer:
+    # Рендерит график в PNG по запросу Grafana — только это, из сети наружу не
+    # достаёт и снаружи недоступен. Нужен исключительно ради скриншота к
+    # алерту (see GF_RENDERING_* выше); без него Grafana просто не приложит
+    # картинку и пришлёт текстовое сообщение, как раньше.
+    image: grafana/grafana-image-renderer:v5.12.0@sha256:7fcea1db9aef1428f18bb820ec9e7ae4e25a430679b9fa8e08d56f2195424234
+    container_name: samoylove-renderer
+    restart: unless-stopped
+    environment:
+      ENABLE_METRICS: "false"
+    deploy:
+      resources:
+        limits:
+          # Headless Chromium под капотом — тяжелее, чем кажется по задаче.
+          cpus: "1.0"
+          memory: 512m
     logging: *default-logging
 
   node-exporter:
@@ -244,4 +241,3 @@ volumes:
   # версии образа.
   prometheus-data:
   grafana-data:
-  alertmanager-data:

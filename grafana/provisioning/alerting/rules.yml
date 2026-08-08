@@ -1,0 +1,795 @@
+# Правила алертинга: инфраструктура и продуктовые метрики. Раньше это были
+# prometheus/rules/infra.yml и product.yml, уходившие в отдельный Alertmanager
+# (см. историю docker-compose.yml) — теперь Grafana сама и вычисляет правила,
+# и шлёт в Telegram через grafana/provisioning/alerting/contactpoints.yml.
+# Имена правил и текст summary — на английском, как и раньше: это то, что
+# видно в UI, в API и в сообщении бота.
+#
+# ПОЧЕМУ У КАЖДОГО ПРАВИЛА УСЛОВИЕ "gt -1e9", А НЕ ПОРОГ ИЗ SUMMARY. Исходные
+# PromQL-выражения — это фильтры Prometheus (`x < 0.10`, `x == 0`, `x == 1`):
+# они возвращают ряд, только когда условие уже верно, а его ЗНАЧЕНИЕ при этом
+# может быть чем угодно — долей от 0 до 1, точным нулём (`== 0`), единицей
+# (`== 1`) или отрицательным числом (просроченный сертификат). Grafana же
+# требует отдельный узел-условие, который сравнивает ЗНАЧЕНИЕ. Порог в
+# -1 000 000 000 ниже любого реального значения во всех выражениях ниже, так
+# что условие эквивалентно исходному «ряд есть — значит, авария»: считать
+# срабатыванием сам факт, что фильтр Prometheus что-то вернул, а не то, что
+# вернувшееся число больше нуля (иначе `== 0` никогда бы не сработало).
+#
+# ЧЕГО ЗДЕСЬ НЕТ. AlertmanagerDown и AlertNotificationsFailing (были в
+# infra-alerting) не перенесены: обе проверяли отдельный Alertmanager, а его
+# в стеке больше нет — Grafana теперь и вычисляет правила, и доставляет
+# сообщения сама, так что проверять «жив ли Alertmanager» больше нечего.
+# Самой Grafana, если она недоступна, тоже некому будет об этом сообщить —
+# та же дыра, что была описана в исходном комментарии infra-alerting, и её
+# закрывает внешняя проверка GitHub Actions (.github/workflows/ci.yml), а не
+# правило внутри самого стека.
+#
+# inhibit_rules из alertmanager.yml (SiteDown гасит ProbeLatencyHigh по тому
+# же instance, critical гасит warning по тому же alertname+instance) тоже не
+# перенесены: у Grafana Alerting нет прямого аналога подавления одного
+# алерта другим на уровне политики маршрутизации. Из трёх алертов про один
+# упавший сайт (SiteDown, ProbeLatencyHigh, возможно SiteErrorRateHigh) в чат
+# теперь придёт больше одного сообщения.
+
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: infra-host
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: infra-disk-space-low
+        title: DiskSpaceLow
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.10
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: critical }
+        annotations: { summary: "Less than 10% free space left on /" }
+
+      - uid: infra-memory-low
+        title: MemoryLow
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Less than 10% of memory available" }
+
+      - uid: infra-cpu-saturated
+        title: CpuSaturated
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "CPU above 90% for half an hour" }
+
+  - orgId: 1
+    name: infra-services
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: infra-service-down
+        title: ServiceDown
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: node_systemd_unit_state{name=~"(snakes|chillhub-api|chillhub-admin|nginx|docker)\\.service",state="active"} == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "Unit {{ $labels.name }} is not active" }
+
+      - uid: infra-unit-failed
+        title: UnitFailed
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: node_systemd_unit_state{state="failed"} == 1
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "Unit {{ $labels.name }} is in failed state" }
+
+  - orgId: 1
+    name: infra-deploy-events
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: infra-deploy-event-delivery-stuck
+        title: DeployEventDeliveryStuck
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: statusbot_deploy_events_pending_age_seconds > 300
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        labels: { severity: critical, source: textfile }
+        annotations: { summary: "Deploy event waiting in the queue for over 5 minutes — release messages are not delivered" }
+
+      - uid: infra-deploy-event-metrics-missing
+        title: DeployEventMetricsMissing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: absent(statusbot_deploy_events_pending_age_seconds)
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning, source: textfile }
+        annotations: { summary: "Bot metrics carry no deploy event counters — the event path is unobservable" }
+
+  - orgId: 1
+    name: infra-sites
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: infra-site-down
+        title: SiteDown
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: probe_success == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "{{ $labels.instance }} is not responding" }
+
+      - uid: infra-certificate-expiring-soon
+        title: CertificateExpiringSoon
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 14
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: warning }
+        annotations: { summary: "Certificate for {{ $labels.instance }} expires in less than 14 days" }
+
+      - uid: infra-probe-latency-high
+        title: ProbeLatencyHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: probe_duration_seconds > 3
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "{{ $labels.instance }} probe takes longer than 3 seconds" }
+
+  - orgId: 1
+    name: product-sites
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: product-site-error-rate-high
+        title: SiteErrorRateHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: |
+                sum by (host) (rate(samoylove_site_http_response_count_total{status=~"5.."}[15m]))
+                  /
+                sum by (host) (rate(samoylove_site_http_response_count_total[15m])) > 0.05
+                and
+                sum by (host) (increase(samoylove_site_http_response_count_total[15m])) > 20
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: critical }
+        annotations: { summary: "{{ $labels.host }}: more than 5% of responses are 5xx" }
+
+      - uid: product-traffic-collapse
+        title: TrafficCollapse
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: |
+                sum by (host) (increase(samoylove_site_http_response_count_total{path="/"}[6h]))
+                  <
+                0.2 * sum by (host) (increase(samoylove_site_http_response_count_total{path="/"}[6h] offset 1w))
+                and
+                sum by (host) (increase(samoylove_site_http_response_count_total{path="/"}[6h] offset 1w)) > 50
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 2h
+        labels: { severity: warning }
+        annotations: { summary: "{{ $labels.host }}: traffic is five times lower than a week ago" }
+
+      - uid: product-site-latency-high
+        title: SiteLatencyHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: histogram_quantile(0.95, sum by (le, host) (rate(samoylove_site_http_response_time_seconds_hist_bucket[15m]))) > 1
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "{{ $labels.host }}: p95 response time above one second" }
+
+      - uid: product-access-log-parse-failing
+        title: AccessLogParseFailing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: increase(samoylove_site_parse_errors_total[30m]) > 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "nginx log lines are not parsed — log_format and exporter format have diverged" }
+
+  - orgId: 1
+    name: product-chillhub
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: product-install-failure-rate-high
+        title: InstallFailureRateHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: |
+                sum(increase(chillhub_game_installs_total{result!="ok"}[1h]))
+                  /
+                clamp_min(sum(increase(chillhub_game_installs_total[1h])), 1) > 0.4
+                and
+                sum(increase(chillhub_game_installs_total[1h])) >= 5
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: critical }
+        annotations: { summary: "More than 40% of installs in the last hour did not finish" }
+
+      - uid: product-diff-updates-not-working
+        title: DiffUpdatesNotWorking
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: |
+                sum(increase(chillhub_game_updates_total{result="ok",mode="full"}[6h]))
+                  /
+                clamp_min(sum(increase(chillhub_game_updates_total{result="ok"}[6h])), 1) > 0.8
+                and
+                sum(increase(chillhub_game_updates_total{result="ok"}[6h])) >= 5
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: warning }
+        annotations: { summary: "Over 80% of updates downloaded the full build — diff savings are gone" }
+
+      - uid: product-hash-mismatches-high
+        title: HashMismatchesHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: sum(increase(chillhub_hash_mismatches_total[1h])) > 10
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "More than ten files failed to match the manifest within an hour" }
+
+      - uid: product-launcher-error-rate-high
+        title: LauncherErrorRateHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: |
+                sum(rate(chillhub_http_requests_total{code=~"5.."}[15m]))
+                  /
+                clamp_min(sum(rate(chillhub_http_requests_total[15m])), 0.001) > 0.05
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: critical }
+        annotations: { summary: "More than 5% of launcher responses are 5xx" }
+
+      - uid: product-telemetry-rejected
+        title: TelemetryRejected
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: sum(increase(chillhub_telemetry_rejected_total[1h])) > 20
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "More than 20 rejected calls to /metrics/report within an hour" }
+
+  - orgId: 1
+    name: product-status
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: product-status-agent-stale
+        title: StatusAgentStale
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: time() - status_agent_run_timestamp_seconds > 600
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: critical, source: textfile }
+        annotations: { summary: "Status page agent has not polled services for over 10 minutes" }
+
+      - uid: product-status-bot-stale
+        title: StatusBotStale
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: time() - statusbot_heartbeat_timestamp_seconds > 600
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: warning, source: textfile }
+        annotations: { summary: "Telegram bot has not updated its metrics for over 10 minutes" }
+
+      - uid: product-telegram-delivery-failing
+        title: TelegramDeliveryFailing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: increase(statusbot_send_failures_total[1h]) > 3
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: critical }
+        annotations: { summary: "Bot cannot send messages: incident notifications will not arrive" }
+
+  - orgId: 1
+    name: product-snakes
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: product-snakes-profiles-read-only
+        title: SnakesProfilesReadOnly
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: snakes_profiles_read_only == 1
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "Snakes profile storage is read-only — player progress will not survive a restart" }
+
+      - uid: product-snakes-profile-saves-failing
+        title: SnakesProfileSavesFailing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: increase(snakes_profiles_save_errors_total[30m]) > 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Snakes cannot write profiles.json — progress is being lost" }

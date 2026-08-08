@@ -5,7 +5,7 @@
 [![CI](https://github.com/tr0llex/metrics.samoy.love/actions/workflows/ci.yml/badge.svg)](https://github.com/tr0llex/metrics.samoy.love/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Prometheus](https://img.shields.io/badge/Prometheus-v3.13.2-e6522c)
-![Grafana](https://img.shields.io/badge/Grafana-13.1.1-f46800)
+![Grafana](https://img.shields.io/badge/Grafana-13.1.3-f46800)
 
 Мониторинг и продуктовая аналитика одного маленького сервера, на котором живёт
 всё [samoy.love](https://samoy.love): пять сайтов, несколько сервисов и
@@ -64,8 +64,8 @@ flowchart LR
         nglog["nginxlog_exporter"]
         bb["blackbox_exporter"]
         prom["Prometheus<br/>90 дней"]
-        graf["Grafana"]
-        am["Alertmanager"]
+        graf["Grafana<br/>+ встроенный алертинг"]
+        rnd["renderer<br/>(скриншот графика)"]
     end
 
     svc -->|"pull /internal/metrics"| prom
@@ -75,8 +75,8 @@ flowchart LR
     nglog --> prom
     bb -->|"пробы снаружи"| prom
     prom --> graf
-    prom -->|"сработавшие правила"| am
-    am -->|"critical сразу,<br/>warning утром"| tg["Telegram"]
+    graf <-->|"PNG к алерту"| rnd
+    graf -->|"critical сразу,<br/>warning утром"| tg["Telegram"]
     graf --> gate["nginx + basic-auth<br/>metrics.samoy.love"]
 ```
 
@@ -138,31 +138,35 @@ drop-in открывает ровно подсети docker-мостов, а и�
 клиентской аналитики и резервных копий самих метрик — это оперативные данные,
 восстанавливать их неоткуда и незачем.
 
-**Об аварии сообщают, а не показывают.** Сработавшее правило уходит в
-Alertmanager и оттуда в Telegram. Раньше правила зажигались в
+**Об аварии сообщают, а не показывают.** Правила, маршрутизация и доставка в
+Telegram целиком в Grafana (`grafana/provisioning/alerting`) — отдельного
+Alertmanager в стеке больше нет. Раньше правила зажигались в
 `/prometheus/alerts` и там же гасли: узнать о поломке мог только тот, кто сам
 открыл панель, — а открывают её как раз тогда, когда уже что-то заметили.
 Разделение по `severity` не косметическое: critical будит (сайт недоступен,
 юнит мёртв, кончается диск, теряется прогресс игроков) и напоминает о себе
 каждые четыре часа, warning приходит с задержкой и повторяется раз в сутки.
 Группировка идёт по имени правила, потому что упавший nginx — это один
-инцидент, а не шесть сообщений про шесть доменов.
+инцидент, а не шесть сообщений про шесть доменов. К сообщению прикладывается
+скриншот графика — его рендерит соседний контейнер `renderer`
+(`grafana/grafana-image-renderer`), Grafana только просит и вкладывает
+результат.
 
 ## Стек
 
 | Компонент | Версия | Роль |
 |---|---|---|
 | Prometheus | v3.13.2 | хранилище метрик, 90 дней или 8 ГБ |
-| Grafana | 13.1.1 | панели |
-| Alertmanager | v0.28.1 | группировка и доставка оповещений в Telegram |
+| Grafana | 13.1.3 | панели, правила алертинга, маршрутизация и доставка в Telegram |
+| grafana-image-renderer | v5.12.0 | скриншот графика к алерту |
 | node_exporter | v1.12.1 | CPU, память, диск, сеть, состояние юнитов, textfile |
 | blackbox_exporter | v0.28.0 | доступность, время ответа, срок сертификата |
 | nginxlog_exporter | v1.11.0 | посещаемость и события интерфейса из журналов nginx |
 
 Docker Compose, интервал сбора 30 с. Лимиты заданы в `docker-compose.yml`
-(Prometheus — 1 CPU / 1 ГБ, Grafana — 1 CPU / 768 МБ, Alertmanager и
-экспортёры — по 0.5 CPU / 256 МБ): сервер маленький, и мониторинг не должен становиться
-причиной аварии, о которой он же и должен предупреждать.
+(Prometheus — 1 CPU / 1 ГБ, Grafana — 1 CPU / 768 МБ, renderer — 1 CPU / 512
+МБ, экспортёры — по 0.5 CPU / 256 МБ): сервер маленький, и мониторинг не
+должен становиться причиной аварии, о которой он же и должен предупреждать.
 
 ## Быстрый старт
 
@@ -176,7 +180,8 @@ rsync -a --exclude .git --exclude .env ./ ubuntu@СЕРВЕР:/opt/samoylove-met
 
 # 2. Секреты (один раз; повторный запуск ничего не перезапишет).
 #    Токен бота выдаёт @BotFather — придумать его скрипту нечем, поэтому без
-#    переменной он останавливается: Alertmanager без токена не стартует.
+#    переменной он останавливается: контактная точка Grafana без токена не
+#    доставит ни одного сообщения.
 ssh ubuntu@СЕРВЕР "TELEGRAM_BOT_TOKEN='...' bash /opt/samoylove-metrics/server/bootstrap.sh"
 
 # 3. Запуск
@@ -204,37 +209,42 @@ sudo certbot certonly --webroot -w /var/www/metrics-acme -d metrics.samoy.love
 применяет его тем же `nginx-apply.sh` — с диффом в логе, бэкапом и откатом,
 если `nginx -t` не прошёл.
 
-Доступ — два рубежа: сначала basic-auth nginx, затем логин Grafana. Пароли
-лежат только на сервере: basic-auth в `/etc/nginx/.htpasswd-metrics`,
-администратор Grafana в `/opt/samoylove-metrics/.env`, токен телеграм-бота в
-`/opt/samoylove-metrics/telegram-bot-token`. В репозитории их нет и быть не
-должно. Все три файла лежат **рядом** с каталогом релизов, а не внутри него:
+Доступ — два рубежа: сначала basic-auth nginx, затем логин Grafana. Пароли и
+токены лежат только на сервере: basic-auth в `/etc/nginx/.htpasswd-metrics`,
+администратор Grafana и токен телеграм-бота — оба в `/opt/samoylove-metrics/.env`
+(токен читает контактная точка через `$__env{TELEGRAM_BOT_TOKEN}`, см.
+`grafana/provisioning/alerting/contactpoints.yml`). В репозитории их нет и
+быть не должно. Файл лежит **рядом** с каталогом релизов, а не внутри него:
 `current/` меняется с каждой выкаткой, и секрет внутри пришлось бы возить
 через сборку.
 
-Куда слать оповещения — не секрет, а адрес: `chat_id` задан прямо в
-[`alertmanager/alertmanager.yml`](alertmanager/alertmanager.yml). Проверить,
-что бот действительно достаёт до чата, стоит до первой аварии, а не во время:
+Куда слать оповещения — не секрет, а адрес: `chatid` задан прямо в
+[`grafana/provisioning/alerting/contactpoints.yml`](grafana/provisioning/alerting/contactpoints.yml).
+Проверить, что бот действительно достаёт до чата, стоит до первой аварии, а
+не во время:
 
 ```bash
-curl -s "https://api.telegram.org/bot$(sudo cat /opt/samoylove-metrics/telegram-bot-token)/sendMessage" \
+curl -s "https://api.telegram.org/bot$(sudo grep TELEGRAM_BOT_TOKEN /opt/samoylove-metrics/.env | cut -d= -f2-)/sendMessage" \
     -d chat_id=173418650 -d text='проверка связи'
 ```
 
 Бот не может написать первым: пока адресат не нажал в диалоге «Start»,
-Telegram отвечает 403, и это выглядит ровно как тишина в чате. Само по себе
-такое молчание ловится правилом `AlertNotificationsFailing` — но сообщить о
-себе оно, разумеется, не сможет: сломан ровно тот путь, которым оно бы ушло.
+Telegram отвечает 403, и это выглядит ровно как тишина в чате. Раньше это
+молчание ловило отдельное правило (`AlertNotificationsFailing`), следившее за
+Alertmanager; теперь доставку делает сама Grafana, и увидеть отказ можно в
+её логе или на странице `/alerting/list` — правила, которое сообщило бы об
+этом в тот же Telegram, больше нет: сломан был бы ровно тот путь, которым оно
+бы ушло.
 
 ## Структура
 
 | Путь | Назначение |
 |---|---|
 | `docker-compose.yml` | весь стек: образы, лимиты, тома, привязка к `127.0.0.1` |
-| `prometheus/prometheus.yml` | цели сбора и интервалы |
-| `prometheus/rules/infra.yml` | правила: хост, юниты, сертификаты, доступность |
-| `prometheus/rules/product.yml` | правила: лаунчер, snakes, посещаемость, статус-страница |
-| `alertmanager/alertmanager.yml` | маршруты, подавление и шаблон сообщения в Telegram |
+| `prometheus/prometheus.yml` | цели сбора и интервалы (без правил — они в Grafana) |
+| `grafana/provisioning/alerting/rules.yml` | правила: хост, юниты, сайты, лаунчер, snakes, статус-страница |
+| `grafana/provisioning/alerting/contactpoints.yml` | получатель Telegram, токен, шаблон сообщения, скриншот |
+| `grafana/provisioning/alerting/policies.yml` | маршрутизация по `severity` |
 | `grafana/dashboards/overview.json` | сводка: доступность проектов, посещаемость, ресурсы сервера |
 | `grafana/dashboards/chillhub.json` | лаунчер: сайт, публичный API, админка, телеметрия клиента |
 | `grafana/dashboards/snakes.json` | змейки: матчи, бой, соединения, тик сервера |
@@ -257,34 +267,45 @@ Telegram отвечает 403, и это выглядит ровно как ти
 
 | Гарантия | Чем обеспечена |
 |---|---|
-| Конфигурация Prometheus разбирается, правила валидны | `promtool check config` и `check rules` в CI |
-| Маршруты и шаблон сообщения разбираются | `amtool check-config` в CI |
-| Версии promtool и amtool совпадают с выкаченными | CI берёт обе из `docker-compose.yml` |
+| Конфигурация Prometheus (цели, интервалы) разбирается | `promtool check config` в CI |
 | Дашборды — валидный JSON и смотрят в настоящий источник данных | сверка uid с провижинингом в CI |
 | Файл compose собирается | `docker compose config --quiet` в CI |
-| YAML по всему репозиторию корректен | `yamllint` в CI |
+| Синтаксис YAML по всему репозиторию корректен | `yamllint` в CI |
 | Персональные данные не могут попасть в метрики | в формате журнала нет IP, User-Agent, Referer и строки запроса |
 | Сканер не зальёт TSDB рядами | ограничение кардинальности в `nginxlog/nginxlog.yml` |
 | Метрики недоступны из интернета | контейнеры слушают `127.0.0.1`, впереди nginx с basic-auth |
 | История переживает пересоздание контейнеров | именованные тома Docker, а не каталоги в репозитории |
-| Заглушка, поставленная в аварию, переживает выкатку | silence'ы Alertmanager — в именованном томе |
-| Панели переживают потерю тома Grafana | дашборды и источник данных провижинятся из файлов |
+| Панели и правила алертинга переживают потерю тома Grafana | дашборды, источник данных и алертинг провижинятся из файлов |
 
-Правила — явный список того, что считается аварией; состояние каждого
-по-прежнему видно в `/prometheus/alerts`. Каждое обязано нести метку
-`severity`: маршруты в Alertmanager разводятся по ней и только по ней, и
-правило без метки тихо уедет в общий поток вместо того, чтобы разбудить.
+**Чего CI НЕ проверяет** после переезда в Grafana: `rules.yml`,
+`contactpoints.yml` и `policies.yml` проходят только синтаксис YAML.
+Семантику — правильный тип узла в `data`, реальность uid датасорса, схему
+условия — раньше ловил `promtool check rules`/`amtool check-config` для
+Prometheus/Alertmanager; готового аналога для формата провижининга Grafana
+под рукой нет. Опечатка в этих трёх файлах обнаружится только при старте
+Grafana (см. её логи) или на странице `/alerting/list` — перед выкаткой
+правок в алертинг стоит поднять стек и проверить это глазами, зелёный CI
+здесь не гарантия.
+
+Правила — явный список того, что считается аварией; состояние каждого видно
+в Grafana на `/alerting/list`. Каждое обязано нести метку `severity`:
+маршрутизация разводится по ней и только по ней, и правило без метки тихо
+уедет в общий поток вместо того, чтобы разбудить.
 
 Точного числа правил здесь нет намеренно. Оно стояло в этом абзаце и
 разошлось с действительностью молча — ровно тот способ ошибаться, от которого
 защищает весь остальной репозиторий. Считать их надо в
-[`prometheus/rules/`](prometheus/rules), а не здесь.
+[`grafana/provisioning/alerting/rules.yml`](grafana/provisioning/alerting/rules.yml), а не здесь.
 
-Два правила про доставку (`AlertmanagerDown`, `AlertNotificationsFailing`)
-сообщить о себе не могут — сломан ровно тот путь, которым они бы ушли.
-Бесполезными это их не делает: молчащий мониторинг снаружи неотличим от
-спокойного, и вопрос «почему за неделю ни одного сообщения» проверяется
-именно здесь.
+Двух правил про доставку (`AlertmanagerDown`, `AlertNotificationsFailing`)
+здесь больше нет — они проверяли отдельный Alertmanager, а его в стеке не
+стало: правила и доставка теперь в одном процессе, и если этот процесс
+недоступен, сообщить об этом некому в любом случае. Что подавление одного
+алерта другим (`inhibit_rules` из старого `alertmanager.yml` — SiteDown
+гасил ProbeLatencyHigh по тому же instance, critical гасил warning по тому
+же alertname+instance) тоже потеряно и не имеет прямого аналога в Grafana
+Alerting, см. комментарий в начале `rules.yml`. На практике это значит: из-за
+одного упавшего сайта в чат теперь может прийти больше одного сообщения.
 
 ## Как добавить цель сбора
 

@@ -10,16 +10,11 @@ global:
   external_labels:
     server: samoylove-oracle
 
-rule_files:
-  - /etc/prometheus/rules/*.yml
-
-# Сработавшие правила уезжают в Alertmanager, а он — в Telegram. Раньше блока
-# не было вовсе: правила вычислялись, зажигались в /prometheus/alerts и там же
-# гасли, никого не потревожив.
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: ["alertmanager:9093"]
+# Правила алертинга здесь больше не живут: они переехали в Grafana
+# (grafana/provisioning/alerting) вместе с маршрутизацией и доставкой в
+# Telegram — там же, где раньше стоял отдельный Alertmanager. Этот Prometheus
+# остаётся источником данных: у Grafana свой планировщик evaluation, ему
+# rule_files и alerting-блок не нужны.
 
 scrape_configs:
   # --- Сам Prometheus -------------------------------------------------------
@@ -34,13 +29,6 @@ scrape_configs:
       - targets: ["node-exporter:9100"]
         labels:
           instance: samoylove-oracle
-
-  # --- Alertmanager ---------------------------------------------------------
-  # Канал доставки наблюдает за собой сам: по этим метрикам живут правила
-  # группы infra-alerting (см. rules/infra.yml).
-  - job_name: alertmanager
-    static_configs:
-      - targets: ["alertmanager:9093"]
 
   # --- Grafana --------------------------------------------------------------
   - job_name: grafana
