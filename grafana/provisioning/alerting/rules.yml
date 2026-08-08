@@ -67,7 +67,7 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: critical }
-        annotations: { summary: "Less than 10% free space left on /" }
+        annotations: { summary: "Less than 10% free space left on /", __dashboardUid__: "samoylove-overview", __panelId__: "18" }
 
       - uid: infra-memory-low
         title: MemoryLow
@@ -96,7 +96,7 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: warning }
-        annotations: { summary: "Less than 10% of memory available" }
+        annotations: { summary: "Less than 10% of memory available", __dashboardUid__: "samoylove-overview", __panelId__: "17" }
 
       - uid: infra-cpu-saturated
         title: CpuSaturated
@@ -125,7 +125,7 @@ groups:
         execErrState: Error
         for: 30m
         labels: { severity: warning }
-        annotations: { summary: "CPU above 90% for half an hour" }
+        annotations: { summary: "CPU above 90% for half an hour", __dashboardUid__: "samoylove-overview", __panelId__: "16" }
 
   - orgId: 1
     name: infra-services
@@ -159,7 +159,7 @@ groups:
         execErrState: Error
         for: 5m
         labels: { severity: critical }
-        annotations: { summary: "Unit {{ $labels.name }} is not active" }
+        annotations: { summary: "Unit {{ $labels.name }} is not active", __dashboardUid__: "samoylove-overview", __panelId__: "25" }
 
       - uid: infra-unit-failed
         title: UnitFailed
@@ -188,7 +188,7 @@ groups:
         execErrState: Error
         for: 5m
         labels: { severity: critical }
-        annotations: { summary: "Unit {{ $labels.name }} is in failed state" }
+        annotations: { summary: "Unit {{ $labels.name }} is in failed state", __dashboardUid__: "samoylove-overview", __panelId__: "25" }
 
   - orgId: 1
     name: infra-deploy-events
@@ -222,7 +222,7 @@ groups:
         execErrState: Error
         for: 1m
         labels: { severity: critical, source: textfile }
-        annotations: { summary: "Deploy event waiting in the queue for over 5 minutes — release messages are not delivered" }
+        annotations: { summary: "Deploy event waiting in the queue for over 5 minutes — release messages are not delivered", __dashboardUid__: "samoylove-status", __panelId__: "35" }
 
       - uid: infra-deploy-event-metrics-missing
         title: DeployEventMetricsMissing
@@ -251,7 +251,7 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: warning, source: textfile }
-        annotations: { summary: "Bot metrics carry no deploy event counters — the event path is unobservable" }
+        annotations: { summary: "Bot metrics carry no deploy event counters — the event path is unobservable", __dashboardUid__: "samoylove-status", __panelId__: "35" }
 
   - orgId: 1
     name: infra-sites
@@ -285,7 +285,7 @@ groups:
         execErrState: Error
         for: 5m
         labels: { severity: critical }
-        annotations: { summary: "{{ $labels.instance }} is not responding" }
+        annotations: { summary: "{{ $labels.instance }} is not responding", __dashboardUid__: "samoylove-overview", __panelId__: "28" }
 
       - uid: infra-certificate-expiring-soon
         title: CertificateExpiringSoon
@@ -314,7 +314,7 @@ groups:
         execErrState: Error
         for: 1h
         labels: { severity: warning }
-        annotations: { summary: "Certificate for {{ $labels.instance }} expires in less than 14 days" }
+        annotations: { summary: "Certificate for {{ $labels.instance }} expires in less than 14 days", __dashboardUid__: "samoylove-overview", __panelId__: "29" }
 
       - uid: infra-probe-latency-high
         title: ProbeLatencyHigh
@@ -343,7 +343,7 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: warning }
-        annotations: { summary: "{{ $labels.instance }} probe takes longer than 3 seconds" }
+        annotations: { summary: "{{ $labels.instance }} probe takes longer than 3 seconds", __dashboardUid__: "samoylove-overview", __panelId__: "30" }
 
   - orgId: 1
     name: product-sites
@@ -382,7 +382,7 @@ groups:
         execErrState: Error
         for: 10m
         labels: { severity: critical }
-        annotations: { summary: "{{ $labels.host }}: more than 5% of responses are 5xx" }
+        annotations: { summary: "{{ $labels.host }}: more than 5% of responses are 5xx", __dashboardUid__: "samoylove-overview", __panelId__: "10" }
 
       - uid: product-traffic-collapse
         title: TrafficCollapse
@@ -416,7 +416,7 @@ groups:
         execErrState: Error
         for: 2h
         labels: { severity: warning }
-        annotations: { summary: "{{ $labels.host }}: traffic is five times lower than a week ago" }
+        annotations: { summary: "{{ $labels.host }}: traffic is five times lower than a week ago", __dashboardUid__: "samoylove-overview", __panelId__: "32" }
 
       - uid: product-site-latency-high
         title: SiteLatencyHigh
@@ -445,7 +445,7 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: warning }
-        annotations: { summary: "{{ $labels.host }}: p95 response time above one second" }
+        annotations: { summary: "{{ $labels.host }}: p95 response time above one second", __dashboardUid__: "samoylove-overview", __panelId__: "33" }
 
       - uid: product-access-log-parse-failing
         title: AccessLogParseFailing
@@ -474,7 +474,7 @@ groups:
         execErrState: Error
         for: 30m
         labels: { severity: warning }
-        annotations: { summary: "nginx log lines are not parsed — log_format and exporter format have diverged" }
+        annotations: { summary: "nginx log lines are not parsed — log_format and exporter format have diverged", __dashboardUid__: "samoylove-overview", __panelId__: "34" }
 
   - orgId: 1
     name: product-chillhub
@@ -513,7 +513,7 @@ groups:
         execErrState: Error
         for: 30m
         labels: { severity: critical }
-        annotations: { summary: "More than 40% of installs in the last hour did not finish" }
+        annotations: { summary: "More than 40% of installs in the last hour did not finish", __dashboardUid__: "samoylove-chillhub", __panelId__: "39" }
 
       - uid: product-diff-updates-not-working
         title: DiffUpdatesNotWorking
@@ -547,7 +547,7 @@ groups:
         execErrState: Error
         for: 1h
         labels: { severity: warning }
-        annotations: { summary: "Over 80% of updates downloaded the full build — diff savings are gone" }
+        annotations: { summary: "Over 80% of updates downloaded the full build — diff savings are gone", __dashboardUid__: "samoylove-chillhub", __panelId__: "40" }
 
       - uid: product-hash-mismatches-high
         title: HashMismatchesHigh
@@ -576,7 +576,7 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: warning }
-        annotations: { summary: "More than ten files failed to match the manifest within an hour" }
+        annotations: { summary: "More than ten files failed to match the manifest within an hour", __dashboardUid__: "samoylove-chillhub", __panelId__: "36" }
 
       - uid: product-launcher-error-rate-high
         title: LauncherErrorRateHigh
@@ -608,7 +608,7 @@ groups:
         execErrState: Error
         for: 10m
         labels: { severity: critical }
-        annotations: { summary: "More than 5% of launcher responses are 5xx" }
+        annotations: { summary: "More than 5% of launcher responses are 5xx", __dashboardUid__: "samoylove-chillhub", __panelId__: "41" }
 
       - uid: product-telemetry-rejected
         title: TelemetryRejected
@@ -637,7 +637,7 @@ groups:
         execErrState: Error
         for: 30m
         labels: { severity: warning }
-        annotations: { summary: "More than 20 rejected calls to /metrics/report within an hour" }
+        annotations: { summary: "More than 20 rejected calls to /metrics/report within an hour", __dashboardUid__: "samoylove-chillhub", __panelId__: "999" }
 
   - orgId: 1
     name: product-status
@@ -671,7 +671,7 @@ groups:
         execErrState: Error
         for: 5m
         labels: { severity: critical, source: textfile }
-        annotations: { summary: "Status page agent has not polled services for over 10 minutes" }
+        annotations: { summary: "Status page agent has not polled services for over 10 minutes", __dashboardUid__: "samoylove-status", __panelId__: "8" }
 
       - uid: product-status-bot-stale
         title: StatusBotStale
@@ -700,7 +700,7 @@ groups:
         execErrState: Error
         for: 5m
         labels: { severity: warning, source: textfile }
-        annotations: { summary: "Telegram bot has not updated its metrics for over 10 minutes" }
+        annotations: { summary: "Telegram bot has not updated its metrics for over 10 minutes", __dashboardUid__: "samoylove-status", __panelId__: "17" }
 
       - uid: product-telegram-delivery-failing
         title: TelegramDeliveryFailing
@@ -729,7 +729,7 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: critical }
-        annotations: { summary: "Bot cannot send messages: incident notifications will not arrive" }
+        annotations: { summary: "Bot cannot send messages: incident notifications will not arrive", __dashboardUid__: "samoylove-status", __panelId__: "18" }
 
   - orgId: 1
     name: product-snakes
@@ -763,7 +763,7 @@ groups:
         execErrState: Error
         for: 5m
         labels: { severity: critical }
-        annotations: { summary: "Snakes profile storage is read-only — player progress will not survive a restart" }
+        annotations: { summary: "Snakes profile storage is read-only — player progress will not survive a restart", __dashboardUid__: "samoylove-snakes", __panelId__: "27" }
 
       - uid: product-snakes-profile-saves-failing
         title: SnakesProfileSavesFailing
@@ -792,4 +792,4 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: warning }
-        annotations: { summary: "Snakes cannot write profiles.json — progress is being lost" }
+        annotations: { summary: "Snakes cannot write profiles.json — progress is being lost", __dashboardUid__: "samoylove-snakes", __panelId__: "28" }

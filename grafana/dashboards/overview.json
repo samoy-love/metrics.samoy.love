@@ -70,7 +70,7 @@
         },
         "colorMode": "background",
         "graphMode": "none",
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "fieldConfig": {
         "defaults": {
@@ -125,7 +125,7 @@
         },
         "colorMode": "background",
         "graphMode": "none",
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "fieldConfig": {
         "defaults": {
@@ -180,7 +180,7 @@
         },
         "colorMode": "background",
         "graphMode": "none",
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "fieldConfig": {
         "defaults": {
@@ -235,7 +235,7 @@
         },
         "colorMode": "background",
         "graphMode": "none",
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "fieldConfig": {
         "defaults": {
@@ -290,7 +290,7 @@
         },
         "colorMode": "background",
         "graphMode": "none",
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "fieldConfig": {
         "defaults": {
@@ -345,7 +345,7 @@
         },
         "colorMode": "background",
         "graphMode": "none",
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "fieldConfig": {
         "defaults": {
@@ -454,12 +454,12 @@
     },
     {
       "type": "timeseries",
-      "title": "Доля ошибок по сайтам",
-      "description": "Проценты 4xx и 5xx. Постоянный ненулевой уровень у одного сайта — повод посмотреть его отдельно.",
+      "title": "Доля 5xx по сайтам",
+      "description": "Только 5xx — это всегда наша вина, 4xx намеренно не считаются (сканеры, битые ссылки). Тот же запрос, что у правила SiteErrorRateHigh: держит устойчиво выше 5% при заметном трафике — авария.",
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * (sum by (host) (rate(samoylove_site_http_response_count_total{status=~\"[45]..\"}[30m])) or vector(0)) / clamp_min(sum by (host) (rate(samoylove_site_http_response_count_total[30m])), 0.001)",
+          "expr": "100 * (sum by (host) (rate(samoylove_site_http_response_count_total{status=~\"5..\"}[15m])) or vector(0)) / clamp_min(sum by (host) (rate(samoylove_site_http_response_count_total[15m])), 0.001)",
           "legendFormat": "{{host}}"
         }
       ],
@@ -1302,7 +1302,7 @@
     {
       "type": "state-timeline",
       "title": "Службы (systemd)",
-      "description": "Провал полосы — служба падала, даже если сейчас поднялась. Постоянные службы меряются активностью, задания по таймеру — результатом последнего запуска: между запусками они штатно неактивны, и требовать от них active означало бы красить их в красное круглые сутки.",
+      "description": "Провал полосы — служба падала, даже если сейчас поднялась. Постоянные службы (ряд A) меряются активностью: требовать active имеет смысл, только пока они обязаны работать непрерывно. Ряд B — state=failed по ВСЕМ юнитам сразу, включая задания по таймеру: между запусками они штатно неактивны, но failed не бывает нормальным никогда, поэтому здесь фильтра по имени нет.",
       "targets": [
         {
           "refId": "A",
@@ -1311,8 +1311,8 @@
         },
         {
           "refId": "B",
-          "expr": "1 - node_systemd_unit_state{name=~\"(status-agent|chillhub-backup|snakes-backup-profiles)\\\\.service\",state=\"failed\"}",
-          "legendFormat": "{{name}} (по таймеру)"
+          "expr": "1 - node_systemd_unit_state{state=\"failed\"}",
+          "legendFormat": "{{name}} (failed)"
         }
       ],
       "options": {
@@ -1440,6 +1440,436 @@
         "w": 12,
         "x": 12,
         "y": 39
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Внешние пробы",
+      "id": 27,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 47
+      },
+      "panels": [],
+      "description": "blackbox_exporter: DNS, TLS, HTTP — снаружи, тем же путём, что идёт посетитель. Отдельный источник от status_check_up агента статус-страницы (тот дёргает эндпоинты изнутри сети), поэтому числа здесь и там могут разойтись на пару секунд задержки, но не должны разойтись по «жив/мёртв»."
+    },
+    {
+      "type": "state-timeline",
+      "title": "Доступность сайтов (проба)",
+      "description": "probe_success по каждому домену — тот же сигнал, что судит правило SiteDown. Провал полосы означает, что сайт не открылся снаружи: не важно, DNS, TLS или сам сервер.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "probe_success",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mergeValues": true,
+        "showValue": "never"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 80
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "недоступно",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "работает",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 28,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 48
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Сертификаты: дней до истечения (проба)",
+      "description": "Считает сама проба, а не status-агент: (probe_ssl_earliest_cert_expiry - time()) / 86400 — ровно формула правила CertificateExpiringSoon. Пила с обновлением раз в квартал — норма, монотонное падение к нулю — сломанное автопродление.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(probe_ssl_earliest_cert_expiry - time()) / 86400",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 7
+              },
+              {
+                "color": "green",
+                "value": 21
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 29,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 48
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Время внешней пробы",
+      "description": "DNS + TLS + ответ, целиком. Не путать с «Время ответа, p95» на дашбордах проектов — там время самого сервера из журнала nginx, здесь — то, что реально ждёт браузер снаружи, включая сеть. Формула правила ProbeLatencyHigh: probe_duration_seconds.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "probe_duration_seconds",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1.5
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "decimals": 3
+        },
+        "overrides": []
+      },
+      "id": 30,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Сайты — сигналы алертов",
+      "id": 31,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 64
+      },
+      "panels": [],
+      "description": "Три правила без своего графика раньше: у каждого теперь панель с ровно той формулой, что видит правило, — здесь же читается скриншот, который придёт в Telegram."
+    },
+    {
+      "type": "timeseries",
+      "title": "Посещаемость: сейчас против недели назад",
+      "description": "100% — трафик такой же, как в этот час неделю назад; правило TrafficCollapse срабатывает ниже 20%. Сравнение с прошлой неделей, а не с абсолютным числом: у личных проектов нет «нормального» количества визитов, только недельный ритм.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum by (host) (increase(samoylove_site_http_response_count_total{path=\"/\"}[6h])) / clamp_min(sum by (host) (increase(samoylove_site_http_response_count_total{path=\"/\"}[6h] offset 1w)), 1)",
+          "legendFormat": "{{host}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 20
+              },
+              {
+                "color": "green",
+                "value": 60
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 32,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 65
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Время ответа сайтов, p95",
+      "description": "По всем доменам разом, окно 15 минут — формула правила SiteLatencyHigh. Время самого сервера из журнала nginx, без сети и TLS (это «Время внешней пробы» выше).",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le, host) (rate(samoylove_site_http_response_time_seconds_hist_bucket[15m])))",
+          "legendFormat": "{{host}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "decimals": 3
+        },
+        "overrides": []
+      },
+      "id": 33,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 65
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Ошибки разбора журнала nginx",
+      "description": "Строки журнала, не разобранные экспортёром: формат в deploy-kit и строка разбора экспортёра разошлись молча, метрики посещаемости замерли на месте, хотя сайт жив. Формула правила AccessLogParseFailing.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(samoylove_site_parse_errors_total[30m])",
+          "legendFormat": "{{host}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 34,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 65
       },
       "datasource": {
         "type": "prometheus",

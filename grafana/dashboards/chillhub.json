@@ -69,7 +69,7 @@
         },
         "colorMode": "background",
         "graphMode": "none",
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "fieldConfig": {
         "defaults": {
@@ -124,7 +124,7 @@
         },
         "colorMode": "background",
         "graphMode": "none",
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "fieldConfig": {
         "defaults": {
@@ -179,7 +179,7 @@
         },
         "colorMode": "background",
         "graphMode": "none",
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "fieldConfig": {
         "defaults": {
@@ -1904,6 +1904,224 @@
         "w": 12,
         "x": 12,
         "y": 78
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Сигналы алертов",
+      "id": 38,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 86
+      },
+      "panels": [],
+      "description": "Доли и проценты, которых не было в счётчиках выше: у каждого правила ниже теперь панель с ровно той формулой, что оно вычисляет."
+    },
+    {
+      "type": "timeseries",
+      "title": "Доля неуспешных установок",
+      "description": "result != ok — это и ошибка, и отмена: бросивший установку на середине для продукта тоже неудача. Формула правила InstallFailureRateHigh; порог 40% защищён минимумом в 5 установок за час — на трёх запросах доля скачет от 0 до 33% сама по себе.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum(increase(chillhub_game_installs_total{result!=\"ok\"}[1h])) / clamp_min(sum(increase(chillhub_game_installs_total[1h])), 1)",
+          "legendFormat": "доля неуспешных"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 15
+              },
+              {
+                "color": "red",
+                "value": 40
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "id": 39,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 87
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Доля обновлений целиком (без диффа)",
+      "description": "Весь смысл лаунчера — качать только изменившиеся файлы. mode=full как норма означает, что дифф не работает: сборка пересобралась целиком, хеши не совпали ни у кого. Формула правила DiffUpdatesNotWorking, окно 6 часов.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum(increase(chillhub_game_updates_total{result=\"ok\",mode=\"full\"}[6h])) / clamp_min(sum(increase(chillhub_game_updates_total{result=\"ok\"}[6h])), 1)",
+          "legendFormat": "доля mode=full"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 40
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "id": 40,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 87
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Доля ошибок публичного API",
+      "description": "5xx к общему числу ответов, окно 15 минут — формула правила LauncherErrorRateHigh. Раздельные счётчики ошибок и запросов есть выше («Ошибок за сутки», «Коды ответов API»), а доли до сих пор не было.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum(rate(chillhub_http_requests_total{code=~\"5..\"}[15m])) / clamp_min(sum(rate(chillhub_http_requests_total[15m])), 0.001)",
+          "legendFormat": "доля 5xx"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "id": 41,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 87
       },
       "datasource": {
         "type": "prometheus",
