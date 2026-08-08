@@ -209,14 +209,18 @@ itself: the target sets `NGINX_CONF` and `NGINX_DEST` (see
 `nginx -t` fails.
 
 Access goes through two gates: nginx basic auth first, then the Grafana login.
-Credentials and tokens exist only on the server — basic auth in
-`/etc/nginx/.htpasswd-metrics`, the Grafana admin and the Telegram bot token
-both in `/opt/samoylove-metrics/.env` (the contact point reads the token via
+Credentials and tokens exist only on the server, all of them in
+`/opt/samoylove-metrics/.env` — basic auth lives separately, in
+`/etc/nginx/.htpasswd-metrics`, while `.env` holds the Grafana admin, the
+Telegram bot token (the contact point reads it via
 `$__env{TELEGRAM_BOT_TOKEN}`, see
-`grafana/provisioning/alerting/contactpoints.yml`) — and are never kept in
-this repository. The file sits **next to** the releases directory, not inside
-it: `current/` changes with every deploy, and a secret inside would have to
-travel through the build.
+`grafana/provisioning/alerting/contactpoints.yml`), and a secret shared
+between Grafana and `renderer` (`GF_RENDERING_RENDERER_TOKEN` /
+`GIR_AUTH_TOKEN` — the same value under two names; without it Grafana 13
+refuses to start at all, since the default `"-"` token is rejected in
+production mode) — none of it is ever kept in this repository. The file sits
+**next to** the releases directory, not inside it: `current/` changes with
+every deploy, and a secret inside would have to travel through the build.
 
 Where the alerts go is an address, not a secret: `chatid` sits right in
 [`grafana/provisioning/alerting/contactpoints.yml`](grafana/provisioning/alerting/contactpoints.yml).

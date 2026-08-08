@@ -107,6 +107,11 @@ services:
       GF_RENDERING_SERVER_URL: http://renderer:8081/render
       GF_RENDERING_CALLBACK_URL: http://grafana:3000/
       GF_UNIFIED_ALERTING_SCREENSHOTS_CAPTURE: "true"
+      # GF_RENDERING_RENDERER_TOKEN — из .env выше (GIR_AUTH_TOKEN ниже несёт
+      # то же значение для renderer). Обе стороны сверяют его при каждом
+      # запросе на рендер; без общего секрета Grafana 13 отказывается
+      # стартовать вовсе — дефолтный токен "-" запрещён в продакшен-режиме
+      # ([rendering]renderer_token, начиная с grafana-image-renderer v5).
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
@@ -129,6 +134,14 @@ services:
     image: grafana/grafana-image-renderer:v5.12.0@sha256:7fcea1db9aef1428f18bb820ec9e7ae4e25a430679b9fa8e08d56f2195424234
     container_name: samoylove-renderer
     restart: unless-stopped
+    env_file:
+      # GIR_AUTH_TOKEN — общий секрет с Grafana, см. GF_RENDERING_RENDERER_TOKEN
+      # выше. Файл общий с Grafana: renderer читает из него только эту
+      # переменную, остальные (пароль администратора, токен бота) ему не нужны
+      # и никак не используются — .env один на весь стек по той же причине,
+      # по которой он один у Grafana: секрет живёт рядом с releases/, а не
+      # внутри артефакта выкатки.
+      - /opt/samoylove-metrics/.env
     environment:
       ENABLE_METRICS: "false"
     deploy:
