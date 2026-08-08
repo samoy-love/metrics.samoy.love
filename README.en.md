@@ -216,7 +216,7 @@ Telegram bot token (the contact point reads it via
 `$__env{TELEGRAM_BOT_TOKEN}`, see
 `grafana/provisioning/alerting/contactpoints.yml`), and a secret shared
 between Grafana and `renderer` (`GF_RENDERING_RENDERER_TOKEN` /
-`GIR_AUTH_TOKEN` — the same value under two names; without it Grafana 13
+`AUTH_TOKEN` — the same value under two names; without it Grafana 13
 refuses to start at all, since the default `"-"` token is rejected in
 production mode) — none of it is ever kept in this repository. The file sits
 **next to** the releases directory, not inside it: `current/` changes with

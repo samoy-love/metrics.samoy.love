@@ -47,7 +47,7 @@ GF_SECURITY_ADMIN_USER=admin
 GF_SECURITY_ADMIN_PASSWORD=${pass}
 TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
 GF_RENDERING_RENDERER_TOKEN=${render_token}
-GIR_AUTH_TOKEN=${render_token}
+AUTH_TOKEN=${render_token}
 EOF
     echo "  .env создан, пароль Grafana: ${pass}"
 fi
