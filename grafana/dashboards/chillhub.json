@@ -1371,6 +1371,65 @@
       }
     },
     {
+      "type": "timeseries",
+      "title": "Отвергнуто по причине",
+      "description": "unknown_game — клиент шлёт gameId, которого нет в реестре (игру удалили/переименовали, а старые клиенты ещё отчитываются по старому id). bad_body/unknown_event — разъехался контракт после выкатки клиента. store_failed — сервер не смог дописать файл (диск).",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "60 * sum by (reason) (rate(chillhub_telemetry_rejected_total[10m]))",
+          "legendFormat": "{{reason}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqpm",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 999,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 57
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
       "type": "row",
       "title": "Клиент лаунчера",
       "id": 29,
@@ -1379,7 +1438,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 57
+        "y": 65
       },
       "panels": [],
       "description": "Это шлёт сам установленный лаунчер. Пусто здесь означает не поломку, а что клиент ещё не отчитывался: метрики заведены заранее, под уже написанный сбор. Панели стоят на месте намеренно — заводить их задним числом означает не увидеть первых же данных."
@@ -1428,7 +1487,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 58
+        "y": 66
       },
       "datasource": {
         "type": "prometheus",
@@ -1479,7 +1538,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 58
+        "y": 66
       },
       "datasource": {
         "type": "prometheus",
@@ -1530,7 +1589,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 58
+        "y": 66
       },
       "datasource": {
         "type": "prometheus",
@@ -1581,7 +1640,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 58
+        "y": 66
       },
       "datasource": {
         "type": "prometheus",
@@ -1645,7 +1704,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 62
+        "y": 70
       },
       "datasource": {
         "type": "prometheus",
@@ -1709,7 +1768,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 62
+        "y": 70
       },
       "datasource": {
         "type": "prometheus",
@@ -1774,7 +1833,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 70
+        "y": 78
       },
       "datasource": {
         "type": "prometheus",
@@ -1844,7 +1903,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 70
+        "y": 78
       },
       "datasource": {
         "type": "prometheus",

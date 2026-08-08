@@ -33,6 +33,7 @@ jobs:
   commits:
     name: Коммиты без упоминаний ИИ
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
@@ -59,18 +60,21 @@ jobs:
   check:
     name: Проверка конфигов
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
       - name: Синтаксис YAML
         run: |
           pipx install yamllint
-          # alertmanager.yml исключён из проверки длины строки: шаблон
-          # сообщения — это одна строка Go-шаблона, и переносить её нельзя,
-          # переносы уедут в текст сообщения.
+          # grafana/provisioning/alerting исключён из проверки длины строки:
+          # шаблон сообщения в contactpoints.yml и PromQL-выражения в
+          # rules.yml — цельные строки, переносить их нельзя, перенос уедет
+          # либо в текст сообщения, либо в саму формулу.
           yamllint -d '{extends: relaxed, rules: {line-length: {max: 120}}}' \
-            prometheus blackbox nginxlog grafana/provisioning .github
-          yamllint -d '{extends: relaxed, rules: {line-length: disable}}' alertmanager
+            prometheus blackbox nginxlog grafana/provisioning/dashboards \
+            grafana/provisioning/datasources .github
+          yamllint -d '{extends: relaxed, rules: {line-length: disable}}' grafana/provisioning/alerting
 
       # Версия promtool берётся из docker-compose.yml, а не пишется здесь
       # отдельно: два места с версией разъезжаются, одно — нет.
@@ -81,9 +85,9 @@ jobs:
           test -n "$version" || { echo "не нашёл версию prometheus в docker-compose.yml"; exit 1; }
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      # prometheus.yml ссылается на правила абсолютным путём — тем самым, по
-      # которому они лежат в контейнере. Раскладываем их так же, иначе
-      # promtool честно ругнётся на несуществующий glob.
+      # Правила алертинга больше не в этих файлах — они переехали в Grafana
+      # (grafana/provisioning/alerting), у promtool там проверять нечего.
+      # Синтаксис самого prometheus.yml (цели, интервалы) он всё ещё видит.
       - name: Проверка конфигурации Prometheus
         run: |
           docker run --rm --entrypoint promtool \
@@ -91,34 +95,14 @@ jobs:
             prom/prometheus:${{ steps.prom.outputs.version }} \
             check config /etc/prometheus/prometheus.yml
 
-      - name: Проверка правил оповещений
-        run: |
-          docker run --rm --entrypoint promtool \
-            -v "$PWD/prometheus:/etc/prometheus:ro" \
-            prom/prometheus:${{ steps.prom.outputs.version }} \
-            check rules /etc/prometheus/rules/product.yml /etc/prometheus/rules/infra.yml
-
-      # Маршруты, матчеры и шаблон сообщения ломаются так же молча, как всё
-      # остальное здесь: Alertmanager с плохим конфигом не стартует, и узнать
-      # об этом можно только когда авария уже случилась, а чат молчит.
-      - name: Версия Alertmanager из compose
-        id: am
-        run: |
-          version=$(sed -n 's|.*image: prom/alertmanager:\(v[0-9.]*\).*|\1|p' docker-compose.yml)
-          test -n "$version" || { echo "не нашёл версию alertmanager в docker-compose.yml"; exit 1; }
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Проверка конфигурации Alertmanager
-        run: |
-          # bot_token_file указывает на серверный путь; подкладываем пустышку,
-          # иначе проверка упадёт на отсутствующем файле, а не на конфиге.
-          mkdir -p /tmp/am && printf 'x' > /tmp/am/telegram-bot-token
-          docker run --rm --entrypoint amtool \
-            -v "$PWD/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro" \
-            -v "/tmp/am/telegram-bot-token:/etc/alertmanager/telegram-bot-token:ro" \
-            prom/alertmanager:${{ steps.am.outputs.version }} \
-            check-config /etc/alertmanager/alertmanager.yml
-
+      # НЕТ семантической проверки rules.yml/contactpoints.yml/policies.yml:
+      # promtool и amtool разбирают формат Prometheus/Alertmanager, а не схему
+      # провижининга Grafana, и готового CLI для неё под рукой нет. yamllint
+      # выше ловит только синтаксис YAML — опечатка в поле схемы (например,
+      # неверный тип узла threshold) обнаружится лишь при старте Grafana.
+      # Именно поэтому перед выкаткой стоит поднять стек и проверить
+      # /alerting/list в UI, а не полагаться на зелёный CI как на полную
+      # гарантию.
       - name: Проверка docker-compose
         run: |
           # env_file указывает на файл рядом с каталогом релизов, а не в
@@ -126,7 +110,7 @@ jobs:
           # Раннеру подкладываем образец по тому же пути — иначе `config`
           # честно упадёт на отсутствующем файле.
           # 644, а не 600: файл читает docker compose от имени пользователя
-          # раннера. Секрета в нём нет — это образец с плейсхолдером.
+          # раннера. Секретов в нём нет — это образец с плейсхолдерами.
           sudo install -D -m 644 .env.example /opt/samoylove-metrics/.env
           docker compose config --quiet
 

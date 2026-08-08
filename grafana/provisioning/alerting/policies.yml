@@ -1,0 +1,29 @@
+# Маршрутизация алертов — перенос route-блока из alertmanager/alertmanager.yml
+# (удалён). Получатель один: канал доставки один и тот же чат, отличается
+# только темп, а темп задаётся маршрутом.
+#
+# group_by: alertname, а НЕ по instance: SiteDown при упавшем nginx срабатывает
+# сразу для шести доменов, и шесть отдельных сообщений об одной аварии — это
+# способ перестать читать чат.
+
+apiVersion: 1
+
+policies:
+  - orgId: 1
+    receiver: telegram
+    group_by: ["alertname"]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 24h
+    routes:
+      # critical — то, что чинят сейчас: недоступный сайт, мёртвый юнит,
+      # кончающийся диск, теряющийся прогресс игроков. Ждать группу дольше
+      # десяти секунд здесь нечего, а напоминание раз в четыре часа —
+      # компромисс: реже забывается, чаще превращается в шум, который
+      # однажды отключают вместе со всем остальным.
+      - receiver: telegram
+        matchers:
+          - severity = critical
+        group_wait: 10s
+        repeat_interval: 4h
+        continue: false

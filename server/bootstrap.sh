@@ -14,41 +14,34 @@ BASIC_USER=samoy.love
 
 cd "$APP_DIR"
 
-# --- Пароль администратора Grafana ---------------------------------------
+# --- Пароль администратора Grafana и токен телеграм-бота ------------------
+# Токен нельзя сгенерировать: его выдаёт @BotFather. Поэтому либо он приходит
+# переменной окружения, либо скрипт останавливается — молча пропустить
+# нельзя. Grafana читает contactpoints.yml с $__env{TELEGRAM_BOT_TOKEN}, и без
+# переменной контактная точка алертинга не поднимется: стек стартует, но
+# доставка в Telegram молчит, а узнать об этом можно только по логам Grafana.
+#
+#   TELEGRAM_BOT_TOKEN='...' bash server/bootstrap.sh
+#
+# Раньше токен уходил в отдельный файл для Alertmanager (с явным chown под
+# его uid). Теперь получатель — Grafana в этом же контейнере, и токен просто
+# строка в .env рядом с паролем администратора: два секрета одного процесса,
+# незачем разводить их по разным путям доставки.
 if [[ -f .env ]]; then
     echo "  .env уже есть — пропускаю"
+elif [[ -z "${TELEGRAM_BOT_TOKEN:-}" ]]; then
+    echo "TELEGRAM_BOT_TOKEN не задан: токен бота выдаёт @BotFather, придумать его нечем." >&2
+    echo "Повторите запуск так: TELEGRAM_BOT_TOKEN='...' bash server/bootstrap.sh" >&2
+    exit 1
 else
     pass=$(openssl rand -base64 24 | tr -d '/+=' | cut -c1-24)
     umask 077
     cat > .env <<EOF
 GF_SECURITY_ADMIN_USER=admin
 GF_SECURITY_ADMIN_PASSWORD=${pass}
+TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
 EOF
     echo "  .env создан, пароль Grafana: ${pass}"
-fi
-
-# --- Токен телеграм-бота для Alertmanager ---------------------------------
-# Единственный секрет, который нельзя сгенерировать: его выдаёт @BotFather.
-# Поэтому либо он приходит переменной окружения, либо скрипт останавливается —
-# молча пропустить нельзя. Alertmanager монтирует этот файл и без него не
-# стартует: стек поднялся бы с одним контейнером в перезапуске по кругу, то
-# есть с мониторингом, который больше не умеет позвать.
-#
-#   TELEGRAM_BOT_TOKEN='...' bash server/bootstrap.sh
-#
-# Владелец — 65534: контейнер Alertmanager ходит от nobody, а файл лежит на
-# хосте, и права 600 у root означали бы «permission denied» при чтении.
-if [[ -f telegram-bot-token ]]; then
-    echo "  telegram-bot-token уже есть — пропускаю"
-elif [[ -n "${TELEGRAM_BOT_TOKEN:-}" ]]; then
-    umask 077
-    printf '%s' "$TELEGRAM_BOT_TOKEN" > telegram-bot-token
-    sudo chown 65534:65534 telegram-bot-token
-    echo "  telegram-bot-token создан"
-else
-    echo "TELEGRAM_BOT_TOKEN не задан: токен бота выдаёт @BotFather, придумать его нечем." >&2
-    echo "Повторите запуск так: TELEGRAM_BOT_TOKEN='...' bash server/bootstrap.sh" >&2
-    exit 1
 fi
 
 # --- Basic-auth для nginx -------------------------------------------------
