@@ -559,7 +559,12 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: histogram_quantile(0.95, sum by (le, host) (rate(samoylove_site_http_response_time_seconds_hist_bucket[15m]))) > 1
+              # path!="/downloads/": скачивание инсталлятора лаунчера — это
+              # передача файла, а не обработка запроса, его request_time растёт
+              # вместе с размером файла и медленным каналом клиента. Трафик
+              # лаунчера редкий, поэтому пара таких скачиваний в окне целиком
+              # определяют p95 и будят алерт без всякой деградации сайта.
+              expr: histogram_quantile(0.95, sum by (le, host) (rate(samoylove_site_http_response_time_seconds_hist_bucket{path!="/downloads/"}[15m]))) > 1
               instant: true
               refId: A
           - refId: C
