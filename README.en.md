@@ -39,9 +39,11 @@ absent instead.
 ![Overview dashboard](docs/dashboard-overview.png)
 
 <sub>Frames captured from the live stand with
-[`docs/render-dashboards.sh`](docs/render-dashboards.sh). Empty panels in the
-ChillHub section are not a fault: the deployed launcher binary is older than
-its exporter, and those metrics appear with the next release.</sub>
+[`docs/render-dashboards.sh`](docs/render-dashboards.sh), which also captures
+the per-project dashboards. Empty panels in the ChillHub client-telemetry
+section are not a fault: the deployed launcher does not send those events yet,
+and the panels are provisioned ahead of time so the first data points are not
+missed.</sub>
 
 ## How it works
 
@@ -93,16 +95,14 @@ expose `/internal/metrics` on their own port instead of behind the public API �
 product numbers must not become reachable through a forgotten `location`.
 
 **Two host-level obstacles were worked around deliberately.** Unit state is
-read over the system dbus, and the default AppArmor profile forbids a container
-from talking to it — the systemd collector then returns zero metrics without a
-word, hence `apparmor=unconfined` on node_exporter, which still mounts the host
-read-only and exposes no port. Separately, `snakes.service` runs with
-`IPAddressAllow=localhost` and `IPAddressDeny=any`, so the kernel silently
-dropped every scrape from the bridge. Rather than defeating another service's
-intentional restriction from the monitoring side, it was opened on the snakes
-side and in two parts: a drop-in admits exactly the docker bridge subnets, and
-the game exposes a separate listener that serves only `/metrics` — otherwise
-`/ws` and the static files would have been opened to containers past nginx.
+read over the system dbus, and the default AppArmor profile forbids a
+container from talking to it — hence `apparmor=unconfined` on node_exporter,
+which still mounts the host read-only and exposes no port. Separately,
+`snakes.service` deliberately restricts its network (`IPAddressAllow=localhost`),
+so the kernel silently dropped every scrape from the bridge. Rather than
+defeating another service's restriction from the monitoring side, it was
+opened on the snakes side: a drop-in admits the docker bridge subnets, and the
+game exposes a separate listener serving only `/metrics`.
 
 **Cardinality is capped at the exporter.** Path and host arrive from the
 internet. Without a limit, any scanner walking `/wp-admin` and `/.env` would
@@ -260,8 +260,9 @@ would have to travel.
 | `blackbox/blackbox.yml` | probe modules for blackbox_exporter |
 | `nginxlog/nginxlog.yml` | log format and cardinality limits for the traffic exporter |
 | `server/bootstrap.sh` | one-time secret setup on the server, bot token included |
+| `deploy/systemd/samoylove-metrics.service` | systemd unit wrapping `docker compose` for deploy-kit |
 | `docs/render-dashboards.sh` | capture dashboard PNGs, run on the server |
-| `.env.example` | template for `.env` (Grafana admin) |
+| `.env.example` | template for `.env`: Grafana admin, bot token, renderer secret |
 
 ## What is guaranteed, and what checks it
 
