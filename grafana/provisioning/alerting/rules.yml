@@ -753,10 +753,21 @@ groups:
         condition: C
         data:
           - refId: A
+            # unknown_game исключён намеренно. Этот алерт задуман про НАШУ
+            # поломку — разъехавшийся контракт после выкатки клиента или
+            # переполненный диск. Отказ unknown_game означает обратное:
+            # защита из gameid.go сработала и выкинула чужой мусор.
+            #
+            # На /metrics/report постоянно приходит поток чужих POST с
+            # выдуманными gameId (случайный hex, UA лаунчера, пачки по пять с
+            # ротацией адресов — ровно под лимитом 30/мин на адрес). За месяц
+            # это ЕДИНСТВЕННАЯ причина отказов, то есть алерт ни разу не
+            # сказал ничего про лаунчер и будил на штатной работе защиты.
+            # Поток чужого мусора ловит отдельный TelemetryJunkFlood ниже.
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: sum(increase(chillhub_telemetry_rejected_total[1h])) > 20
+              expr: sum(increase(chillhub_telemetry_rejected_total{reason!="unknown_game"}[1h])) > 20
               instant: true
               refId: A
           - refId: C
@@ -775,7 +786,41 @@ groups:
         execErrState: Error
         for: 30m
         labels: { severity: warning }
-        annotations: { summary: "More than 20 rejected calls to /metrics/report within an hour", __dashboardUid__: "samoylove-chillhub", __panelId__: "999" }
+        annotations: { summary: "More than 20 rejected calls to /metrics/report from the launcher within an hour", __dashboardUid__: "samoylove-chillhub", __panelId__: "999" }
+
+      - uid: product-telemetry-junk-flood
+        title: TelemetryJunkFlood
+        condition: C
+        data:
+          - refId: A
+            # Чужие отчёты с выдуманным gameId — фон, а не событие: сотня в
+            # сутки прилетает постоянно и не значит ничего, отказ стоит
+            # разбора JSON и строчки в логе. Порог поэтому на порядок выше
+            # фона: интересен не сам мусор, а его всплеск — попытка засыпать
+            # ручку или продавить кардинальность меток.
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: sum(increase(chillhub_telemetry_rejected_total{reason="unknown_game"}[1h])) > 500
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "More than 500 reports with an unknown gameId within an hour", __dashboardUid__: "samoylove-chillhub", __panelId__: "999" }
 
       - uid: product-maintenance-mode-stuck
         title: MaintenanceModeStuck
