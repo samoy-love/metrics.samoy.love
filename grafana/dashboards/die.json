@@ -94,7 +94,7 @@
       "id": 2,
       "gridPos": {
         "h": 4,
-        "w": 6,
+        "w": 8,
         "x": 0,
         "y": 1
       },
@@ -149,8 +149,8 @@
       "id": 3,
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 6,
+        "w": 8,
+        "x": 8,
         "y": 1
       },
       "datasource": {
@@ -204,63 +204,8 @@
       "id": 4,
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 1
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Nightly",
-      "description": "Сборка из main. Игроков не затрагивает, но без неё негде проверять.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "status_check_up{check=\"die-dev\"}",
-          "instant": true
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "none",
-        "textMode": "value"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "id": 5,
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
+        "w": 8,
+        "x": 16,
         "y": 1
       },
       "datasource": {
