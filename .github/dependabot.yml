@@ -18,6 +18,9 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: ['minor', 'patch']
     commit-message:
       prefix: 'deps'
   # Экосистема docker-compose, а НЕ docker. Обновлять здесь нужно образы в
@@ -37,5 +40,8 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: ['minor', 'patch']
     commit-message:
       prefix: 'deps'
