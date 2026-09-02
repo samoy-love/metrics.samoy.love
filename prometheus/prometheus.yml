@@ -8,7 +8,7 @@ global:
   scrape_timeout: 10s
   evaluation_interval: 30s
   external_labels:
-    server: samoylove-oracle
+    server: samoylove-prod
 
 # Правила алертинга здесь больше не живут: они переехали в Grafana
 # (grafana/provisioning/alerting) вместе с маршрутизацией и доставкой в
@@ -28,7 +28,7 @@ scrape_configs:
     static_configs:
       - targets: ["node-exporter:9100"]
         labels:
-          instance: samoylove-oracle
+          instance: samoylove-prod
 
   # --- Grafana --------------------------------------------------------------
   - job_name: grafana
@@ -87,7 +87,7 @@ scrape_configs:
     static_configs:
       - targets: ["nginxlog-exporter:4040"]
         labels:
-          instance: samoylove-oracle
+          instance: samoylove-prod
 
   # --- Доступность сайтов ---------------------------------------------------
   - job_name: blackbox-http
