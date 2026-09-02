@@ -2,7 +2,7 @@
 
 [Русский](README.md) · English
 
-[![CI](https://github.com/tr0llex/metrics.samoy.love/actions/workflows/ci.yml/badge.svg)](https://github.com/tr0llex/metrics.samoy.love/actions/workflows/ci.yml)
+[![CI](https://github.com/samoy-love/metrics.samoy.love/actions/workflows/ci.yml/badge.svg)](https://github.com/samoy-love/metrics.samoy.love/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Prometheus](https://img.shields.io/badge/Prometheus-v3.13.2-e6522c)
 ![Grafana](https://img.shields.io/badge/Grafana-13.1.3-f46800)
@@ -168,7 +168,7 @@ to report.
 ## Quick start
 
 The nginx configuration lives in
-[deploy-kit](https://github.com/tr0llex/deploy-kit), which stays the single
+[deploy-kit](https://github.com/samoy-love/deploy-kit), which stays the single
 source of truth for nginx. The directory on the server is
 `/opt/samoylove-metrics`.
 
@@ -357,14 +357,14 @@ One domain, one server, one pipeline, one status page, one monitoring stack.
 
 | Project | What it is |
 |---|---|
-| [samoy.love](https://github.com/tr0llex/samoy.love) | Homepage and project showcase: Astro, WebGL background, no cookies or third parties |
-| [chillhub](https://github.com/tr0llex/chillhub) | ChillHub — Windows game launcher: diff updates, hash control, Go admin panel |
-| [snakes](https://github.com/tr0llex/snakes) | Browser territory-capture multiplayer: Go, WebSocket, binary protocol |
-| [metro-map](https://github.com/tr0llex/metro-map) | Offline PWA with the Moscow metro map: routing on the client, Canvas 2D |
-| [double-or-die](https://github.com/tr0llex/double-or-die) | Co-op roguelike where you bet on yourself: deterministic TypeScript core |
-| [status.samoy.love](https://github.com/tr0llex/status.samoy.love) | Status page: uptime, versions, incidents; Go agent plus an external watchdog |
-| [metrics.samoy.love](https://github.com/tr0llex/metrics.samoy.love) | This repository: monitoring and product analytics |
-| [deploy-kit](https://github.com/tr0llex/deploy-kit) | Shared release pipeline; also the nginx config and the log format |
+| [samoy.love](https://github.com/samoy-love/samoy.love) | Homepage and project showcase: Astro, WebGL background, no cookies or third parties |
+| [chillhub](https://github.com/samoy-love/chillhub) | ChillHub — Windows game launcher: diff updates, hash control, Go admin panel |
+| [snakes](https://github.com/samoy-love/snakes) | Browser territory-capture multiplayer: Go, WebSocket, binary protocol |
+| [metro-map](https://github.com/samoy-love/metro-map) | Offline PWA with the Moscow metro map: routing on the client, Canvas 2D |
+| [double-or-die](https://github.com/samoy-love/double-or-die) | Co-op roguelike where you bet on yourself: deterministic TypeScript core |
+| [status.samoy.love](https://github.com/samoy-love/status.samoy.love) | Status page: uptime, versions, incidents; Go agent plus an external watchdog |
+| [metrics.samoy.love](https://github.com/samoy-love/metrics.samoy.love) | This repository: monitoring and product analytics |
+| [deploy-kit](https://github.com/samoy-love/deploy-kit) | Shared release pipeline; also the nginx config and the log format |
 
 ## Contacts
 
