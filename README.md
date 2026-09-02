@@ -2,7 +2,7 @@
 
 Русский · [English](README.en.md)
 
-[![CI](https://github.com/tr0llex/metrics.samoy.love/actions/workflows/ci.yml/badge.svg)](https://github.com/tr0llex/metrics.samoy.love/actions/workflows/ci.yml)
+[![CI](https://github.com/samoy-love/metrics.samoy.love/actions/workflows/ci.yml/badge.svg)](https://github.com/samoy-love/metrics.samoy.love/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Prometheus](https://img.shields.io/badge/Prometheus-v3.13.2-e6522c)
 ![Grafana](https://img.shields.io/badge/Grafana-13.1.3-f46800)
@@ -168,7 +168,7 @@ Docker Compose, интервал сбора 30 с. Лимиты заданы в 
 ## Быстрый старт
 
 Конфиг nginx живёт в
-[deploy-kit](https://github.com/tr0llex/deploy-kit) — он остаётся единственным
+[deploy-kit](https://github.com/samoy-love/deploy-kit) — он остаётся единственным
 источником правды по nginx. Каталог на сервере — `/opt/samoylove-metrics`.
 
 ```bash
@@ -355,14 +355,14 @@ sudo docker compose up -d --force-recreate prometheus
 
 | Проект | Что это |
 |---|---|
-| [samoy.love](https://github.com/tr0llex/samoy.love) | Личная страница и витрина проектов: Astro, 3D-фон на WebGL, без cookie и третьих сторон |
-| [chillhub](https://github.com/tr0llex/chillhub) | ChillHub — лаунчер игр для Windows: обновления по диффу, хеш-контроль, админка на Go |
-| [snakes](https://github.com/tr0llex/snakes) | Мультиплеерный захват территории в браузере: Go, WebSocket, бинарный протокол |
-| [metro-map](https://github.com/tr0llex/metro-map) | Офлайн-PWA со схемой московского метро: маршруты на клиенте, Canvas 2D |
-| [double-or-die](https://github.com/tr0llex/double-or-die) | Кооп-рогалик со ставками на себя: детерминированное ядро на TypeScript |
-| [status.samoy.love](https://github.com/tr0llex/status.samoy.love) | Статус-страница: аптайм, версии, инциденты; агент на Go и внешний сторож |
-| [metrics.samoy.love](https://github.com/tr0llex/metrics.samoy.love) | Этот репозиторий: мониторинг и продуктовая аналитика |
-| [deploy-kit](https://github.com/tr0llex/deploy-kit) | Общий релизный пайплайн; оттуда же конфиг nginx и формат журнала |
+| [samoy.love](https://github.com/samoy-love/samoy.love) | Личная страница и витрина проектов: Astro, 3D-фон на WebGL, без cookie и третьих сторон |
+| [chillhub](https://github.com/samoy-love/chillhub) | ChillHub — лаунчер игр для Windows: обновления по диффу, хеш-контроль, админка на Go |
+| [snakes](https://github.com/samoy-love/snakes) | Мультиплеерный захват территории в браузере: Go, WebSocket, бинарный протокол |
+| [metro-map](https://github.com/samoy-love/metro-map) | Офлайн-PWA со схемой московского метро: маршруты на клиенте, Canvas 2D |
+| [double-or-die](https://github.com/samoy-love/double-or-die) | Кооп-рогалик со ставками на себя: детерминированное ядро на TypeScript |
+| [status.samoy.love](https://github.com/samoy-love/status.samoy.love) | Статус-страница: аптайм, версии, инциденты; агент на Go и внешний сторож |
+| [metrics.samoy.love](https://github.com/samoy-love/metrics.samoy.love) | Этот репозиторий: мониторинг и продуктовая аналитика |
+| [deploy-kit](https://github.com/samoy-love/deploy-kit) | Общий релизный пайплайн; оттуда же конфиг nginx и формат журнала |
 
 ## Контакты
 
