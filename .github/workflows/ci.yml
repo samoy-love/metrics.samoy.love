@@ -88,10 +88,30 @@ jobs:
       # Правила алертинга больше не в этих файлах — они переехали в Grafana
       # (grafana/provisioning/alerting), у promtool там проверять нечего.
       # Синтаксис самого prometheus.yml (цели, интервалы) он всё ещё видит.
+      # Часть того, на что ссылается конфиг, живёт только на сервере и в
+      # репозиторий не попадает: клиентский сертификат для метрик Incus (это
+      # ключ) и file_sd с адресами целей (они описывают устройство конкретной
+      # установки, а репозиторий публичный). promtool же проверяет их наличие
+      # на диске и без них валит проверку — поэтому подкладываем пустышки.
+      # Проверяется синтаксис конфига, а не содержимое этих файлов.
+      - name: Заглушки для файлов, которых нет в репозитории
+        run: |
+          mkdir -p "$RUNNER_TEMP/promtool/incus" "$RUNNER_TEMP/promtool/targets"
+          # Сертификат должен быть разбираемым, иначе promtool ругнётся уже на
+          # его содержимое, а не на отсутствие.
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=ci \
+            -keyout "$RUNNER_TEMP/promtool/incus/metrics.key" \
+            -out "$RUNNER_TEMP/promtool/incus/metrics.crt" 2>/dev/null
+          cp "$RUNNER_TEMP/promtool/incus/metrics.crt" "$RUNNER_TEMP/promtool/incus/server.crt"
+          echo '[]' > "$RUNNER_TEMP/promtool/targets/node-host.yml"
+          echo '[]' > "$RUNNER_TEMP/promtool/targets/incus.yml"
+
       - name: Проверка конфигурации Prometheus
         run: |
           docker run --rm --entrypoint promtool \
             -v "$PWD/prometheus:/etc/prometheus:ro" \
+            -v "$RUNNER_TEMP/promtool/incus:/etc/prometheus/incus:ro" \
+            -v "$RUNNER_TEMP/promtool/targets:/etc/prometheus/targets:ro" \
             prom/prometheus:${{ steps.prom.outputs.version }} \
             check config /etc/prometheus/prometheus.yml
 
