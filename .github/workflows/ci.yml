@@ -94,24 +94,34 @@ jobs:
       # установки, а репозиторий публичный). promtool же проверяет их наличие
       # на диске и без них валит проверку — поэтому подкладываем пустышки.
       # Проверяется синтаксис конфига, а не содержимое этих файлов.
-      - name: Заглушки для файлов, которых нет в репозитории
+      # Часть того, на что ссылается конфиг, живёт только на сервере и в
+      # репозиторий не попадает: клиентский сертификат для метрик Incus (это
+      # ключ) и file_sd с адресами целей (они описывают устройство конкретной
+      # установки, а репозиторий публичный). promtool же проверяет наличие
+      # этих файлов на диске и без них валит проверку синтаксиса.
+      #
+      # Дерево собирается целиком в одном каталоге и монтируется одним томом:
+      # вложенные монтирования внутрь тома :ro докер создать не может —
+      # точку монтирования пришлось бы создавать в файловой системе только для
+      # чтения. Проверяется синтаксис конфига, содержимое заглушек не важно.
+      - name: Дерево для promtool
         run: |
-          mkdir -p "$RUNNER_TEMP/promtool/incus" "$RUNNER_TEMP/promtool/targets"
-          # Сертификат должен быть разбираемым, иначе promtool ругнётся уже на
-          # его содержимое, а не на отсутствие.
+          root="$RUNNER_TEMP/promtool"
+          mkdir -p "$root/incus" "$root/targets"
+          cp prometheus/prometheus.yml "$root/prometheus.yml"
+          # Сертификат делается настоящим: promtool разбирает его содержимое,
+          # а не только проверяет наличие файла.
           openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=ci \
-            -keyout "$RUNNER_TEMP/promtool/incus/metrics.key" \
-            -out "$RUNNER_TEMP/promtool/incus/metrics.crt" 2>/dev/null
-          cp "$RUNNER_TEMP/promtool/incus/metrics.crt" "$RUNNER_TEMP/promtool/incus/server.crt"
-          echo '[]' > "$RUNNER_TEMP/promtool/targets/node-host.yml"
-          echo '[]' > "$RUNNER_TEMP/promtool/targets/incus.yml"
+            -keyout "$root/incus/metrics.key" \
+            -out "$root/incus/metrics.crt" 2>/dev/null
+          cp "$root/incus/metrics.crt" "$root/incus/server.crt"
+          echo '[]' > "$root/targets/node-host.yml"
+          echo '[]' > "$root/targets/incus.yml"
 
       - name: Проверка конфигурации Prometheus
         run: |
           docker run --rm --entrypoint promtool \
-            -v "$PWD/prometheus:/etc/prometheus:ro" \
-            -v "$RUNNER_TEMP/promtool/incus:/etc/prometheus/incus:ro" \
-            -v "$RUNNER_TEMP/promtool/targets:/etc/prometheus/targets:ro" \
+            -v "$RUNNER_TEMP/promtool:/etc/prometheus:ro" \
             prom/prometheus:${{ steps.prom.outputs.version }} \
             check config /etc/prometheus/prometheus.yml
 
