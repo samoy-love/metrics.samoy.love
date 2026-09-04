@@ -88,10 +88,40 @@ jobs:
       # Правила алертинга больше не в этих файлах — они переехали в Grafana
       # (grafana/provisioning/alerting), у promtool там проверять нечего.
       # Синтаксис самого prometheus.yml (цели, интервалы) он всё ещё видит.
+      # Часть того, на что ссылается конфиг, живёт только на сервере и в
+      # репозиторий не попадает: клиентский сертификат для метрик Incus (это
+      # ключ) и file_sd с адресами целей (они описывают устройство конкретной
+      # установки, а репозиторий публичный). promtool же проверяет их наличие
+      # на диске и без них валит проверку — поэтому подкладываем пустышки.
+      # Проверяется синтаксис конфига, а не содержимое этих файлов.
+      # Часть того, на что ссылается конфиг, живёт только на сервере и в
+      # репозиторий не попадает: клиентский сертификат для метрик Incus (это
+      # ключ) и file_sd с адресами целей (они описывают устройство конкретной
+      # установки, а репозиторий публичный). promtool же проверяет наличие
+      # этих файлов на диске и без них валит проверку синтаксиса.
+      #
+      # Дерево собирается целиком в одном каталоге и монтируется одним томом:
+      # вложенные монтирования внутрь тома :ro докер создать не может —
+      # точку монтирования пришлось бы создавать в файловой системе только для
+      # чтения. Проверяется синтаксис конфига, содержимое заглушек не важно.
+      - name: Дерево для promtool
+        run: |
+          root="$RUNNER_TEMP/promtool"
+          mkdir -p "$root/incus" "$root/targets"
+          cp prometheus/prometheus.yml "$root/prometheus.yml"
+          # Сертификат делается настоящим: promtool разбирает его содержимое,
+          # а не только проверяет наличие файла.
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=ci \
+            -keyout "$root/incus/metrics.key" \
+            -out "$root/incus/metrics.crt" 2>/dev/null
+          cp "$root/incus/metrics.crt" "$root/incus/server.crt"
+          echo '[]' > "$root/targets/node-host.yml"
+          echo '[]' > "$root/targets/incus.yml"
+
       - name: Проверка конфигурации Prometheus
         run: |
           docker run --rm --entrypoint promtool \
-            -v "$PWD/prometheus:/etc/prometheus:ro" \
+            -v "$RUNNER_TEMP/promtool:/etc/prometheus:ro" \
             prom/prometheus:${{ steps.prom.outputs.version }} \
             check config /etc/prometheus/prometheus.yml
 
