@@ -93,6 +93,13 @@ jobs:
       # promtool берётся той же версии, что в docker-compose.yml: два места с
       # версией разъезжаются, одно — нет.
       #
+      # Перед ним собирается временное дерево с заглушками: конфиг ссылается на
+      # клиентский сертификат для метрик Incus и на file_sd с адресами целей, а
+      # их в репозитории нет намеренно — первый это ключ, вторые описывают
+      # устройство конкретной установки. promtool проверяет наличие таких
+      # файлов на диске и без них валит проверку. Монтируется одно дерево
+      # целиком: вложенное монтирование внутрь тома :ro докер создать не может.
+      #
       # Правила алертинга и Alertmanager отсюда убраны: оба переехали в
       # Grafana (grafana/provisioning/alerting), проверять check rules и
       # amtool check-config больше не на чем — файлов, на которые они
@@ -113,7 +120,15 @@ jobs:
         yamllint -d '{extends: relaxed, rules: {line-length: disable}}' grafana/provisioning/alerting &&
         PROM=$(sed -n 's|.*image: prom/prometheus:\(v[0-9.]*\).*|\1|p' docker-compose.yml) &&
         test -n "$PROM" &&
-        docker run --rm --entrypoint promtool -v "$PWD/prometheus:/etc/prometheus:ro"
+        mkdir -p "$RUNNER_TEMP/pt/incus" "$RUNNER_TEMP/pt/targets" &&
+        cp prometheus/prometheus.yml "$RUNNER_TEMP/pt/prometheus.yml" &&
+        openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=ci
+        -keyout "$RUNNER_TEMP/pt/incus/metrics.key"
+        -out "$RUNNER_TEMP/pt/incus/metrics.crt" 2>/dev/null &&
+        cp "$RUNNER_TEMP/pt/incus/metrics.crt" "$RUNNER_TEMP/pt/incus/server.crt" &&
+        echo '[]' > "$RUNNER_TEMP/pt/targets/node-host.yml" &&
+        echo '[]' > "$RUNNER_TEMP/pt/targets/incus.yml" &&
+        docker run --rm --entrypoint promtool -v "$RUNNER_TEMP/pt:/etc/prometheus:ro"
         prom/prometheus:$PROM check config /etc/prometheus/prometheus.yml &&
         DSUID=$(sed -n 's/^ *uid: *//p' grafana/provisioning/datasources/prometheus.yml) &&
         test -n "$DSUID" &&
