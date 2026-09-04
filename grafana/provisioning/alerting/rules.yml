@@ -192,6 +192,373 @@ groups:
         labels: { severity: warning }
         annotations: { summary: "Network interface {{ $labels.device }} is dropping packets with errors", __dashboardUid__: "samoylove-overview", __panelId__: "36" }
 
+  # Железо и инфраструктура хоста. Появилось вместе со вторым node_exporter,
+  # который стоит на самом хосте: стек метрик живёт в контейнере web и до
+  # датчиков не достаёт. Пороги взяты из фактических замеров и из CLAUDE.md,
+  # а не из общих соображений:
+  #
+  #   * 92 °C у CPU — под полной нагрузкой на 16 потоков сервер устойчиво
+  #     держит 88–89 °C без троттлинга, так что 92 — это уже отклонение,
+  #     а не штатная работа (предел кристалла 95 °C);
+  #   * 65 °C у памяти — ровно та граница, за которой в CLAUDE.md предписано
+  #     ослабить tRFC с 600 до 700–800: значение тюнерское, и отказ из-за него
+  #     наступает именно при росте температуры;
+  #   * ошибки ZFS вынесены в critical, потому что ECC на 8700G нет и ошибки
+  #     памяти здесь молчаливые — контрольные суммы пула остаются единственным
+  #     способом заметить порчу данных.
+  - orgId: 1
+    name: infra-hardware
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: hw-cpu-temp-high
+        title: CPUTemperatureHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name="k10temp"} > 92
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: critical }
+        annotations: { summary: "CPU above 92C for 10 minutes (throttling limit is 95C)" }
+
+      - uid: hw-dimm-temp-high
+        title: MemoryTemperatureHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name="spd5118"} > 65
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "DDR5 module above 65C: loosen tRFC from 600 to 700-800" }
+
+      - uid: hw-nvme-temp-high
+        title: NVMeTemperatureHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name="nvme"} > 70
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "NVMe above 70C, controller starts throttling" }
+
+      - uid: hw-cpu-fan-stopped
+        title: CPUFanStopped
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: node_hwmon_fan_rpm{sensor="fan2"} == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "CPU cooler fan reports 0 RPM" }
+
+      - uid: hw-zpool-unhealthy
+        title: ZpoolNotHealthy
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: zpool_health_state != 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "ZFS pool is not ONLINE: mirror degraded" }
+
+      - uid: hw-zpool-errors
+        title: ZpoolErrors
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: zpool_device_errors_total > 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "ZFS reports device errors: no ECC on this box, checksums are the only corruption signal" }
+
+      - uid: hw-nvme-media-errors
+        title: NVMeMediaErrors
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: smart_nvme_media_errors_total > 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "SMART reports unrecoverable media errors, plan disk replacement" }
+
+      - uid: hw-nvme-wear-high
+        title: NVMeWearHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: smart_nvme_percentage_used_ratio > 0.8
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: warning }
+        annotations: { summary: "NVMe wear above 80% of rated endurance" }
+
+      - uid: hw-host-unit-down
+        title: HostUnitInactive
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: node_systemd_unit_state{instance="srv-host",state="active",name=~"(incus|web-isolation|ci-isolation|win-isolation|wan-shaper|fail2ban)\\.service"} == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: critical }
+        annotations: { summary: "Host infrastructure unit is not active (isolation, shaper or incus)" }
+
+      - uid: hw-hw-metrics-missing
+        title: HardwareMetricsMissing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: up{job="node-host"} == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Host node_exporter is unreachable: hardware metrics stopped" }
+
+      - uid: hw-incus-metrics-missing
+        title: IncusMetricsMissing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: up{job="incus"} == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Incus metrics endpoint is unreachable: per-instance metrics stopped" }
+
+      - uid: hw-smart-collect-failing
+        title: SmartCollectFailing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: smart_collect_ok == 0 or zpool_collect_ok == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "SMART/ZFS textfile collector is failing, disk health is unknown" }
+
   - orgId: 1
     name: infra-services
     folder: Alerts

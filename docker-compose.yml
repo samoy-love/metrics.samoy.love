@@ -52,6 +52,14 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
+      # Клиентский сертификат для сбора метрик Incus (job "incus"). Лежит вне
+      # репозитория — там ему не место, это ключ. Тип сертификата в Incus —
+      # "metrics": доступ только к /1.0/metrics, управлять инстансами им нельзя.
+      - /etc/samoylove-metrics/incus:/etc/prometheus/incus:ro
+      # Адреса целей на хосте (job "node-host" и "incus"). Тоже вне
+      # репозитория: они зависят от того, как устроена конкретная установка,
+      # а этот репозиторий публичный.
+      - /etc/samoylove-metrics/targets:/etc/prometheus/targets:ro
     ports:
       - "127.0.0.1:9090:9090"
     extra_hosts:
