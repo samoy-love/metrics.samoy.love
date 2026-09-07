@@ -1523,3 +1523,160 @@ groups:
         for: 10m
         labels: { severity: warning }
         annotations: { summary: "Game tick p95 is over budget — every player feels the lag", __dashboardUid__: "samoylove-snakes", __panelId__: "29" }
+
+  # Разбор матчей CS2.
+  #
+  # Первые два правила — про место. Демки хранятся ЦЕЛИКОМ, ретеншна нет: это
+  # осознанное решение, а не недоделка. Значит место кончится, и единственная
+  # защита от того, чтобы это случилось внезапно, — предупредить заранее.
+  # Датасет ограничен квотой ZFS, поэтому переполнение остановит приём демок, а
+  # не заполнит общий пул, на котором живут прод и сборочные машины.
+  #
+  # Размер отдаёт само приложение, а не хостовой коллектор: statfs по каталогу
+  # хранилища уже показывает квоту, и заводить ради этого скрипт на хосте
+  # незачем.
+  - orgId: 1
+    name: product-cs2
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: cs2-storage-warn
+        title: Cs2DemoStorageFilling
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: cs2_demo_storage_used_bytes / cs2_demo_storage_total_bytes > 0.70
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "Demo storage is over 70% of its quota", __dashboardUid__: "samoylove-cs2" }
+      - uid: cs2-storage-crit
+        title: Cs2DemoStorageAlmostFull
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: cs2_demo_storage_used_bytes / cs2_demo_storage_total_bytes > 0.85
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: critical }
+        annotations: { summary: "Demo storage is over 85% of its quota — new demos will stop being accepted", __dashboardUid__: "samoylove-cs2" }
+      - uid: cs2-queue-stuck
+        title: Cs2ParseQueueStuck
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: min_over_time(cs2_parse_queue_depth[15m]) > 0 and rate(cs2_parse_total[15m]) == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: critical }
+        annotations: { summary: "Parse queue is not draining — parser is likely broken after a game update", __dashboardUid__: "samoylove-cs2" }
+      - uid: cs2-parse-failing
+        title: Cs2ParseFailureRateHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: rate(cs2_parse_total{result="failed"}[30m]) / rate(cs2_parse_total[30m]) > 0.20
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "More than 20% of demos fail to parse", __dashboardUid__: "samoylove-cs2" }
+      - uid: cs2-api-down
+        title: Cs2ApiDown
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: up{job="cs2-api"} == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "CS2 analytics API is not answering", __dashboardUid__: "samoylove-cs2" }
