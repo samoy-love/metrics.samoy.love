@@ -1567,7 +1567,7 @@ groups:
         execErrState: Error
         for: 30m
         labels: { severity: warning }
-        annotations: { summary: "Demo storage is over 70% of its quota", __dashboardUid__: "samoylove-cs2" }
+        annotations: { summary: "Demo storage is over 70% of its quota" }
       - uid: cs2-storage-crit
         title: Cs2DemoStorageAlmostFull
         condition: C
@@ -1595,7 +1595,7 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: critical }
-        annotations: { summary: "Demo storage is over 85% of its quota — new demos will stop being accepted", __dashboardUid__: "samoylove-cs2" }
+        annotations: { summary: "Demo storage is over 85% of its quota — new demos will stop being accepted" }
       - uid: cs2-queue-stuck
         title: Cs2ParseQueueStuck
         condition: C
@@ -1623,7 +1623,7 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: critical }
-        annotations: { summary: "Parse queue is not draining — parser is likely broken after a game update", __dashboardUid__: "samoylove-cs2" }
+        annotations: { summary: "Parse queue is not draining — parser is likely broken after a game update" }
       - uid: cs2-parse-failing
         title: Cs2ParseFailureRateHigh
         condition: C
@@ -1651,7 +1651,7 @@ groups:
         execErrState: Error
         for: 10m
         labels: { severity: warning }
-        annotations: { summary: "More than 20% of demos fail to parse", __dashboardUid__: "samoylove-cs2" }
+        annotations: { summary: "More than 20% of demos fail to parse" }
       - uid: cs2-api-down
         title: Cs2ApiDown
         condition: C
@@ -1679,4 +1679,4 @@ groups:
         execErrState: Error
         for: 5m
         labels: { severity: critical }
-        annotations: { summary: "CS2 analytics API is not answering", __dashboardUid__: "samoylove-cs2" }
+        annotations: { summary: "CS2 analytics API is not answering" }
