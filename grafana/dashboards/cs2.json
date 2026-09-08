@@ -1,658 +1,756 @@
 {
- "uid": "samoylove-cs2",
- "title": "CS2 — разбор матчей",
- "description": "Хранилище демок, очередь разбора и посещаемость cs.samoy.love.",
- "tags": [
-  "samoy.love",
-  "продукт"
- ],
- "timezone": "browser",
- "editable": false,
- "refresh": "1m",
- "schemaVersion": 39,
- "version": 1,
- "time": {
-  "from": "now-24h",
-  "to": "now"
- },
- "annotations": {
-  "list": []
- },
- "links": [],
- "templating": {
-  "list": []
- },
- "panels": [
-  {
-   "type": "row",
-   "title": "Хранилище демок",
-   "gridPos": {
-    "h": 1,
-    "w": 24,
-    "x": 0,
-    "y": 0
-   },
-   "id": 2,
-   "collapsed": false,
-   "panels": []
+  "uid": "samoylove-cs2",
+  "title": "CS2 — разбор матчей",
+  "description": "Хранилище демок, очередь разбора и посещаемость cs.samoy.love.",
+  "tags": [
+    "samoy.love",
+    "продукт"
+  ],
+  "timezone": "browser",
+  "editable": false,
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "now-24h",
+    "to": "now"
   },
-  {
-   "type": "stat",
-   "title": "Демок сохранено",
-   "description": "Файлы в хранилище. Ретеншна нет — число только растёт.",
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "cs2_demos_stored_total",
-     "instant": true
-    }
-   ],
-   "options": {
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ],
-     "fields": "",
-     "values": false
-    },
-    "colorMode": "background",
-    "graphMode": "none",
-    "textMode": "auto"
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "decimals": 0,
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "blue",
-        "value": null
-       }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "id": 3,
-   "gridPos": {
-    "h": 4,
-    "w": 4,
-    "x": 0,
-    "y": 1
-   },
-   "datasource": {
-    "type": "prometheus",
-    "uid": "samoylove-prometheus"
-   }
+  "annotations": {
+    "list": []
   },
-  {
-   "type": "stat",
-   "title": "Занято",
-   "description": "Сколько места занимают демки.",
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "cs2_demo_storage_used_bytes",
-     "instant": true
-    }
-   ],
-   "options": {
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ],
-     "fields": "",
-     "values": false
-    },
-    "colorMode": "background",
-    "graphMode": "none",
-    "textMode": "auto"
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "bytes",
-     "decimals": 1,
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "blue",
-        "value": null
-       }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "id": 4,
-   "gridPos": {
-    "h": 4,
-    "w": 4,
-    "x": 4,
-    "y": 1
-   },
-   "datasource": {
-    "type": "prometheus",
-    "uid": "samoylove-prometheus"
-   }
+  "links": [],
+  "templating": {
+    "list": []
   },
-  {
-   "type": "gauge",
-   "title": "Заполнение квоты",
-   "description": "Датасет ограничен квотой ZFS. Переполнение остановит приём новых демок, но не тронет общий пул, на котором живут прод и сборочные машины.",
-   "targets": [
+  "panels": [
     {
-     "refId": "A",
-     "expr": "cs2_demo_storage_used_bytes / cs2_demo_storage_total_bytes",
-     "instant": true
-    }
-   ],
-   "options": {
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ],
-     "fields": "",
-     "values": false
-    },
-    "showThresholdLabels": false,
-    "showThresholdMarkers": true
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "percentunit",
-     "decimals": 1,
-     "min": 0,
-     "max": 1,
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "green",
-        "value": null
-       },
-       {
-        "color": "orange",
-        "value": 0.7
-       },
-       {
-        "color": "red",
-        "value": 0.85
-       }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "id": 5,
-   "gridPos": {
-    "h": 4,
-    "w": 5,
-    "x": 8,
-    "y": 1
-   },
-   "datasource": {
-    "type": "prometheus",
-    "uid": "samoylove-prometheus"
-   }
-  },
-  {
-   "type": "timeseries",
-   "title": "Рост хранилища",
-   "description": "По наклону видно, на сколько хватит квоты. Это и есть ответ на вопрос, когда придётся заняться оптимизацией хранения.",
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "cs2_demo_storage_used_bytes",
-     "legendFormat": "занято"
+      "type": "row",
+      "title": "Хранилище демок",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "collapsed": false,
+      "panels": []
     },
     {
-     "refId": "B",
-     "expr": "cs2_demo_storage_total_bytes",
-     "legendFormat": "квота"
-    }
-   ],
-   "options": {
-    "legend": {
-     "displayMode": "list",
-     "placement": "bottom",
-     "showLegend": true
-    },
-    "tooltip": {
-     "mode": "multi",
-     "sort": "desc"
-    }
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "bytes",
-     "custom": {
-      "drawStyle": "line",
-      "lineWidth": 2,
-      "fillOpacity": 12,
-      "showPoints": "never",
-      "spanNulls": true,
-      "stacking": {
-       "mode": "none",
-       "group": "A"
+      "type": "stat",
+      "title": "Демок сохранено",
+      "description": "Файлы в хранилище. Ретеншна нет — число только растёт.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_demos_stored_total",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 3,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
       }
-     },
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "green",
-        "value": null
-       }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "id": 6,
-   "gridPos": {
-    "h": 4,
-    "w": 11,
-    "x": 13,
-    "y": 1
-   },
-   "datasource": {
-    "type": "prometheus",
-    "uid": "samoylove-prometheus"
-   }
-  },
-  {
-   "type": "row",
-   "title": "Разбор",
-   "gridPos": {
-    "h": 1,
-    "w": 24,
-    "x": 0,
-    "y": 5
-   },
-   "id": 7,
-   "collapsed": false,
-   "panels": []
-  },
-  {
-   "type": "stat",
-   "title": "В очереди",
-   "description": "Задания, ждущие воркера.",
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "cs2_parse_queue_depth",
-     "instant": true
-    }
-   ],
-   "options": {
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ],
-     "fields": "",
-     "values": false
-    },
-    "colorMode": "background",
-    "graphMode": "none",
-    "textMode": "auto"
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "decimals": 0,
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "blue",
-        "value": null
-       },
-       {
-        "color": "orange",
-        "value": 50
-       },
-       {
-        "color": "red",
-        "value": 200
-       }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "id": 8,
-   "gridPos": {
-    "h": 4,
-    "w": 4,
-    "x": 0,
-    "y": 6
-   },
-   "datasource": {
-    "type": "prometheus",
-    "uid": "samoylove-prometheus"
-   }
-  },
-  {
-   "type": "stat",
-   "title": "Разобрано за сутки",
-   "description": "Успешные разборы.",
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum(increase(cs2_parse_total{result=\"ok\"}[24h]))",
-     "instant": true
-    }
-   ],
-   "options": {
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ],
-     "fields": "",
-     "values": false
-    },
-    "colorMode": "background",
-    "graphMode": "none",
-    "textMode": "auto"
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "decimals": 0,
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "blue",
-        "value": null
-       }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "id": 9,
-   "gridPos": {
-    "h": 4,
-    "w": 4,
-    "x": 4,
-    "y": 6
-   },
-   "datasource": {
-    "type": "prometheus",
-    "uid": "samoylove-prometheus"
-   }
-  },
-  {
-   "type": "stat",
-   "title": "Доля неудач",
-   "description": "Скачок обычно означает, что игра обновилась и парсер отстал.",
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum(rate(cs2_parse_total{result=\"failed\"}[1h])) / clamp_min(sum(rate(cs2_parse_total[1h])), 0.0001)",
-     "instant": true
-    }
-   ],
-   "options": {
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ],
-     "fields": "",
-     "values": false
-    },
-    "colorMode": "background",
-    "graphMode": "none",
-    "textMode": "auto"
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "percentunit",
-     "decimals": 1,
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "green",
-        "value": null
-       },
-       {
-        "color": "orange",
-        "value": 0.05
-       },
-       {
-        "color": "red",
-        "value": 0.2
-       }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "id": 10,
-   "gridPos": {
-    "h": 4,
-    "w": 4,
-    "x": 8,
-    "y": 6
-   },
-   "datasource": {
-    "type": "prometheus",
-    "uid": "samoylove-prometheus"
-   }
-  },
-  {
-   "type": "timeseries",
-   "title": "Время разбора по парсерам",
-   "description": "Два парсера на одну демку: события даёт Go, сабтиковые тайминги — Rust. Расхождение кривых показывает, кто из них стал узким местом.",
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "histogram_quantile(0.50, sum by (le, parser) (rate(cs2_parse_duration_seconds_bucket[15m])))",
-     "legendFormat": "{{parser}} p50"
     },
     {
-     "refId": "B",
-     "expr": "histogram_quantile(0.95, sum by (le, parser) (rate(cs2_parse_duration_seconds_bucket[15m])))",
-     "legendFormat": "{{parser}} p95"
-    }
-   ],
-   "options": {
-    "legend": {
-     "displayMode": "list",
-     "placement": "bottom",
-     "showLegend": true
-    },
-    "tooltip": {
-     "mode": "multi",
-     "sort": "desc"
-    }
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "s",
-     "custom": {
-      "drawStyle": "line",
-      "lineWidth": 2,
-      "fillOpacity": 12,
-      "showPoints": "never",
-      "spanNulls": true,
-      "stacking": {
-       "mode": "none",
-       "group": "A"
+      "type": "stat",
+      "title": "Занято",
+      "description": "Сколько места занимают демки.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_demo_storage_used_bytes",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 4,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
       }
-     },
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "green",
-        "value": null
-       }
-      ]
-     }
     },
-    "overrides": []
-   },
-   "id": 11,
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 12,
-    "y": 6
-   },
-   "datasource": {
-    "type": "prometheus",
-    "uid": "samoylove-prometheus"
-   }
-  },
-  {
-   "type": "row",
-   "title": "Сайт",
-   "gridPos": {
-    "h": 1,
-    "w": 24,
-    "x": 0,
-    "y": 14
-   },
-   "id": 12,
-   "collapsed": false,
-   "panels": []
-  },
-  {
-   "type": "timeseries",
-   "title": "Ответы nginx",
-   "description": "Журнал доступа. 5xx на фоне ровного трафика — повод смотреть логи API.",
-   "targets": [
     {
-     "refId": "A",
-     "expr": "sum by (status) (rate(samoylove_site_http_response_count_total{host=\"cs.samoy.love\"}[5m])) * 60",
-     "legendFormat": "{{status}}"
-    }
-   ],
-   "options": {
-    "legend": {
-     "displayMode": "list",
-     "placement": "bottom",
-     "showLegend": true
-    },
-    "tooltip": {
-     "mode": "multi",
-     "sort": "desc"
-    }
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "custom": {
-      "drawStyle": "line",
-      "lineWidth": 2,
-      "fillOpacity": 12,
-      "showPoints": "never",
-      "spanNulls": true,
-      "stacking": {
-       "mode": "normal",
-       "group": "A"
+      "type": "gauge",
+      "title": "Заполнение квоты",
+      "description": "Датасет ограничен квотой ZFS. Переполнение остановит приём новых демок, но не тронет общий пул, на котором живут прод и сборочные машины.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_demo_storage_used_bytes / cs2_demo_storage_total_bytes",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.85
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 5,
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 8,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
       }
-     },
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "green",
-        "value": null
-       }
-      ]
-     }
-    },
-    "overrides": []
-   },
-   "id": 13,
-   "gridPos": {
-    "h": 7,
-    "w": 12,
-    "x": 0,
-    "y": 15
-   },
-   "datasource": {
-    "type": "prometheus",
-    "uid": "samoylove-prometheus"
-   }
-  },
-  {
-   "type": "timeseries",
-   "title": "Уникальные пользователи",
-   "description": "Тестовые прогоны и обращения агентов из счёта исключены — считаются только живые люди. Метрику отдаёт само приложение: только оно знает, кто есть кто.",
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "cs2_active_users{window=\"1d\"}",
-     "legendFormat": "за сутки"
     },
     {
-     "refId": "B",
-     "expr": "cs2_active_users{window=\"7d\"}",
-     "legendFormat": "за неделю"
-    },
-    {
-     "refId": "C",
-     "expr": "cs2_active_users{window=\"30d\"}",
-     "legendFormat": "за месяц"
-    }
-   ],
-   "options": {
-    "legend": {
-     "displayMode": "list",
-     "placement": "bottom",
-     "showLegend": true
-    },
-    "tooltip": {
-     "mode": "multi",
-     "sort": "desc"
-    }
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "decimals": 0,
-     "custom": {
-      "drawStyle": "line",
-      "lineWidth": 2,
-      "fillOpacity": 12,
-      "showPoints": "never",
-      "spanNulls": true,
-      "stacking": {
-       "mode": "none",
-       "group": "A"
+      "type": "timeseries",
+      "title": "Рост хранилища",
+      "description": "По наклону видно, на сколько хватит квоты. Это и есть ответ на вопрос, когда придётся заняться оптимизацией хранения.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_demo_storage_used_bytes",
+          "legendFormat": "занято"
+        },
+        {
+          "refId": "B",
+          "expr": "cs2_demo_storage_total_bytes",
+          "legendFormat": "квота"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 6,
+      "gridPos": {
+        "h": 4,
+        "w": 11,
+        "x": 13,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
       }
-     },
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "green",
-        "value": null
-       }
-      ]
-     }
     },
-    "overrides": []
-   },
-   "id": 14,
-   "gridPos": {
-    "h": 7,
-    "w": 12,
-    "x": 12,
-    "y": 15
-   },
-   "datasource": {
-    "type": "prometheus",
-    "uid": "samoylove-prometheus"
-   }
-  }
- ]
+    {
+      "type": "row",
+      "title": "Разбор",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "id": 7,
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "В очереди",
+      "description": "Задания, ждущие воркера.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_parse_queue_depth",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 200
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 8,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Разобрано за сутки",
+      "description": "Успешные разборы.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(cs2_parse_total{result=\"ok\"}[24h]))",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 9,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Доля неудач",
+      "description": "Скачок обычно означает, что игра обновилась и парсер отстал.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(cs2_parse_total{result=\"failed\"}[1h])) / clamp_min(sum(rate(cs2_parse_total[1h])), 0.0001)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.05
+              },
+              {
+                "color": "red",
+                "value": 0.2
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 10,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Время разбора по парсерам",
+      "description": "Два парсера на одну демку: события даёт Go, сабтиковые тайминги — Rust. Расхождение кривых показывает, кто из них стал узким местом.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.50, sum by (le, parser) (rate(cs2_parse_duration_seconds_bucket[15m])))",
+          "legendFormat": "{{parser}} p50"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le, parser) (rate(cs2_parse_duration_seconds_bucket[15m])))",
+          "legendFormat": "{{parser}} p95"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 11,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Сайт",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 12,
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Ответы nginx",
+      "description": "Журнал доступа. 5xx на фоне ровного трафика — повод смотреть логи API.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (status) (rate(samoylove_site_http_response_count_total{host=\"cs.samoy.love\"}[5m])) * 60",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 13,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 15
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Уникальные пользователи",
+      "description": "Тестовые прогоны и обращения агентов из счёта исключены — считаются только живые люди. Метрику отдаёт само приложение: только оно знает, кто есть кто.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_active_users{window=\"1d\"}",
+          "legendFormat": "за сутки"
+        },
+        {
+          "refId": "B",
+          "expr": "cs2_active_users{window=\"7d\"}",
+          "legendFormat": "за неделю"
+        },
+        {
+          "refId": "C",
+          "expr": "cs2_active_users{window=\"30d\"}",
+          "legendFormat": "за месяц"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 14,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 15
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Версия разбора",
+      "description": "Версия релиза, которым разобраны матчи. По ней после обновления игры видно, что надо перепарсить: если версия старше текущего релиза, значит архив ещё не пересчитан.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_parser_version_info",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 15,
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Ответ снаружи",
+      "description": "Время полной пробы blackbox: DNS, соединение, TLS и ответ. Меряется снаружи, поэтому включает и nginx, и сеть, а не только сам сервис.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "probe_duration_seconds{instance=\"https://cs.samoy.love/\"}",
+          "legendFormat": "проба"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "id": 16,
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 22
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    }
+  ]
 }
