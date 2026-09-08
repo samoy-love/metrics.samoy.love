@@ -126,6 +126,21 @@ scrape_configs:
         labels:
           instance: chillhub-admin
 
+  # --- Разбор матчей CS2 -----------------------------------------------------
+  # Сервис живёт в отдельном контейнере, а не в web, поэтому host.docker.internal
+  # сюда не годится: у него другой сетевой namespace и другой адрес.
+  #
+  # Адрес — в file_sd вне репозитория, по той же причине, что у node-host и
+  # incus: он привязан к устройству конкретной установки, а репозиторий
+  # публичный. Файл кладётся руками один раз, см. docs.
+  #
+  # Метрики отдаются на отдельном порту, а не через nginx: продуктовые числа не
+  # должны открываться наружу забытым location.
+  - job_name: cs2-api
+    metrics_path: /internal/metrics
+    file_sd_configs:
+      - files: ["/etc/prometheus/targets/cs2.yml"]
+
   # --- Посещаемость статики -------------------------------------------------
   # Экспортёр журнала nginx: статика всех сайтов домена. Клиентских
   # счётчиков на этих сайтах нет и не будет — см. nginxlog/nginxlog.yml.
@@ -148,6 +163,7 @@ scrape_configs:
           - https://snakes.samoy.love/
           - https://status.samoy.love/
           - https://die.samoy.love/
+          - https://cs.samoy.love/
     relabel_configs:
       # Классическая тройка для blackbox: адрес сайта уезжает в параметр
       # target, а сам запрос — в экспортёр. Без неё Prometheus пошёл бы

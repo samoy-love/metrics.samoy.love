@@ -1514,3 +1514,195 @@ groups:
         for: 10m
         labels: { severity: warning }
         annotations: { summary: "Game tick p95 is over budget — every player feels the lag", __dashboardUid__: "samoylove-snakes", __panelId__: "29" }
+  - orgId: 1
+    name: product-cs2
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: product-cs2-api-down
+        title: CS2ApiDown
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: up{job="cs2-api"} == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: Alerting
+        execErrState: Error
+        for: 10m
+        labels: { severity: critical }
+        annotations: { summary: "cs2-api does not answer the metrics scrape", __dashboardUid__: "samoylove-cs2", __panelId__: "7" }
+
+      - uid: product-cs2-site-down
+        title: CS2SiteDown
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: probe_success{instance="https://cs.samoy.love/"} == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: Alerting
+        execErrState: Error
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "cs.samoy.love does not answer the external probe", __dashboardUid__: "samoylove-cs2", __panelId__: "7" }
+
+      - uid: product-cs2-parse-queue-stuck
+        title: CS2ParseQueueStuck
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 3600, to: 0 }
+            model:
+              expr: |
+                cs2_parse_queue_depth > 20
+                and
+                increase(cs2_parse_total[30m]) < 1
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "Parse queue is growing and nothing finished in 30 minutes", __dashboardUid__: "samoylove-cs2", __panelId__: "2" }
+
+      - uid: product-cs2-parse-failure-rate-high
+        title: CS2ParseFailureRateHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 3600, to: 0 }
+            model:
+              expr: |
+                sum(increase(cs2_parse_total{result!="ok"}[1h]))
+                  /
+                clamp_min(sum(increase(cs2_parse_total[1h])), 1) > 0.3
+                and
+                sum(increase(cs2_parse_total[1h])) >= 5
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: critical }
+        annotations: { summary: "More than 30% of parses failed in the last hour", __dashboardUid__: "samoylove-cs2", __panelId__: "4" }
+
+      - uid: product-cs2-parse-slow
+        title: CS2ParseSlow
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 21600, to: 0 }
+            model:
+              expr: |
+                histogram_quantile(0.95, sum by (le) (rate(cs2_parse_duration_seconds_bucket[6h]))) > 120
+                and
+                sum(increase(cs2_parse_duration_seconds_count[6h])) >= 5
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: warning }
+        annotations: { summary: "95th percentile of parse time is over two minutes — the promise is under a minute", __dashboardUid__: "samoylove-cs2", __panelId__: "5" }
+
+      - uid: product-cs2-demo-storage-almost-full
+        title: CS2DemoStorageAlmostFull
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: |
+                cs2_demo_storage_used_bytes
+                  /
+                clamp_min(cs2_demo_storage_total_bytes, 1) > 0.9
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: critical }
+        annotations: { summary: "Demo storage is over 90% full — uploads will start failing", __dashboardUid__: "samoylove-cs2", __panelId__: "12" }

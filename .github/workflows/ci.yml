@@ -117,6 +117,7 @@ jobs:
           cp "$root/incus/metrics.crt" "$root/incus/server.crt"
           echo '[]' > "$root/targets/node-host.yml"
           echo '[]' > "$root/targets/incus.yml"
+          echo '[]' > "$root/targets/cs2.yml"
 
       - name: Проверка конфигурации Prometheus
         run: |
