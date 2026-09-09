@@ -1711,3 +1711,174 @@ groups:
         for: 1h
         labels: { severity: warning }
         annotations: { summary: "95th percentile of parse time is over two minutes while the service promises under one", __dashboardUid__: "samoylove-cs2", __panelId__: "11" }
+      - uid: cs2-gc-disconnected
+        title: Cs2GameCoordinatorDown
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: cs2_gc_ready == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: critical }
+        annotations: { summary: "No talk with Game Coordinator: new matches are not being analysed at all while the site looks healthy", __dashboardUid__: "samoylove-cs2", __panelId__: "21" }
+      - uid: cs2-demos-expiring
+        title: Cs2DemosExpiringUnfetched
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: cs2_chain_demos_expiring_soon > 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: critical }
+        annotations: { summary: "Demos are days away from expiring at Valve and still not downloaded — this loss is permanent", __dashboardUid__: "samoylove-cs2", __panelId__: "22" }
+      - uid: cs2-chain-stalled
+        title: Cs2ChainStalled
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 3600, to: 0 }
+            model:
+              expr: |
+                min_over_time(cs2_chain_codes_awaiting_summary[1h]) > 0
+                and
+                delta(cs2_chain_summaries[1h]) == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: warning }
+        annotations: { summary: "Match codes are waiting for summaries and no new summary arrived for an hour", __dashboardUid__: "samoylove-cs2", __panelId__: "27" }
+      - uid: cs2-demo-downloads-failing
+        title: Cs2DemoDownloadsFailing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: cs2_chain_demos_download_failed > 3
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "Several demos failed to download from the Valve CDN", __dashboardUid__: "samoylove-cs2", __panelId__: "28" }
+      - uid: cs2-summaries-unparsed
+        title: Cs2SummariesFailing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: cs2_chain_codes_summary_failed > 5
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "Game Coordinator answers are not being decoded — likely a protocol change after a game update", __dashboardUid__: "samoylove-cs2", __panelId__: "28" }
+      - uid: cs2-codes-need-rebind
+        title: Cs2CodesNeedRebind
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: cs2_chain_codes_needing_rebind > 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 6h
+        labels: { severity: warning }
+        annotations: { summary: "A player's match history stopped: Steam rejected their auth code and only they can reissue it", __dashboardUid__: "samoylove-cs2", __panelId__: "25" }
