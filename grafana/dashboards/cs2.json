@@ -1,7 +1,7 @@
 {
   "uid": "samoylove-cs2",
   "title": "CS2 — разбор матчей",
-  "description": "Хранилище демок, очередь разбора и посещаемость cs.samoy.love.",
+  "description": "Путь матча от «сыгран» до «разобран», чужие потолки и то, что видит игрок. Панели названы последствием для человека, а не именем метрики.",
   "tags": [
     "samoy.love",
     "продукт"
@@ -10,7 +10,7 @@
   "editable": false,
   "refresh": "1m",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "time": {
     "from": "now-24h",
     "to": "now"
@@ -25,21 +25,1527 @@
   "panels": [
     {
       "type": "row",
-      "title": "Хранилище демок",
+      "title": "Что видит игрок",
+      "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 0
       },
-      "id": 2,
-      "collapsed": false,
       "panels": []
     },
     {
       "type": "stat",
-      "title": "Демок сохранено",
-      "description": "Файлы в хранилище. Ретеншна нет — число только растёт.",
+      "title": "Сайт отвечает",
+      "description": "Внешняя проверка cs.samoy.love. Красное — сайт не открывается ни у кого.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "probe_success{instance=\"https://cs.samoy.love/\"}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "нет",
+                  "index": 0
+                },
+                "1": {
+                  "text": "да",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "id": 100,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Страницы с ошибкой",
+      "description": "Доля пятисоток за час. Ноль здесь — это ноль, а не «нет данных»: без ошибок панель обязана показывать 0%, иначе здоровый сервис выглядит как сломанный сбор.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(rate(cs2_http_requests_total{code=~\"5..\"}[1h])) or vector(0)) / clamp_min(sum(rate(cs2_http_requests_total[1h])), 0.0001)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 101,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Страница матча, p95",
+      "description": "Разбор считается по ClickHouse на лету: медленно здесь — это медленно у человека.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(cs2_http_request_duration_seconds_bucket{route=\"страница_матча\"}[15m])))",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 102,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Дольше всех ждёт",
+      "description": "Самое старое незакрытое дело во всей цепочке «матч сыгран → разбор готов».",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(cs2_chain_waiting_seconds)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 3600
+              },
+              {
+                "color": "red",
+                "value": 21600
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 103,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Разобрано за сутки",
+      "description": "Матчи, доехавшие до конца пути. Ноль сутки подряд при живых игроках — цепочка встала.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(cs2_parse_total{result=\"ok\"}[24h])) or vector(0)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 104,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Людей за сутки",
+      "description": "Уникальные без тестовых учёток и агентов.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_active_users{window=\"1d\"}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 105,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Сколько ждёт игрок на каждом шаге",
+      "description": "Не «сколько работы осталось», а «сколько времени видит человек». Сто свежих матчей — норма; один, ждущий четвёртый час, — поломка, и в счёте она выглядит единицей.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_chain_waiting_seconds",
+          "legendFormat": "{{stage}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 3600
+              },
+              {
+                "color": "red",
+                "value": 21600
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 106,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Ответы сайта по разделам",
+      "description": "Разделы, а не пути: в пути лежат идентификаторы матчей, и метка по ним завела бы ряд на каждый матч.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (route) (rate(cs2_http_requests_total[5m])) * 60",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 107,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Время ответа, p95 по разделам",
+      "description": "Статика отдаётся из памяти, профиль и матч считаются по ClickHouse. Смешивать их в одно число значит прятать медленное за быстрым.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(cs2_http_request_duration_seconds_bucket[15m])))",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 108,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Ошибки по разделам",
+      "description": "Пятисотки и четырёхсотки раздельно: первое — наша поломка, второе чаще всего чужой запрос.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (route) (rate(cs2_http_requests_total{code=~\"5..\"}[5m])) * 60",
+          "legendFormat": "5xx {{route}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (route) (rate(cs2_http_requests_total{code=~\"4..\"}[5m])) * 60",
+          "legendFormat": "4xx {{route}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 109,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Цепочка: матчи приходят сами",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Связь с Valve",
+      "description": "Разговор с Game Coordinator. Без него новые матчи не разбираются вовсе, а сайт выглядит здоровым.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_gc_ready",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "нет",
+                  "index": 0
+                },
+                "1": {
+                  "text": "есть",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "id": 200,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Ждут счёта",
+      "description": "Коды матчей, по которым ещё не пришли числа от Valve.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_chain_codes_awaiting_summary",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 201,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Ждут файла",
+      "description": "Матчи со ссылкой, за которыми ещё не сходил скачиватель.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_chain_demos_awaiting_download",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 202,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Исчезнут у Valve",
+      "description": "Осталось меньше трёх дней окна хранения, а демки у нас нет. ЕДИНСТВЕННОЕ ЧИСЛО ПРО БЕЗВОЗВРАТНУЮ ПОТЕРЮ.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_chain_demos_expiring_soon",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 203,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Уже потеряно",
+      "description": "Матчи, чей файл Valve удалила раньше, чем мы успели. Разбора по ним не будет никогда — это учёт, а не тревога.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_chain_demos_expired",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 204,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Нужен новый код",
+      "description": "Steam отверг код аутентификации игрока. Чинит только он сам, и сказать ему должны мы.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_chain_codes_needing_rebind",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 205,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Очереди цепочки",
+      "description": "Ждут сводки → ждут файла → истекают. Ровный ненулевой уровень означает, что звено встало: работа приходит, а не уходит.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_chain_codes_awaiting_summary",
+          "legendFormat": "ждут счёта"
+        },
+        {
+          "refId": "B",
+          "expr": "cs2_chain_demos_awaiting_download",
+          "legendFormat": "ждут файла"
+        },
+        {
+          "refId": "C",
+          "expr": "cs2_chain_demos_expiring_soon",
+          "legendFormat": "истекают"
+        },
+        {
+          "refId": "D",
+          "expr": "cs2_parse_queue_depth",
+          "legendFormat": "ждут разбора"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 206,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Что отвечает сервер Valve",
+      "description": "Лимитов Game Coordinator Valve не публикует: растущая доля «молчание» — единственный доступный признак того, что мы стучимся слишком часто. «не_разобран» означает апдейт игры и правку на нашей стороне.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (rate(cs2_gc_requests_total[15m])) * 60",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 207,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Походы за демками на CDN Valve",
+      "description": "ИСХОД ПОПЫТКИ, А НЕ СОСТОЯНИЕ В БАЗЕ. «файла_нет» — потеря навсегда и лечению не подлежит, «нет_связи» и «обрыв» проходят сами, «наша_сторона» — наш диск или база.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (rate(cs2_demo_download_total[1h])) * 3600",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 208,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 31
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Скорость скачивания",
+      "description": "Замер на живом файле дал 424 КБ/с: при ней 200 МБ едут восемь минут, а потолок на файл — полчаса. Падение скорости означает, что часть файлов не успеет приехать за тридцать дней окна.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(cs2_demo_download_bytes_total[1h])) / clamp_min(sum(rate(cs2_demo_download_duration_seconds_sum[1h])), 0.0001)",
+          "legendFormat": "байт в секунду"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 209,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 31
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Время одного скачивания",
+      "description": "p95 у потолка в полчаса означает обрывы и докачки, то есть матчи, которые не доедут.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(cs2_demo_download_duration_seconds_bucket[6h])))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(cs2_demo_download_duration_seconds_bucket[6h])))",
+          "legendFormat": "p95"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 210,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 31
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Разбор демок",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "В очереди",
+      "description": "Задания, ждущие воркера.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_parse_queue_depth",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 20
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 300,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 39
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Доля отказов",
+      "description": "Разборы, кончившиеся ошибкой, за час. Растёт после обновления игры — это постоянный налог, а не авария.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(rate(cs2_parse_total{result=\"failed\"}[1h])) or vector(0)) / clamp_min(sum(rate(cs2_parse_total[1h])), 0.0001)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.1
+              },
+              {
+                "color": "red",
+                "value": 0.2
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 301,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 39
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Время разбора, p95",
+      "description": "Обещано «под минуту». Дольше двух — человек ушёл со страницы раньше, чем разбор кончился.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(cs2_parse_duration_seconds_bucket[1h])))",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 60
+              },
+              {
+                "color": "red",
+                "value": 120
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 302,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 39
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Старым составом данных",
+      "description": "Матчи, разобранные устаревшей версией состава данных. Ноль — норма; растущее число значит, что пересчёт не справляется или не идёт.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_chain_matches_outdated",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 303,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 39
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Демок в хранилище",
+      "description": "Файлов на диске. Ретеншна нет — число только растёт.",
       "targets": [
         {
           "refId": "A",
@@ -75,12 +1581,12 @@
         },
         "overrides": []
       },
-      "id": 3,
+      "id": 304,
       "gridPos": {
         "h": 4,
         "w": 4,
-        "x": 0,
-        "y": 1
+        "x": 16,
+        "y": 39
       },
       "datasource": {
         "type": "prometheus",
@@ -89,8 +1595,1231 @@
     },
     {
       "type": "stat",
+      "title": "Версия релиза",
+      "description": "Версия, которой разобраны свежие матчи.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_parser_version_info",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": null,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 305,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 39
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Время разбора по парсерам",
+      "description": "«go» — поток событий, «subtick» — сабтиковые тайминги. Раздельно затем, чтобы было видно, кто из двух стал узким местом.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.50, sum by (le, parser) (rate(cs2_parse_duration_seconds_bucket[15m])))",
+          "legendFormat": "{{parser}} p50"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le, parser) (rate(cs2_parse_duration_seconds_bucket[15m])))",
+          "legendFormat": "{{parser}} p95"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 306,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 43
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Разборы по исходу",
+      "description": "Отказ разбора — это матч, которого человек не увидит. Всплеск сразу после выкатки игры означает, что пора чинить парсер.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (rate(cs2_parse_total[15m])) * 60",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 307,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 43
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Работники и служба",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      },
+      "panels": []
+    },
+    {
+      "type": "bargauge",
+      "title": "Кто из работников запущен",
+      "description": "МЕТРИКА ЧЕСТНОСТИ. Выключенный работник выглядит на страницах ровно как работающий, но медленный: и там, и там данных пока нет. 09.09.2026 живой игрок ждал разбора, которого не случилось бы никогда.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_worker_enabled",
+          "legendFormat": "{{worker}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 400,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 51
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Сколько молчит работник",
+      "description": "Часы с последнего полезного дела, по следам в базе. Самоотчёт здесь не годится: он умирает вместе с работником, то есть пропадает ровно тогда, когда нужен.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(time() - cs2_worker_last_success_timestamp_seconds > 0) / 3600",
+          "legendFormat": "{{worker}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 6
+              },
+              {
+                "color": "red",
+                "value": 24
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "id": 401,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 51
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Базы готовы",
+      "description": "Ноль означает: сайт отвечает, а всё, что зависит от данных, отдаёт 503.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_ready",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "нет",
+                  "index": 0
+                },
+                "1": {
+                  "text": "да",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "id": 402,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 51
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Режим работы",
+      "description": "public — целевой. lab — лабораторный: разрешён сбор данных Steam про кого угодно, и перед публичностью его надо выключить.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_service_mode",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 403,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 51
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Матчей известно кодами",
+      "description": "Коды матчей, найденные в истории игроков. Замерший счётчик значит, что новые матчи перестали находиться.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_match_codes_total",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 404,
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 16,
+        "y": 55
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Сводок получено",
+      "description": "Матчи, про которые известны числа от Valve.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_chain_summaries",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 405,
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 55
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Чужие потолки: Steam, Valve, Telegram",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 58
+      },
+      "panels": []
+    },
+    {
+      "type": "gauge",
+      "title": "Суточный потолок ключа Steam",
+      "description": "Расход за сутки к потолку в 100 000 вызовов. Упереться значит остановить у ВСЕХ и историю матчей, и ники с аватарами, а выглядеть это будет как отказ Steam.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(increase(cs2_steam_requests_total[24h])) or vector(0)) / clamp_min(max(cs2_external_limit{limit=\"steam_вызовов_в_сутки\"}), 1)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.6
+              },
+              {
+                "color": "red",
+                "value": 0.85
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 500,
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 0,
+        "y": 59
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Кто выедает потолок",
+      "description": "Вызовы по методам Web API. Считаются походы наружу, а не ответы кэша: кэш не стоит Valve ничего, и мешать их значит смотреть на работу вместо расхода.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (method) (increase(cs2_steam_requests_total[1h]))",
+          "legendFormat": "{{method}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 501,
+      "gridPos": {
+        "h": 7,
+        "w": 9,
+        "x": 6,
+        "y": 59
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Чем отвечает Steam",
+      "description": "«ключ_отклонён» — ключ отозван без предупреждения, и это условие Valve, а не поломка. «профиль_закрыт» — нормальный ответ про обычного человека, тревоги по нему быть не должно.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (increase(cs2_steam_requests_total[1h]))",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 502,
+      "gridPos": {
+        "h": 7,
+        "w": 9,
+        "x": 15,
+        "y": 59
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "table",
+      "title": "Потолки, в которые можно упереться",
+      "description": "Числа едут из кода вместе с расходом. Зашитый в дашборд потолок расходится с кодом молча: поменяли темп в клиенте — график продолжает показывать спокойные проценты.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_external_limit",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "job": true,
+              "instance": true,
+              "__name__": true
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "align": "auto"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 503,
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 0,
+        "y": 66
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Профили устарели",
+      "description": "Профили Steam, не обновлявшиеся сутки. Растёт при отозванном ключе и при выеденном потолке: на страницах остаются старые ники и аватары.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_steam_profiles_stale",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 504,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 10,
+        "y": 66
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Игроков известно",
+      "description": "Люди, про которых что-то известно из Steam. Охват, а не нагрузка.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_players_known",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 505,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 14,
+        "y": 66
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Скачано с CDN за сутки",
+      "description": "Объём, забранный у Valve. Вместе со скоростью отвечает, успеем ли мы за тридцатидневное окно.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(cs2_demo_download_bytes_total[24h])) or vector(0)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 506,
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 66
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Аватары и бот",
+      "description": "Две мелочи, каждая из которых видна человеку: серый кружок вместо лица и непогашенный код привязки в Telegram.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (rate(cs2_avatar_requests_total[15m])) * 60",
+          "legendFormat": "аватар: {{result}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (result) (rate(cs2_telegram_polls_total[15m])) * 60",
+          "legendFormat": "бот: {{result}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 507,
+      "gridPos": {
+        "h": 4,
+        "w": 14,
+        "x": 10,
+        "y": 70
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Люди",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 74
+      },
+      "panels": []
+    },
+    {
+      "type": "bargauge",
+      "title": "Первый заход: кто где остановился",
+      "description": "Вход → два кода → бот. Ступенька, переставшая расти при растущей предыдущей, — это сломанный шаг, а не отсутствие интереса: человек уходит молча, ошибок в журнале нет, страница отдаёт 200.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_onboarding_users",
+          "legendFormat": "{{stage}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 600,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 75
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Активные игроки",
+      "description": "Уникальные за окно, без тестовых учёток и обращений агентов: отделить их задним числом нельзя, поэтому считает сам сервис, а не запрос в Grafana.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_active_users{window=\"1d\"}",
+          "legendFormat": "за сутки"
+        },
+        {
+          "refId": "B",
+          "expr": "cs2_active_users{window=\"7d\"}",
+          "legendFormat": "за неделю"
+        },
+        {
+          "refId": "C",
+          "expr": "cs2_active_users{window=\"30d\"}",
+          "legendFormat": "за месяц"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 601,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 75
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Загрузка демок руками",
+      "description": "Единственное место, где отказ человек видит сразу и обычно уходит. Это не запасной путь: для матчей старше тридцати дней и демок с площадок он единственный.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (increase(cs2_upload_total[6h]))",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 602,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 75
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Хранилище демок",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 82
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
       "title": "Занято",
-      "description": "Сколько места занимают демки.",
+      "description": "Каталог ограничен квотой ZFS.",
       "targets": [
         {
           "refId": "A",
@@ -113,7 +2842,7 @@
       "fieldConfig": {
         "defaults": {
           "unit": "bytes",
-          "decimals": 1,
+          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -126,12 +2855,12 @@
         },
         "overrides": []
       },
-      "id": 4,
+      "id": 700,
       "gridPos": {
         "h": 4,
         "w": 4,
-        "x": 4,
-        "y": 1
+        "x": 0,
+        "y": 83
       },
       "datasource": {
         "type": "prometheus",
@@ -141,7 +2870,7 @@
     {
       "type": "gauge",
       "title": "Заполнение квоты",
-      "description": "Датасет ограничен квотой ZFS. Переполнение остановит приём новых демок, но не тронет общий пул, на котором живут прод и сборочные машины.",
+      "description": "Демки хранятся без ретеншна: место кончится, и знать об этом надо заранее. На 85% приём новых файлов встанет.",
       "targets": [
         {
           "refId": "A",
@@ -163,9 +2892,9 @@
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
-          "decimals": 1,
           "min": 0,
           "max": 1,
+          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -186,12 +2915,12 @@
         },
         "overrides": []
       },
-      "id": 5,
+      "id": 701,
       "gridPos": {
         "h": 4,
         "w": 5,
-        "x": 8,
-        "y": 1
+        "x": 4,
+        "y": 83
       },
       "datasource": {
         "type": "prometheus",
@@ -251,843 +2980,12 @@
         },
         "overrides": []
       },
-      "id": 6,
-      "gridPos": {
-        "h": 4,
-        "w": 11,
-        "x": 13,
-        "y": 1
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "row",
-      "title": "Цепочка: матчи приходят сами",
-      "collapsed": false,
-      "panels": [],
-      "id": 20,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 5
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Связь с Valve",
-      "description": "Есть ли сейчас разговор с Game Coordinator. Ноль означает, что новые матчи не разбираются вовсе: сессия Steam умирает от отозванного токена, бана аккаунта и обновления игры, а сайт при этом работает как ни в чём не бывало.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "cs2_gc_ready",
-          "instant": true
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "none",
-        "textMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "id": 21,
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 0,
-        "y": 6
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Уходят по сроку",
-      "description": "Матчи, у которых остаётся меньше трёх дней до конца тридцатидневного окна Valve, и демка ещё не забрана. Это единственное число на дашборде про БЕЗВОЗВРАТНУЮ потерю: пропущенный матч не разобрать уже никогда.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "cs2_chain_demos_expiring_soon",
-          "instant": true
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "none",
-        "textMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "id": 22,
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 4,
-        "y": 6
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Ждут сводки",
-      "description": "Коды матчей, по которым ещё не пришли числа от Game Coordinator. Ненулевое значение нормально: очередь разбирается кругами. Ненулевое и не убывающее — уже нет.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "cs2_chain_codes_awaiting_summary",
-          "instant": true
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "none",
-        "textMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "id": 23,
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 8,
-        "y": 6
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Ждут демку",
-      "description": "Матчи со ссылкой на файл, который ещё не забран. Одна демка — это 40–70 МБ и несколько минут; очередь в десяток файлов это часы, и это нормально.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "cs2_chain_demos_awaiting_download",
-          "instant": true
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "none",
-        "textMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "id": 24,
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 12,
-        "y": 6
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Нужна новая привязка",
-      "description": "Игроки, у которых Steam отверг код привязки истории. Само не починится: код перевыпускает только сам человек, и до тех пор его матчи не собираются вовсе.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "cs2_chain_codes_needing_rebind",
-          "instant": true
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "none",
-        "textMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "id": 25,
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 16,
-        "y": 6
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Сводок всего",
-      "description": "Матчи, про которые известны числа от Valve, — включая те, чей файл уже истёк. Растёт быстрее, чем число разобранных демок, и это нормально: сводка дешевле файла.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "cs2_chain_summaries",
-          "instant": true
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "none",
-        "textMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "id": 26,
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 20,
-        "y": 6
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "timeseries",
-      "title": "Очереди цепочки",
-      "description": "Три состояния рядом, потому что беда обычно видна не по одному: ждут сводки, ждут демку, уходят по сроку. Ровная линия вместо убывающей означает, что звено встало.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "cs2_chain_codes_awaiting_summary",
-          "legendFormat": "ждут сводки"
-        },
-        {
-          "refId": "B",
-          "expr": "cs2_chain_demos_awaiting_download",
-          "legendFormat": "ждут демку"
-        },
-        {
-          "refId": "C",
-          "expr": "cs2_chain_demos_expiring_soon",
-          "legendFormat": "уходят по сроку"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "id": 27,
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 10
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "timeseries",
-      "title": "Отказы цепочки",
-      "description": "Сводка не пришла и демка не забралась — разные беды. Первая лечится правкой на нашей стороне (имена полей в ответе GC), вторая обычно чужой недоступностью или истёкшим файлом.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "cs2_chain_codes_summary_failed",
-          "legendFormat": "сводка не пришла"
-        },
-        {
-          "refId": "B",
-          "expr": "cs2_chain_demos_download_failed",
-          "legendFormat": "демка не забралась"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "id": 28,
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 10
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "row",
-      "title": "Разбор",
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 17
-      },
-      "id": 7,
-      "collapsed": false,
-      "panels": []
-    },
-    {
-      "type": "stat",
-      "title": "В очереди",
-      "description": "Задания, ждущие воркера.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "cs2_parse_queue_depth",
-          "instant": true
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "none",
-        "textMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 50
-              },
-              {
-                "color": "red",
-                "value": 200
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "id": 8,
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 0,
-        "y": 18
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Разобрано за сутки",
-      "description": "Успешные разборы.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(increase(cs2_parse_total{result=\"ok\"}[24h]))",
-          "instant": true
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "none",
-        "textMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "id": 9,
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 4,
-        "y": 18
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Доля неудач",
-      "description": "Скачок обычно означает, что игра обновилась и парсер отстал.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(rate(cs2_parse_total{result=\"failed\"}[1h])) / clamp_min(sum(rate(cs2_parse_total[1h])), 0.0001)",
-          "instant": true
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "none",
-        "textMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "decimals": 1,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 0.05
-              },
-              {
-                "color": "red",
-                "value": 0.2
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "id": 10,
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 8,
-        "y": 18
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "timeseries",
-      "title": "Время разбора по парсерам",
-      "description": "Два парсера на одну демку: события даёт Go, сабтиковые тайминги — Rust. Расхождение кривых показывает, кто из них стал узким местом.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "histogram_quantile(0.50, sum by (le, parser) (rate(cs2_parse_duration_seconds_bucket[15m])))",
-          "legendFormat": "{{parser}} p50"
-        },
-        {
-          "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by (le, parser) (rate(cs2_parse_duration_seconds_bucket[15m])))",
-          "legendFormat": "{{parser}} p95"
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "id": 11,
+      "id": 702,
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 18
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "row",
-      "title": "Сайт",
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 26
-      },
-      "id": 12,
-      "collapsed": false,
-      "panels": []
-    },
-    {
-      "type": "timeseries",
-      "title": "Ответы nginx",
-      "description": "Журнал доступа. 5xx на фоне ровного трафика — повод смотреть логи API.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum by (status) (rate(samoylove_site_http_response_count_total{host=\"cs.samoy.love\"}[5m])) * 60",
-          "legendFormat": "{{status}}"
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "mode": "normal",
-              "group": "A"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "id": 13,
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 27
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "timeseries",
-      "title": "Уникальные пользователи",
-      "description": "Тестовые прогоны и обращения агентов из счёта исключены — считаются только живые люди. Метрику отдаёт само приложение: только оно знает, кто есть кто.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "cs2_active_users{window=\"1d\"}",
-          "legendFormat": "за сутки"
-        },
-        {
-          "refId": "B",
-          "expr": "cs2_active_users{window=\"7d\"}",
-          "legendFormat": "за неделю"
-        },
-        {
-          "refId": "C",
-          "expr": "cs2_active_users{window=\"30d\"}",
-          "legendFormat": "за месяц"
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 12,
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "id": 14,
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 27
+        "w": 15,
+        "x": 9,
+        "y": 83
       },
       "datasource": {
         "type": "prometheus",
@@ -1096,12 +2994,12 @@
     },
     {
       "type": "stat",
-      "title": "Версия разбора",
-      "description": "Версия релиза, которым разобраны матчи. По ней после обновления игры видно, что надо перепарсить: если версия старше текущего релиза, значит архив ещё не пересчитан.",
+      "title": "Свободно",
+      "description": "Скачиватель демок не начинает круг, если осталось меньше десяти гигабайт: место кончается тихо и сразу у всех, включая временные файлы разбора.",
       "targets": [
         {
           "refId": "A",
-          "expr": "cs2_parser_version_info",
+          "expr": "cs2_demo_storage_total_bytes - cs2_demo_storage_used_bytes",
           "instant": true
         }
       ],
@@ -1113,31 +3011,44 @@
           "fields": "",
           "values": false
         },
-        "colorMode": "none",
+        "colorMode": "background",
         "graphMode": "none",
-        "textMode": "name"
+        "textMode": "auto"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "bytes",
+          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
+                "color": "green",
                 "value": null
+              },
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 10737418240
+              },
+              {
+                "color": "green",
+                "value": 21474836480
               }
             ]
           }
         },
         "overrides": []
       },
-      "id": 15,
+      "id": 703,
       "gridPos": {
         "h": 4,
-        "w": 12,
+        "w": 4,
         "x": 0,
-        "y": 34
+        "y": 87
       },
       "datasource": {
         "type": "prometheus",
@@ -1146,13 +3057,13 @@
     },
     {
       "type": "timeseries",
-      "title": "Ответ снаружи",
-      "description": "Время полной пробы blackbox: DNS, соединение, TLS и ответ. Меряется снаружи, поэтому включает и nginx, и сеть, а не только сам сервис.",
+      "title": "Ответ внешней проверки",
+      "description": "Время ответа cs.samoy.love снаружи: сюда входят nginx, сеть и сертификат, то есть всё, чего не видно изнутри сервиса.",
       "targets": [
         {
           "refId": "A",
           "expr": "probe_duration_seconds{instance=\"https://cs.samoy.love/\"}",
-          "legendFormat": "проба"
+          "legendFormat": "снаружи"
         }
       ],
       "options": {
@@ -1169,23 +3080,35 @@
       "fieldConfig": {
         "defaults": {
           "unit": "s",
-          "min": 0,
           "custom": {
             "drawStyle": "line",
-            "lineWidth": 1,
-            "fillOpacity": 10,
+            "lineWidth": 2,
+            "fillOpacity": 12,
             "showPoints": "never",
-            "spanNulls": true
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           }
         },
         "overrides": []
       },
-      "id": 16,
+      "id": 704,
       "gridPos": {
         "h": 4,
-        "w": 12,
-        "x": 12,
-        "y": 34
+        "w": 5,
+        "x": 4,
+        "y": 87
       },
       "datasource": {
         "type": "prometheus",
