@@ -1524,143 +1524,50 @@ groups:
         labels: { severity: warning }
         annotations: { summary: "Game tick p95 is over budget — every player feels the lag", __dashboardUid__: "samoylove-snakes", __panelId__: "29" }
 
-  # Разбор матчей CS2.
+  # ═══════════════════════════════════════════════════════════════════════════
+  # РАЗБОР МАТЧЕЙ CS2 — ЕДИНСТВЕННАЯ ГРУППА ПРАВИЛ ПО-РУССКИ, И ЭТО РЕШЕНИЕ
+  # ВЛАДЕЛЬЦА ОТ 10.09.2026.
   #
-  # Первые два правила — про место. Демки хранятся ЦЕЛИКОМ, ретеншна нет: это
-  # осознанное решение, а не недоделка. Значит место кончится, и единственная
-  # защита от того, чтобы это случилось внезапно, — предупредить заранее.
-  # Датасет ограничен квотой ZFS, поэтому переполнение остановит приём демок, а
-  # не заполнит общий пул, на котором живут прод и сборочные машины.
+  # Остальные группы выше остались на английском (см. шапку файла). Здесь
+  # иначе: имя правила и текст — это то, что человек читает в чате ночью, и
+  # читать он должен не «Cs2ChainStalled», а что именно сломалось и что от
+  # этого не работает у игрока.
   #
-  # Размер отдаёт само приложение, а не хостовой коллектор: statfs по каталогу
-  # хранилища уже показывает квоту, и заводить ради этого скрипт на хосте
-  # незачем.
+  # У КАЖДОГО ПРАВИЛА ДВА ТЕКСТА, И ОНИ РАЗНЫЕ ПО НАЗНАЧЕНИЮ:
+  #   summary     — что произошло, одной строкой;
+  #   description — ЧТО ЭТО ЗНАЧИТ ДЛЯ ИГРОКА и что делать.
+  # Второе важнее первого. Тревога, из которой не видно последствия, требует
+  # похода в код, чтобы понять, надо ли вставать; а тревога, по которой не
+  # встают, через месяц выключается вместе со всеми остальными.
+  #
+  # ЧЕГО ЗДЕСЬ НАМЕРЕННО НЕТ:
+  #   • тревоги на cs2_chain_demos_expired — истёкшие демки лечению не
+  #     подлежат, это учёт потерянного, а не повод будить. Смотреть вперёд
+  #     обязана «Демки вот-вот исчезнут у Valve», у которой ещё есть время;
+  #   • тревоги на лабораторный режим — он включён владельцем осознанно, и
+  #     напоминать о нём каждые сутки значит приучить не читать;
+  #   • тревоги на «профиль закрыт» в ответах Steam — это нормальный ответ
+  #     про обычного человека с обычными настройками приватности.
+  #
+  # Демки хранятся ЦЕЛИКОМ, ретеншна нет: это осознанное решение, а не
+  # недоделка. Значит место кончится, и единственная защита от того, чтобы это
+  # случилось внезапно, — предупредить заранее. Датасет ограничен квотой ZFS,
+  # поэтому переполнение остановит приём демок, а не заполнит общий пул, на
+  # котором живут прод и сборочные машины.
   - orgId: 1
     name: product-cs2
     folder: Alerts
     interval: 1m
     rules:
-      - uid: cs2-storage-warn
-        title: Cs2DemoStorageFilling
-        condition: C
-        data:
-          - refId: A
-            datasourceUid: samoylove-prometheus
-            relativeTimeRange: { from: 600, to: 0 }
-            model:
-              expr: cs2_demo_storage_used_bytes / cs2_demo_storage_total_bytes > 0.70
-              instant: true
-              refId: A
-          - refId: C
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              expression: A
-              conditions:
-                - evaluator: { type: gt, params: [-1000000000] }
-                  operator: { type: and }
-                  query: { params: [C] }
-                  reducer: { type: last }
-                  type: query
-              refId: C
-        noDataState: OK
-        execErrState: Error
-        for: 30m
-        labels: { severity: warning }
-        annotations: { summary: "Demo storage is over 70% of its quota" }
-      - uid: cs2-storage-crit
-        title: Cs2DemoStorageAlmostFull
-        condition: C
-        data:
-          - refId: A
-            datasourceUid: samoylove-prometheus
-            relativeTimeRange: { from: 600, to: 0 }
-            model:
-              expr: cs2_demo_storage_used_bytes / cs2_demo_storage_total_bytes > 0.85
-              instant: true
-              refId: A
-          - refId: C
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              expression: A
-              conditions:
-                - evaluator: { type: gt, params: [-1000000000] }
-                  operator: { type: and }
-                  query: { params: [C] }
-                  reducer: { type: last }
-                  type: query
-              refId: C
-        noDataState: OK
-        execErrState: Error
-        for: 15m
-        labels: { severity: critical }
-        annotations: { summary: "Demo storage is over 85% of its quota — new demos will stop being accepted" }
-      - uid: cs2-queue-stuck
-        title: Cs2ParseQueueStuck
-        condition: C
-        data:
-          - refId: A
-            datasourceUid: samoylove-prometheus
-            relativeTimeRange: { from: 600, to: 0 }
-            model:
-              expr: min_over_time(cs2_parse_queue_depth[15m]) > 0 and rate(cs2_parse_total[15m]) == 0
-              instant: true
-              refId: A
-          - refId: C
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              expression: A
-              conditions:
-                - evaluator: { type: gt, params: [-1000000000] }
-                  operator: { type: and }
-                  query: { params: [C] }
-                  reducer: { type: last }
-                  type: query
-              refId: C
-        noDataState: OK
-        execErrState: Error
-        for: 15m
-        labels: { severity: critical }
-        annotations: { summary: "Parse queue is not draining — parser is likely broken after a game update" }
-      - uid: cs2-parse-failing
-        title: Cs2ParseFailureRateHigh
-        condition: C
-        data:
-          - refId: A
-            datasourceUid: samoylove-prometheus
-            relativeTimeRange: { from: 600, to: 0 }
-            model:
-              expr: rate(cs2_parse_total{result="failed"}[30m]) / rate(cs2_parse_total[30m]) > 0.20
-              instant: true
-              refId: A
-          - refId: C
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              expression: A
-              conditions:
-                - evaluator: { type: gt, params: [-1000000000] }
-                  operator: { type: and }
-                  query: { params: [C] }
-                  reducer: { type: last }
-                  type: query
-              refId: C
-        noDataState: OK
-        execErrState: Error
-        for: 10m
-        labels: { severity: warning }
-        annotations: { summary: "More than 20% of demos fail to parse" }
       - uid: cs2-api-down
-        title: Cs2ApiDown
+        title: "CS2: сайт не отвечает"
         condition: C
         data:
           - refId: A
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: up{job="cs2-api"} == 0
+              expr: 'up{job="cs2-api"} == 0'
               instant: true
               refId: A
           - refId: C
@@ -1679,19 +1586,19 @@ groups:
         execErrState: Error
         for: 5m
         labels: { severity: critical }
-        annotations: { summary: "CS2 analytics API is not answering" }
-      - uid: product-cs2-parse-slow
-        title: Cs2ParseSlow
+        annotations: { summary: "Служба cs2-api не отвечает на сбор метрик", description: "Для игрока это полностью недоступный сайт: ни разбора, ни истории, ни входа. Смотреть journalctl -u cs2-api в контейнере cs2; выкатка откатывается сама, если не поднялся healthz.", __dashboardUid__: "samoylove-cs2", __panelId__: "100" }
+      - uid: cs2-not-ready
+        title: "CS2: сервис не подключился к базам"
         condition: C
         data:
           - refId: A
+            # Порт слушается раньше баз намеренно — иначе медленный ClickHouse
+            # откатывал бы исправный релиз. Отсюда и правило: «не готов» это
+            # состояние, а не отсутствие сервиса.
             datasourceUid: samoylove-prometheus
-            relativeTimeRange: { from: 21600, to: 0 }
+            relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: |
-                histogram_quantile(0.95, sum by (le) (rate(cs2_parse_duration_seconds_bucket[6h]))) > 120
-                and
-                sum(increase(cs2_parse_duration_seconds_count[6h])) >= 5
+              expr: 'cs2_ready == 0'
               instant: true
               refId: A
           - refId: C
@@ -1708,18 +1615,74 @@ groups:
               refId: C
         noDataState: OK
         execErrState: Error
-        for: 1h
-        labels: { severity: warning }
-        annotations: { summary: "95th percentile of parse time is over two minutes while the service promises under one", __dashboardUid__: "samoylove-cs2", __panelId__: "11" }
-      - uid: cs2-gc-disconnected
-        title: Cs2GameCoordinatorDown
+        for: 10m
+        labels: { severity: critical }
+        annotations: { summary: "Сайт поднят, но Postgres или ClickHouse недоступны", description: "Человек видит страницу «сервис поднимается» и 503 везде, где нужны данные: разбор, профиль, поиск. Само чинится, когда база встанет; дольше десяти минут — значит база не поднимется без нас. Причина названа словами в /readyz.", __dashboardUid__: "samoylove-cs2", __panelId__: "402" }
+      - uid: cs2-http-errors
+        title: "CS2: страницы отвечают ошибками"
         condition: C
         data:
           - refId: A
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: cs2_gc_ready == 0
+              expr: 'sum(rate(cs2_http_requests_total{code=~"5.."}[15m])) / clamp_min(sum(rate(cs2_http_requests_total[15m])), 0.0001) > 0.05'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: critical }
+        annotations: { summary: "Больше 5% ответов сайта — пятисотки", description: "Каждая такая ответ — страница, которая у человека не открылась. Какой именно раздел ломается, видно на панели «Ошибки по разделам»: журнал nginx этого не покажет, он видит домен целиком.", __dashboardUid__: "samoylove-cs2", __panelId__: "109" }
+      - uid: cs2-demos-expiring
+        title: "CS2: демки вот-вот исчезнут у Valve"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_chain_demos_expiring_soon > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: critical }
+        annotations: { summary: "Есть матчи, у которых осталось меньше трёх дней окна хранения", description: "ЕДИНСТВЕННАЯ ТРЕВОГА ПРО БЕЗВОЗВРАТНУЮ ПОТЕРЮ. Valve держит демку около тридцати дней; не забранный сейчас матч не разобрать уже никогда — ни по просьбе игрока, ни за деньги. Проверить скачиватель: место на диске, связь с CDN, не выключен ли работник.", __dashboardUid__: "samoylove-cs2", __panelId__: "203" }
+      - uid: cs2-gc-down
+        title: "CS2: нет связи с сервером Valve"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_gc_ready == 0'
               instant: true
               refId: A
           - refId: C
@@ -1738,16 +1701,16 @@ groups:
         execErrState: Error
         for: 30m
         labels: { severity: critical }
-        annotations: { summary: "No talk with Game Coordinator: new matches are not being analysed at all while the site looks healthy", __dashboardUid__: "samoylove-cs2", __panelId__: "21" }
-      - uid: cs2-demos-expiring
-        title: Cs2DemosExpiringUnfetched
+        annotations: { summary: "Прослойка Game Coordinator не отвечает или потеряла сессию Steam", description: "Новые матчи перестают приходить сами: у игрока в истории остаётся «найден» и ничего дальше, при этом сайт выглядит здоровым. Причины по частоте: обновление CS2, отозванный токен, бан серверного аккаунта. Загрузка демки руками продолжает работать.", __dashboardUid__: "samoylove-cs2", __panelId__: "200" }
+      - uid: cs2-gc-unparsed
+        title: "CS2: ответы сервера Valve перестали разбираться"
         condition: C
         data:
           - refId: A
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: cs2_chain_demos_expiring_soon > 0
+              expr: 'increase(cs2_gc_requests_total{result="не_разобран"}[1h]) > 0'
               instant: true
               refId: A
           - refId: C
@@ -1764,21 +1727,82 @@ groups:
               refId: C
         noDataState: OK
         execErrState: Error
-        for: 1h
+        for: 5m
         labels: { severity: critical }
-        annotations: { summary: "Demos are days away from expiring at Valve and still not downloaded — this loss is permanent", __dashboardUid__: "samoylove-cs2", __panelId__: "22" }
-      - uid: cs2-chain-stalled
-        title: Cs2ChainStalled
+        annotations: { summary: "Game Coordinator отвечает, но разобрать ответ мы не можем", description: "Так выглядит очередной апдейт CS2 — тот самый постоянный налог. Пока не починим имена полей, у всех игроков матчи стоят на стадии «найден»: счёт не приходит, демка не скачивается, разбора нет. Сырой ответ пишется в журнал целиком — по нему и правится.", __dashboardUid__: "samoylove-cs2", __panelId__: "207" }
+      - uid: cs2-downloads-failing
+        title: "CS2: демки не скачиваются с CDN Valve"
+        condition: C
+        data:
+          - refId: A
+            # ЭТО ПРАВИЛО ПЕРЕПИСАНО 10.09.2026 ПОСЛЕ ЛОЖНОГО СРАБАТЫВАНИЯ.
+            # Прежнее смотрело на cs2_chain_demos_download_failed > 3 — счётчик
+            # записей с непустой причиной. Оно зажглось в тот час, когда работник
+            # впервые пометил словами семь августовских матчей, чьи файлы Valve
+            # давно удалила: ни одного отказа сети не было, а счётчик не вернулся
+            # бы к нулю НИКОГДА — истёкшая запись лежит в базе вечно.
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'sum(rate(cs2_demo_download_total{result=~"нет_связи|обрыв"}[1h])) / clamp_min(sum(rate(cs2_demo_download_total[1h])), 0.0001) > 0.3 and sum(increase(cs2_demo_download_total[1h])) >= 3'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Больше трети походов за файлом кончаются обрывом связи", description: "Матчи копятся нескачанными, а окно хранения у Valve — тридцать дней: затянувшийся отказ превращается в потерю навсегда. Считается ПО ПОПЫТКАМ, а не по состоянию в базе: состояние помнит и то, что случилось месяц назад и починке не подлежит.", __dashboardUid__: "samoylove-cs2", __panelId__: "208" }
+      - uid: cs2-chain-waiting
+        title: "CS2: матч ждёт разбора больше двух часов"
         condition: C
         data:
           - refId: A
             datasourceUid: samoylove-prometheus
-            relativeTimeRange: { from: 3600, to: 0 }
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'max(cs2_chain_waiting_seconds) > 7200'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "Самое старое дело в цепочке висит дольше двух часов", description: "Игрок доиграл, обновляет страницу и не видит разбора. Панель «Сколько ждёт игрок» показывает, на каком шаге затор: ждёт счёта — работник Game Coordinator, ждёт файла — скачиватель, ждёт разбора — воркер. Обещано «сам и сразу», а не «к утру».", __dashboardUid__: "samoylove-cs2", __panelId__: "106" }
+      - uid: cs2-chain-stalled
+        title: "CS2: цепочка встала"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
             model:
               expr: |
                 min_over_time(cs2_chain_codes_awaiting_summary[1h]) > 0
-                and
-                delta(cs2_chain_summaries[1h]) == 0
+                and increase(cs2_chain_summaries[1h]) == 0
               instant: true
               refId: A
           - refId: C
@@ -1795,46 +1819,18 @@ groups:
               refId: C
         noDataState: OK
         execErrState: Error
-        for: 1h
+        for: 10m
         labels: { severity: warning }
-        annotations: { summary: "Match codes are waiting for summaries and no new summary arrived for an hour", __dashboardUid__: "samoylove-cs2", __panelId__: "27" }
-      - uid: cs2-demo-downloads-failing
-        title: Cs2DemoDownloadsFailing
+        annotations: { summary: "Коды матчей ждут счёта, а новых сводок за час не прибавилось", description: "Работа приходит и не уходит: у игроков матчи стоят на первой стадии. Ничего при этом не падает — сайт отвечает двухсотыми, ошибок в журнале нет. Ровно так поломку цепочки однажды нашёл живой игрок, а не проверка.", __dashboardUid__: "samoylove-cs2", __panelId__: "206" }
+      - uid: cs2-summaries-failed
+        title: "CS2: коды матчей закрыты с ошибкой"
         condition: C
         data:
           - refId: A
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: cs2_chain_demos_download_failed > 3
-              instant: true
-              refId: A
-          - refId: C
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              expression: A
-              conditions:
-                - evaluator: { type: gt, params: [-1000000000] }
-                  operator: { type: and }
-                  query: { params: [C] }
-                  reducer: { type: last }
-                  type: query
-              refId: C
-        noDataState: OK
-        execErrState: Error
-        for: 30m
-        labels: { severity: warning }
-        annotations: { summary: "Several demos failed to download from the Valve CDN", __dashboardUid__: "samoylove-cs2", __panelId__: "28" }
-      - uid: cs2-summaries-unparsed
-        title: Cs2SummariesFailing
-        condition: C
-        data:
-          - refId: A
-            datasourceUid: samoylove-prometheus
-            relativeTimeRange: { from: 600, to: 0 }
-            model:
-              expr: cs2_chain_codes_summary_failed > 5
+              expr: 'cs2_chain_codes_summary_failed > 5'
               instant: true
               refId: A
           - refId: C
@@ -1853,16 +1849,16 @@ groups:
         execErrState: Error
         for: 30m
         labels: { severity: warning }
-        annotations: { summary: "Game Coordinator answers are not being decoded — likely a protocol change after a game update", __dashboardUid__: "samoylove-cs2", __panelId__: "28" }
-      - uid: cs2-codes-need-rebind
-        title: Cs2CodesNeedRebind
+        annotations: { summary: "Больше пяти кодов закрыто с непустой причиной отказа", description: "Эти матчи в историю игрока уже не попадут: попытки исчерпаны. Разово так бывает у матчей, которых у Valve нет; растущее число означает нашу поломку — чаще всего разбор ответа GC после апдейта игры.", __dashboardUid__: "samoylove-cs2", __panelId__: "207" }
+      - uid: cs2-codes-rebind
+        title: "CS2: игроку нужно перевыпустить код Steam"
         condition: C
         data:
           - refId: A
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: cs2_chain_codes_needing_rebind > 0
+              expr: 'cs2_chain_codes_needing_rebind > 0'
               instant: true
               refId: A
           - refId: C
@@ -1881,4 +1877,426 @@ groups:
         execErrState: Error
         for: 6h
         labels: { severity: warning }
-        annotations: { summary: "A player's match history stopped: Steam rejected their auth code and only they can reissue it", __dashboardUid__: "samoylove-cs2", __panelId__: "25" }
+        annotations: { summary: "Steam отверг код аутентификации у одного из игроков", description: "У этого человека история матчей остановилась совсем: новые матчи не находятся, разбора не будет. Починить может ТОЛЬКО он сам — взять новый код на странице помощи Steam, — и, значит, сказать ему об этом должны мы.", __dashboardUid__: "samoylove-cs2", __panelId__: "205" }
+      - uid: cs2-worker-disabled
+        title: "CS2: работник цепочки выключен"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_worker_enabled{worker=~"коды|сводки|скачивание"} == 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "Работник {{ $labels.worker }} не запущен: нет настройки или ключа", description: "Матчи перестают приходить сами, а страницы объясняют пустоту ОЖИДАНИЕМ — то есть врут: ждать нечего. 09.09.2026 живой игрок так ждал разбора, которого не случилось бы никогда. Проверить CS2_GC_URL, ключ Steam и список хостов скачивателя в /etc/cs2/api.env.", __dashboardUid__: "samoylove-cs2", __panelId__: "400" }
+      - uid: cs2-worker-silent
+        title: "CS2: работник цепочки молчит"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: |
+                (time() - cs2_worker_last_success_timestamp_seconds > 21600)
+                and on(worker) cs2_worker_enabled == 1
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "Работник {{ $labels.worker }} шесть часов не сделал ни одного дела", description: "Работник запущен, но следов работы в базе нет: круг падает молча или ему нечего брать. Для игрока это тот же затор в цепочке, только без единой ошибки в журнале. Считается по следам в базе, а не по самоотчёту — самоотчёт умирает вместе с работником.", __dashboardUid__: "samoylove-cs2", __panelId__: "401" }
+      - uid: cs2-queue-stuck
+        title: "CS2: разбор матчей встал"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'min_over_time(cs2_parse_queue_depth[15m]) > 0 and rate(cs2_parse_total[15m]) == 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: critical }
+        annotations: { summary: "Очередь разбора не убывает, а разборов не происходит вовсе", description: "Демки лежат, разбора нет ни у кого: у игрока страница матча вечно показывает «разбирается». Обычная причина — обновление игры сломало парсер; вторая — воркеры не поднялись после выкатки. Отказ выглядит как тишина, а не как ошибка.", __dashboardUid__: "samoylove-cs2", __panelId__: "300" }
+      - uid: cs2-parse-failures
+        title: "CS2: разбор падает у каждого пятого матча"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'rate(cs2_parse_total{result="failed"}[30m]) / clamp_min(rate(cs2_parse_total[30m]), 0.0001) > 0.20'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Больше 20% разборов кончаются ошибкой", description: "Каждый пятый игрок вместо отчёта видит «разбор не удался». Отдельная и худшая причина — потеря синхронизации парсера с битовым потоком: такой матч не падает, а отдаёт правдоподобные, но неверные числа, поэтому расхождение считается отказом намеренно.", __dashboardUid__: "samoylove-cs2", __panelId__: "307" }
+      - uid: cs2-parse-slow
+        title: "CS2: разбор идёт дольше двух минут"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'histogram_quantile(0.95, sum by (le) (rate(cs2_parse_duration_seconds_bucket[1h]))) > 120'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "p95 времени разбора перевалил за две минуты", description: "Сервис обещает разбор «под минуту»: человек, приславший демку, за две минуты обычно уходит со страницы. Смотреть, кто из двух парсеров стал узким местом, и не мешает ли разбору пересчёт архива.", __dashboardUid__: "samoylove-cs2", __panelId__: "306" }
+      - uid: cs2-outdated
+        title: "CS2: архив разобран старым составом данных"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_chain_matches_outdated > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 6h
+        labels: { severity: warning }
+        annotations: { summary: "Есть матчи, разобранные устаревшей версией состава данных", description: "Метрики считаются по всему архиву сразу, поэтому половина матчей по-старому — это числа, которые между собой несопоставимы, при совершенно целом на вид сайте. Работник пересчёта должен разгребать это сам; не убывает — значит он не идёт.", __dashboardUid__: "samoylove-cs2", __panelId__: "303" }
+      - uid: cs2-upload-broken
+        title: "CS2: загрузка демок отказывает по нашей вине"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'increase(cs2_upload_total{result="наша_сторона"}[1h]) > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "Приём демки упал не из-за файла, а из-за нас: диск или база", description: "Это единственное место, где отказ человек видит СРАЗУ — и обычно уходит. Для матчей старше тридцати дней и демок с площадок загрузка руками не запасной путь, а единственный.", __dashboardUid__: "samoylove-cs2", __panelId__: "602" }
+      - uid: cs2-steam-key-rejected
+        title: "CS2: Steam отклонил наш ключ"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'increase(cs2_steam_requests_total{result="ключ_отклонён"}[1h]) > 3'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: critical }
+        annotations: { summary: "Steam Web API отвечает «ключ недействителен»", description: "Условия Valve разрешают отозвать ключ без предупреждения и без объяснения — это не поломка, а сторона договора. Для игроков это значит: история матчей не пополняется, ники и аватары застыли. Сервис обязан пережить это как временную недоступность, страницы отдают то, что уже собрано.", __dashboardUid__: "samoylove-cs2", __panelId__: "502" }
+      - uid: cs2-steam-quota
+        title: "CS2: суточный потолок Steam почти выеден"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'sum(increase(cs2_steam_requests_total[24h])) / clamp_min(max(cs2_external_limit{limit="steam_вызовов_в_сутки"}), 1) > 0.8'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "За сутки израсходовано больше 80% из 100 000 вызовов ключа", description: "Упереться в потолок значит остановить У ВСЕХ и историю матчей, и профили, а выглядеть это будет как отказ Steam. Пятиминутный обход историй стоит 288 вызовов в сутки на игрока: примерно на трёхстах сорока игроках ключ выедается целиком, и обход обязан стать разным для активных и спящих.", __dashboardUid__: "samoylove-cs2", __panelId__: "500" }
+      - uid: cs2-profiles-stale
+        title: "CS2: профили Steam перестали обновляться"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_steam_profiles_stale > 50'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 6h
+        labels: { severity: warning }
+        annotations: { summary: "Больше полусотни профилей не обновлялись сутки", description: "На страницах остаются старые ники и аватары — сервис показывает человека таким, каким он был вчера. Обычные причины две: ключ отозван или суточный потолок выеден другим сбором.", __dashboardUid__: "samoylove-cs2", __panelId__: "504" }
+      - uid: cs2-telegram-down
+        title: "CS2: бот Telegram не отвечает"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'increase(cs2_telegram_polls_total{result=~"отказ|бот_не_отвечает"}[1h]) > 5'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Опрос Telegram падает больше пяти раз в час", description: "Третий шаг первого захода не проходится: код привязки из ссылки некому погасить, и человек застревает на странице «привяжи бота». Отдельный исход «другой_процесс» сюда не входит — он означает второй наш же процесс, а не поломку у Telegram.", __dashboardUid__: "samoylove-cs2", __panelId__: "507" }
+      - uid: cs2-avatars-failing
+        title: "CS2: аватары не отдаются"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'sum(rate(cs2_avatar_requests_total{result="отказ"}[1h])) / clamp_min(sum(rate(cs2_avatar_requests_total[1h])), 0.0001) > 0.2 and sum(increase(cs2_avatar_requests_total[1h])) >= 5'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "Больше пятой части аватаров не отдаётся", description: "Вместо лиц на страницах серые кружки; сама страница при этом целая, и без этой тревоги мы бы не узнали вовсе. «нет_аватара» сюда не входит: это не отказ, а человек без картинки в Steam.", __dashboardUid__: "samoylove-cs2", __panelId__: "507" }
+      - uid: cs2-page-slow
+        title: "CS2: страница матча стала медленной"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'histogram_quantile(0.95, sum by (le) (rate(cs2_http_request_duration_seconds_bucket{route="страница_матча"}[15m]))) > 3'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "p95 страницы матча перевалил за три секунды", description: "Разбор считается по ClickHouse на лету, поэтому медленно здесь — это медленно у человека, открывшего свой матч. Смотреть запросы отчёта и объём архива, а не «сайт тормозит»: остальные разделы могут быть быстрыми.", __dashboardUid__: "samoylove-cs2", __panelId__: "102" }
+      - uid: cs2-storage-warn
+        title: "CS2: хранилище демок заполняется"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_demo_storage_used_bytes / cs2_demo_storage_total_bytes > 0.70'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "Занято больше 70% квоты хранилища демок", description: "Ретеншна нет намеренно: демки хранятся целиком, и место когда-нибудь кончится. Знать об этом надо заранее — расширить квоту или заняться оптимизацией хранения, — а не в тот день, когда приём встанет.", __dashboardUid__: "samoylove-cs2", __panelId__: "701" }
+      - uid: cs2-storage-crit
+        title: "CS2: хранилище демок почти полное"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_demo_storage_used_bytes / cs2_demo_storage_total_bytes > 0.85'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: critical }
+        annotations: { summary: "Занято больше 85% квоты хранилища демок", description: "Скачиватель уже останавливает круги, когда остаётся меньше десяти гигабайт: новые матчи перестают забираться, а окно у Valve — тридцать дней. Загрузка руками тоже начнёт отказывать. Место кончается тихо и сразу у всех, включая временные файлы разбора.", __dashboardUid__: "samoylove-cs2", __panelId__: "701" }
