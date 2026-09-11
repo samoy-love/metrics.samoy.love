@@ -1947,6 +1947,7 @@ groups:
               expr: |
                 (time() - cs2_worker_last_success_timestamp_seconds > 21600)
                 and on(worker) cs2_worker_enabled == 1
+                and on(worker) cs2_worker_backlog > 0
               instant: true
               refId: A
           - refId: C
@@ -1965,7 +1966,7 @@ groups:
         execErrState: Error
         for: 30m
         labels: { severity: warning }
-        annotations: { summary: "Работник {{ $labels.worker }} шесть часов не сделал ни одного дела", description: "Работник запущен, но следов работы в базе нет: круг падает молча или ему нечего брать. Для игрока это тот же затор в цепочке, только без единой ошибки в журнале. Считается по следам в базе, а не по самоотчёту — самоотчёт умирает вместе с работником.", __dashboardUid__: "samoylove-cs2", __panelId__: "401" }
+        annotations: { summary: "Работник {{ $labels.worker }} шесть часов не сделал ни одного дела, хотя его ждут дела", description: "Работник запущен, очередь у него непустая (cs2_worker_backlog), а следов работы в базе шесть часов нет: круг падает молча. Для игрока это затор в цепочке без единой ошибки в журнале. Тишина при пустой очереди — норма (никто не играл) и тревогой не считается: до 11.09.2026 правило этого не различало и горело весь вечер.", __dashboardUid__: "samoylove-cs2", __panelId__: "401" }
       - uid: cs2-queue-stuck
         title: "CS2: разбор матчей встал"
         condition: C
@@ -2002,7 +2003,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: 'rate(cs2_parse_total{result="failed"}[30m]) / clamp_min(rate(cs2_parse_total[30m]), 0.0001) > 0.20'
+              expr: 'sum(increase(cs2_parse_total{result="failed"}[30m])) / clamp_min(sum(increase(cs2_parse_total[30m])), 0.0001) > 0.20 and sum(increase(cs2_parse_total[30m])) >= 5'
               instant: true
               refId: A
           - refId: C
@@ -2030,7 +2031,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: 'histogram_quantile(0.95, sum by (le) (rate(cs2_parse_duration_seconds_bucket[1h]))) > 120'
+              expr: 'histogram_quantile(0.95, sum by (le) (rate(cs2_parse_duration_seconds_bucket[1h]))) > 120 and on() sum(increase(cs2_parse_duration_seconds_count[1h])) >= 5'
               instant: true
               refId: A
           - refId: C
@@ -2189,7 +2190,7 @@ groups:
         execErrState: Error
         for: 6h
         labels: { severity: warning }
-        annotations: { summary: "Больше полусотни профилей не обновлялись сутки", description: "На страницах остаются старые ники и аватары — сервис показывает человека таким, каким он был вчера. Обычные причины две: ключ отозван или суточный потолок выеден другим сбором.", __dashboardUid__: "samoylove-cs2", __panelId__: "504" }
+        annotations: { summary: "Больше полусотни профилей опоздали с обновлением больше чем на сутки", description: "На страницах остаются старые ники и аватары — сервис показывает человека таким, каким он был вчера. Обычные причины две: ключ отозван или суточный потолок выеден другим сбором.", __dashboardUid__: "samoylove-cs2", __panelId__: "504" }
       - uid: cs2-telegram-down
         title: "CS2: бот Telegram не отвечает"
         condition: C
@@ -2198,7 +2199,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: 'increase(cs2_telegram_polls_total{result=~"отказ|бот_не_отвечает"}[1h]) > 5'
+              expr: 'increase(cs2_telegram_polls_total{result="ok"}[15m]) == 0 and on() cs2_worker_enabled{worker="бот"} == 1'
               instant: true
               refId: A
           - refId: C
@@ -2217,7 +2218,7 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: warning }
-        annotations: { summary: "Опрос Telegram падает больше пяти раз в час", description: "Третий шаг первого захода не проходится: код привязки из ссылки некому погасить, и человек застревает на странице «привяжи бота». Отдельный исход «другой_процесс» сюда не входит — он означает второй наш же процесс, а не поломку у Telegram.", __dashboardUid__: "samoylove-cs2", __panelId__: "507" }
+        annotations: { summary: "Пятнадцать минут ни одного удачного опроса Telegram", description: "Третий шаг первого захода не проходится: код привязки из ссылки некому погасить, и человек застревает на странице «привяжи бота». Одиночные обрывы опроса (unexpected EOF, сброс соединения — обход блокировок на роутере, чаще в начале часа) бот переживает сам за секунды, поэтому тревога — на долгое молчание, а не на число обрывов: до 11.09.2026 она горела от пяти обрывов в час при живом боте.", __dashboardUid__: "samoylove-cs2", __panelId__: "507" }
       - uid: cs2-avatars-failing
         title: "CS2: аватары не отдаются"
         condition: C
