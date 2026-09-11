@@ -107,6 +107,16 @@ jobs:
       # провижининга Grafana под рукой нет, семантику этих трёх YAML этот
       # гейт не проверяет вовсе — см. README, раздел «Что гарантируется».
       #
+      # ОБРАЗ PROMETHEUS — СНАЧАЛА С ДИСКА. Выкатка идёт на домашнем
+      # раннере, а Docker Hub из дома доступен не всегда: 11.09.2026 восемь
+      # попыток подряд упали на «failed to fetch anonymous token» до сборки.
+      # Образ лежит в эталонном снимке раннеров, а архив — в общем кэше
+      # (/cache/docker-images/prom_prometheus_<версия>.tar); сеть нужна только
+      # тогда, когда нет ни того, ни другого. В облачном CI кэша нет, там
+      # образ тянется как раньше. Сменили версию в docker-compose.yml —
+      # положить новый архив в кэш и в снимки (документация хозяйства,
+      # раздел «Образы в эталонных снимках раннеров»).
+      #
       # ОТСТУП ВНУТРИ ЭТОГО БЛОКА ОБЯЗАН БЫТЬ ОДИНАКОВЫМ. В свёрнутом скаляре
       # YAML (>-) строка с бо́льшим отступом не сворачивается с предыдущей, а
       # остаётся отдельной. Продолжения команд были отбиты вправо «для
@@ -128,6 +138,8 @@ jobs:
         cp "$RUNNER_TEMP/pt/incus/metrics.crt" "$RUNNER_TEMP/pt/incus/server.crt" &&
         echo '[]' > "$RUNNER_TEMP/pt/targets/node-host.yml" &&
         echo '[]' > "$RUNNER_TEMP/pt/targets/incus.yml" &&
+        { docker image inspect "prom/prometheus:$PROM" >/dev/null 2>&1 ||
+        docker load -i "/cache/docker-images/prom_prometheus_$PROM.tar" >/dev/null 2>&1 || true; } &&
         docker run --rm --entrypoint promtool -v "$RUNNER_TEMP/pt:/etc/prometheus:ro"
         prom/prometheus:$PROM check config /etc/prometheus/prometheus.yml &&
         DSUID=$(sed -n 's/^ *uid: *//p' grafana/provisioning/datasources/prometheus.yml) &&
