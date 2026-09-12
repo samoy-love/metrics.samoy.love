@@ -3430,6 +3430,72 @@
         "type": "prometheus",
         "uid": "samoylove-prometheus"
       }
+    },
+    {
+      "type": "timeseries",
+      "title": "Ждут отправки",
+      "description": "Разбор готов, сообщение в очереди и ещё не ушло. Это последний шаг обещания «разбор придёт сам»: очередь, переставшая опустошаться, значит, что человеку ничего не пришло.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_chain_deliveries_waiting",
+          "legendFormat": "ждут отправки"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        },
+        "overrides": []
+      },
+      "id": 808,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 112
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Разбор не дошёл",
+      "description": "Сообщения, которые не уйдут никогда (попытки кончились, бот заблокирован, чат отвязан), и отказы ДО постановки в очередь — матч не прочитан, база недоступна. Второе не оставляет следа в очереди вовсе и раньше было видно только в журнале.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_chain_deliveries_failed",
+          "legendFormat": "не дойдут"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        },
+        "overrides": []
+      },
+      "id": 809,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 112
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
     }
   ]
 }
