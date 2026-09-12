@@ -3496,6 +3496,39 @@
         "type": "prometheus",
         "uid": "samoylove-prometheus"
       }
+    },
+    {
+      "type": "timeseries",
+      "title": "FACEIT",
+      "description": "Обращения к Data API FACEIT по исходу за час. unauthorized — ключ отвергнут, и ELO на профилях перестаёт обновляться; not_found — у игрока нет аккаунта с CS2, это ответ, а не отказ. Остальной сервис от FACEIT не зависит.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (increase(cs2_faceit_requests_total[1h]))",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        },
+        "overrides": []
+      },
+      "id": 810,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 120
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
     }
   ]
 }
