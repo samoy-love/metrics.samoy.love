@@ -3529,6 +3529,39 @@
         "type": "prometheus",
         "uid": "samoylove-prometheus"
       }
+    },
+    {
+      "type": "timeseries",
+      "title": "Бот в друзьях Steam",
+      "description": "event — у друга кончился матч; found — матч найден сразу, не дожидаясь круга кодов; gave_up — код так и не появился за семь минут (вышел, не доиграв, или Valve задержала историю); bot_failed — бот не ответил. Ровная линия event при нуле found — бот видит концы матчей, но чтение истории их не находит.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (increase(cs2_friendbot_total[1h]))",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        },
+        "overrides": []
+      },
+      "id": 811,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 120
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
     }
   ]
 }
