@@ -1936,6 +1936,71 @@ groups:
         for: 30m
         labels: { severity: warning }
         annotations: { summary: "Работник {{ $labels.worker }} не запущен: нет настройки или ключа", description: "Матчи перестают приходить сами, а страницы объясняют пустоту ОЖИДАНИЕМ — то есть врут: ждать нечего. 09.09.2026 живой игрок так ждал разбора, которого не случилось бы никогда. Проверить CS2_GC_URL, ключ Steam и список хостов скачивателя в /etc/cs2/api.env.", __dashboardUid__: "samoylove-cs2", __panelId__: "400" }
+      - uid: cs2-demo-storage-low
+        title: "CS2: место под демки кончается"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              # ПОРОГ ВЫБРАН НЕ КРУГЛЫМ ЧИСЛОМ, А ПОВЕДЕНИЕМ СЛУЖБЫ: скачиватель
+              # не начинает круг, если свободно меньше десяти гигабайт (иначе он
+              # забивает диск за сутки — тихо и сразу у всех, включая разбор с
+              # его временными файлами). Пятнадцать — это «осталось несколько
+              # демок до остановки», то есть время что-то сделать.
+              expr: '(cs2_demo_storage_total_bytes - cs2_demo_storage_used_bytes) / 1024^3 < 15'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Под демки осталось меньше 15 ГБ: скачиватель встанет на десяти", description: "Демки хранятся целиком и без срока — это решение, а не недосмотр, и защита пула здесь квота, а не удаление. Ниже десяти гигабайт скачиватель перестаёт начинать круги: матчи продолжат находиться, но файлы за ними приходить перестанут, а окно Valve — тридцать дней. Решать владельцу: расширить квоту ZFS или разобраться, что занимает место.", __dashboardUid__: "samoylove-cs2", __panelId__: "402" }
+      - uid: cs2-demo-storage-forecast
+        title: "CS2: места под демки хватит меньше чем на две недели"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 21600, to: 0 }
+            model:
+              # Предсказание по шести часам роста на две недели вперёд. Это
+              # ПРЕДУПРЕЖДЕНИЕ, А НЕ ФАКТ: один вечер с активной игрой задирает
+              # наклон, поэтому правило горит только через час и рядом с ним
+              # всегда стоит настоящий остаток из соседнего правила.
+              expr: 'predict_linear(cs2_demo_storage_used_bytes[6h], 14*24*3600) > cs2_demo_storage_total_bytes - 10 * 1024^3'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: info }
+        annotations: { summary: "При нынешнем темпе места под демки хватит меньше чем на две недели", description: "Наклон взят по последним шести часам и продолжен на две недели — это повод посмотреть, а не тревога: вечер активной игры задирает темп, а неделя без игры его обнуляет. Настоящий остаток — в правиле «место под демки кончается».", __dashboardUid__: "samoylove-cs2", __panelId__: "402" }
       - uid: cs2-worker-silent
         title: "CS2: работник цепочки молчит"
         condition: C
