@@ -2476,3 +2476,34 @@ groups:
         for: 15m
         labels: { severity: warning }
         annotations: { summary: "Самый старый заказ клипа ждёт дольше получаса", description: "Заказы есть, а работник рендера их не берёт: контейнер cs2-render выключен, служба упала, Steam не вошёл или игра не поднялась после обновления. Для человека это клип, который «готовится» бесконечно. Смотреть systemctl status cs2-render и экран игры по VNC в /admin; задание с истёкшей арендой работник переберёт сам после перезапуска.", __dashboardUid__: "samoylove-cs2", __panelId__: "903" }
+      - uid: cs2-clip-storage-low
+        title: "CS2: место под клипы кончается"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              # Датасет tank/cs2-clips с квотой 40 ГиБ; ниже двух гигабайт остатка
+              # работник заказов не берёт. Порог — четыре: за день до остановки
+              # при темпе «десяток клипов Full HD в час».
+              expr: '(cs2_clip_storage_total_bytes - cs2_clip_storage_used_bytes) / 1024^3 < 4 and cs2_clip_storage_total_bytes > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Под клипы осталось меньше 4 ГБ: работник рендера встанет на двух", description: "Клипы стираются сами через месяц без обращений, так что это либо всплеск заказов, либо сироты — каталоги без записи в реестре (панель «Клипы: занято» покажет расхождение). Ниже двух гигабайт заказы перестают браться, и у людей клип «готовится» бесконечно. Решать владельцу: расширить квоту ZFS датасета tank/cs2-clips или укоротить срок жизни CS2_RENDER_CLIP_TTL.", __dashboardUid__: "samoylove-cs2", __panelId__: "908" }

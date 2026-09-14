@@ -10,7 +10,7 @@
   "editable": false,
   "refresh": "1m",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "time": {
     "from": "now-24h",
     "to": "now"
@@ -3859,6 +3859,212 @@
         "w": 12,
         "x": 12,
         "y": 133
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Клипов в хранилище",
+      "description": "Клипы в реестре. Стираются через месяц без обращений самим работником рендера; обращение с сайта или бота продлевает.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_clips_stored_total",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 906,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 141
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Клипы: занято",
+      "description": "Занято в датасете клипов по statfs. Расхождение с весом по реестру — сироты: каталоги без записи, которые никто не сотрёт.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_clip_storage_used_bytes",
+          "instant": true,
+          "legendFormat": "на диске"
+        },
+        {
+          "refId": "B",
+          "expr": "cs2_clips_stored_bytes",
+          "instant": true,
+          "legendFormat": "по реестру"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 907,
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 4,
+        "y": 141
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "gauge",
+      "title": "Заполнение квоты клипов",
+      "description": "Доля квоты датасета tank/cs2-clips. Квота ничего не стирает: ниже двух гигабайт остатка работник рендера перестаёт брать заказы, и клипы «готовятся» бесконечно.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_clip_storage_used_bytes / clamp_min(cs2_clip_storage_total_bytes, 1)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.85
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 908,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 141
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Рост хранилища клипов",
+      "description": "Занято и квота. Ровный рост без ступенек вниз — сборщик просроченных не работает или срок ещё не наступил.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_clip_storage_used_bytes",
+          "legendFormat": "занято"
+        },
+        {
+          "refId": "B",
+          "expr": "cs2_clip_storage_total_bytes",
+          "legendFormat": "квота"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        },
+        "overrides": []
+      },
+      "id": 909,
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 141
       },
       "datasource": {
         "type": "prometheus",
