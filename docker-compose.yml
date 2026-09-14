@@ -139,7 +139,7 @@ services:
     # достаёт и снаружи недоступен. Нужен исключительно ради скриншота к
     # алерту (see GF_RENDERING_* выше); без него Grafana просто не приложит
     # картинку и пришлёт текстовое сообщение, как раньше.
-    image: grafana/grafana-image-renderer:v5.12.2@sha256:cafd7afe8cc1995f26434e0194fadd823656b322cb7c8c2784e1477c72ff9e46
+    image: grafana/grafana-image-renderer:v5.12.3@sha256:cf36a94431662540a72d2058a43e0cbf72638334475d8216a25a77526a627be7
     container_name: samoylove-renderer
     restart: unless-stopped
     env_file:
