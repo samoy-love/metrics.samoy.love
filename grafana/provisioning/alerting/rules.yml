@@ -2408,3 +2408,71 @@ groups:
         for: 15m
         labels: { severity: critical }
         annotations: { summary: "Занято больше 85% квоты хранилища демок", description: "Скачиватель уже останавливает круги, когда остаётся меньше десяти гигабайт: новые матчи перестают забираться, а окно у Valve — тридцать дней. Загрузка руками тоже начнёт отказывать. Место кончается тихо и сразу у всех, включая временные файлы разбора.", __dashboardUid__: "samoylove-cs2", __panelId__: "701" }
+      # --- Рендер клипов (план cs2 29Д). Очередь лежит в той же базе, что и
+      # всё остальное, и метрики по ней считает cs2-api, а не сам работник в
+      # контейнере cs2-render: у того своей мишени сборщика нет. Третья
+      # тревога из плана — «датасет клипов у квоты» — ждёт самого датасета
+      # (29Г) и его метрики; заводить правило по метрике, которой нет, значит
+      # получить вечное NoData вместо тревоги.
+      - uid: cs2-render-failed
+        title: "CS2: клип не отрендерился"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              # Провалы копятся в базе навсегда, поэтому по приросту за час,
+              # а не по абсолютному числу: старый провал не должен гореть месяц.
+              expr: 'delta(cs2_render_jobs{state="failed"}[1h]) > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "За последний час заказ клипа провалился окончательно", description: "Человек клипа не получит: попытки исчерпаны (три) или отказ окончательный сразу — битая демка, неизвестный вид, игрока нет в матче. Причина словами лежит в render_jobs.error и в journalctl -u cs2-render контейнера cs2-render. Серия провалов подряд — не демки, а сама игра: обновление CS2, отвалившийся Steam, кончившееся место под кадры.", __dashboardUid__: "samoylove-cs2", __panelId__: "902" }
+      - uid: cs2-render-stalled
+        title: "CS2: очередь клипов стоит"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              # Возраст самого старого заказа: ноль при пустой очереди, так что
+              # тишина работника без заказов тревогой не считается. Полчаса —
+              # это холодный старт игры (полторы минуты) и десяток заданий
+              # впереди с запасом; дольше ждёт только стоящая очередь.
+              expr: 'cs2_render_oldest_queued_seconds > 1800'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Самый старый заказ клипа ждёт дольше получаса", description: "Заказы есть, а работник рендера их не берёт: контейнер cs2-render выключен, служба упала, Steam не вошёл или игра не поднялась после обновления. Для человека это клип, который «готовится» бесконечно. Смотреть systemctl status cs2-render и экран игры по VNC в /admin; задание с истёкшей арендой работник переберёт сам после перезапуска.", __dashboardUid__: "samoylove-cs2", __panelId__: "903" }
