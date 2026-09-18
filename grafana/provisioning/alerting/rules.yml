@@ -970,7 +970,11 @@ groups:
               # сработал трижды, и с учётом сообщений о восстановлении и
               # картинок это двенадцать сообщений в чат — ни об одной
               # настоящей проблеме.
-              expr: histogram_quantile(0.95, sum by (le, host) (rate(samoylove_site_http_response_time_seconds_hist_bucket{path!~"/downloads/|/content/"}[15m]))) > 1
+              # /clips/video/ и /admin/vnc/ — Пристрелка, добавлено 18.09.2026.
+              # Те же грабли: видео клипов качается минутами, а websockify
+              # экрана рендера держит соединение весь сеанс. 15.09 это дало
+              # три ложных SiteLatencyHigh у cs.samoy.love за вечер.
+              expr: histogram_quantile(0.95, sum by (le, host) (rate(samoylove_site_http_response_time_seconds_hist_bucket{path!~"/downloads/|/content/|/clips/video/|/admin/vnc/"}[15m]))) > 1
               instant: true
               refId: A
           - refId: C
