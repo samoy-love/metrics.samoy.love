@@ -55,7 +55,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "status_check_up{check=\"status-page\"}",
+          "expr": "max(status_check_up{check=\"status-page\"})",
           "instant": true
         }
       ],
@@ -87,7 +87,25 @@
                 "value": 1
               }
             ]
-          }
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "недоступно",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "работает",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "noValue": "нет данных"
         },
         "overrides": []
       },
@@ -110,7 +128,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "status_check_up{check=\"status-miniapp\"}",
+          "expr": "max(status_check_up{check=\"status-miniapp\"})",
           "instant": true
         }
       ],
@@ -142,7 +160,25 @@
                 "value": 1
               }
             ]
-          }
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "недоступно",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "работает",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "noValue": "нет данных"
         },
         "overrides": []
       },
@@ -161,11 +197,11 @@
     {
       "type": "stat",
       "title": "Сертификат",
-      "description": "Дней до истечения. Продление автоматическое, поэтому число, ползущее к нулю, означает, что автопродление сломалось.",
+      "description": "Дней до истечения сертификата страницы. Автопродление срабатывает, когда остаётся 30 дней, поэтому ниже 29 — продление не случилось в срок, ниже 14 — пора чинить руками.",
       "targets": [
         {
           "refId": "A",
-          "expr": "status_cert_days_left{check=\"status-page\"}",
+          "expr": "max(status_cert_days_left{check=\"status-page\"})",
           "instant": true
         }
       ],
@@ -194,11 +230,11 @@
               },
               {
                 "color": "yellow",
-                "value": 7
+                "value": 14
               },
               {
                 "color": "green",
-                "value": 21
+                "value": 29
               }
             ]
           }
@@ -219,8 +255,8 @@
     },
     {
       "type": "stat",
-      "title": "Проверок настроено",
-      "description": "Сколько проверок агент выполняет каждую минуту.",
+      "title": "Критичных проверок",
+      "description": "Сколько проверок решают вердикт проекта. Второстепенные (service worker, админка, мини-приложение) сюда не входят — их видно в таблице ниже. Резкое изменение — правка конфига агента.",
       "targets": [
         {
           "refId": "A",
@@ -324,6 +360,566 @@
       }
     },
     {
+      "type": "stat",
+      "title": "Медленных проверок",
+      "description": "Проверки, которые отвечают, но медленнее своего порога. Это ещё не сбой, но обычно его предвестник: больше нуля дольше нескольких минут — повод посмотреть на сервис.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(status_check_slow)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 30,
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Худшая доступность за 7 дней",
+      "description": "Самая слабая проверка по собственному счёту агента за семь дней. Ниже 99.9% — жёлтый: проект лежал больше 10 минут за неделю; ниже 99% — больше 1.5 часов.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "min(status_check_uptime_ratio{window=\"d7\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.99
+              },
+              {
+                "color": "green",
+                "value": 0.999
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 31,
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Ближайший сертификат",
+      "description": "Домен, чей сертификат истекает первым, и сколько ему осталось. Автопродление срабатывает за 30 дней, поэтому ниже 29 — у этого домена продление уже не сработало вовремя.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "bottomk(1, min by (project) (status_cert_days_left))",
+          "instant": true,
+          "legendFormat": "{{project}}"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 14
+              },
+              {
+                "color": "green",
+                "value": 29
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 32,
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "table",
+      "title": "Проверки: сейчас и доступность",
+      "description": "Каждая проверка агента в одну строку: критична ли она, последний код ответа (0 — соединение не состоялось), время ответа и доля успешных проверок. 24 ч, 7 и 90 дней — счёт самого агента, тот же, что на странице; 30 дней считает Prometheus по минутным отметкам, и его история короче срока хранения, пока не накопится. Плохо — любая доля ниже 99.9% у критичной проверки.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (project, check) (status_check_critical)",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "expr": "max by (project, check) (status_check_code)",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "expr": "max by (project, check) (status_check_response_seconds)",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "D",
+          "expr": "max by (project, check) (status_check_uptime_ratio{window=\"d1\"})",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "E",
+          "expr": "max by (project, check) (status_check_uptime_ratio{window=\"d7\"})",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "F",
+          "expr": "avg_over_time((max by (project, check) (status_check_up))[30d:1m])",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "G",
+          "expr": "max by (project, check) (status_check_uptime_ratio{window=\"d90\"})",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "project": 0,
+              "check": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "Value #C": 4,
+              "Value #D": 5,
+              "Value #E": 6,
+              "Value #F": 7,
+              "Value #G": 8
+            },
+            "renameByName": {
+              "project": "Проект",
+              "check": "Проверка",
+              "Value #A": "Критичная",
+              "Value #B": "Код",
+              "Value #C": "Ответ",
+              "Value #D": "24 ч",
+              "Value #E": "7 дней",
+              "Value #F": "30 дней",
+              "Value #G": "90 дней"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "7 дней",
+            "desc": false
+          }
+        ],
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Критичная"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "нет",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "да",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Код"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 200
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 300
+                    },
+                    {
+                      "color": "red",
+                      "value": 400
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ответ"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "24 ч"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.99
+                    },
+                    {
+                      "color": "green",
+                      "value": 0.999
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "7 дней"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.99
+                    },
+                    {
+                      "color": "green",
+                      "value": 0.999
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "30 дней"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.99
+                    },
+                    {
+                      "color": "green",
+                      "value": 0.999
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "90 дней"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.99
+                    },
+                    {
+                      "color": "green",
+                      "value": 0.999
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 33,
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
       "type": "row",
       "title": "Агент проверок",
       "id": 7,
@@ -332,7 +928,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 20
       },
       "panels": [],
       "description": "Тот, кто ходит по сервисам раз в минуту. Замерший агент незаметен: страница просто показывает вчерашнюю правду."
@@ -389,7 +985,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 10
+        "y": 21
       },
       "datasource": {
         "type": "prometheus",
@@ -399,7 +995,7 @@
     {
       "type": "stat",
       "title": "Длительность прогона",
-      "description": "Сколько занимает обход всех проверок.",
+      "description": "Сколько занимает обход всех проверок. Обычно доли секунды; десятки секунд значат, что какая-то проверка упирается в таймаут, а обход дольше минуты наезжает на следующий запуск таймера.",
       "targets": [
         {
           "refId": "A",
@@ -427,8 +1023,16 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "blue",
+                "color": "green",
                 "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 45
               }
             ]
           }
@@ -440,7 +1044,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 10
+        "y": 21
       },
       "datasource": {
         "type": "prometheus",
@@ -449,12 +1053,12 @@
     },
     {
       "type": "stat",
-      "title": "Проверок работает",
-      "description": "Зелёных проверок из всех настроенных.",
+      "title": "Критичных лежит",
+      "description": "Критичных проверок, которые сейчас не отвечают. Любое число больше нуля — у какого-то проекта прямо сейчас сбой, и статус-страница показывает его посетителям.",
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(status_checks_up)",
+          "expr": "max(status_checks_total) - max(status_checks_up)",
           "instant": true
         }
       ],
@@ -478,8 +1082,12 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "blue",
+                "color": "green",
                 "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
               }
             ]
           }
@@ -491,7 +1099,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 10
+        "y": 21
       },
       "datasource": {
         "type": "prometheus",
@@ -546,7 +1154,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 10
+        "y": 21
       },
       "datasource": {
         "type": "prometheus",
@@ -556,11 +1164,11 @@
     {
       "type": "state-timeline",
       "title": "Проверки по проектам",
-      "description": "Полоса на каждую проверку. Дыры — это и есть история инцидентов.",
+      "description": "Полоса на каждую проверку: зелёная — отвечает, жёлтая — отвечает медленнее своего порога, красная — недоступна. Дыры — это и есть история инцидентов. Ряды старого имени хоста склеены с нынешними, поэтому на длинных окнах полосы не двоятся.",
       "targets": [
         {
           "refId": "A",
-          "expr": "status_check_up",
+          "expr": "max by (project, check, name) (status_check_up + status_check_slow)",
           "legendFormat": "{{project}} / {{name}}"
         }
       ],
@@ -592,6 +1200,11 @@
                   "text": "работает",
                   "color": "green",
                   "index": 1
+                },
+                "2": {
+                  "text": "медленно",
+                  "color": "yellow",
+                  "index": 2
                 }
               }
             }
@@ -617,7 +1230,143 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 25
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Сбои во времени",
+      "description": "Сколько критичных и второстепенных проверок лежало, сколько было медленных и открытых инцидентов. Всё время ноль — норма. Критичные выше нуля — сбой, который видят посетители.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(status_checks_total) - max(status_checks_up)",
+          "legendFormat": "критичных лежит"
+        },
+        {
+          "refId": "B",
+          "expr": "max(status_checks_aux_down)",
+          "legendFormat": "второстепенных лежит"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(max by (project, check) (status_check_slow))",
+          "legendFormat": "медленных"
+        },
+        {
+          "refId": "D",
+          "expr": "max(status_incidents_open)",
+          "legendFormat": "открытых инцидентов"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "lineInterpolation": "stepAfter"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 35,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 35
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Длительность прогона по времени",
+      "description": "Сколько занимает один обход. Обычно доли секунды; ступенька вверх — новая медленная проверка или сервис, отвечающий на пределе таймаута. Больше минуты — обходы наезжают друг на друга.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(status_agent_run_duration_seconds)",
+          "legendFormat": "обход"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "id": 36,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 35
       },
       "datasource": {
         "type": "prometheus",
@@ -631,7 +1380,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "status_check_response_seconds",
+          "expr": "max by (project, check, name) (status_check_response_seconds)",
           "legendFormat": "{{project}} / {{name}}"
         }
       ],
@@ -676,7 +1425,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 24
+        "y": 43
       },
       "datasource": {
         "type": "prometheus",
@@ -686,12 +1435,12 @@
     {
       "type": "timeseries",
       "title": "Дни до истечения сертификатов",
-      "description": "Все домены разом. Пила с обновлением раз в три месяца — норма, монотонное падение — сломанное автопродление.",
+      "description": "Все домены разом. Пила с продлением за 30 дней до истечения — норма; линия, ушедшая ниже 29 и продолжающая падать, — сломанное автопродление этого домена.",
       "targets": [
         {
           "refId": "A",
-          "expr": "status_cert_days_left",
-          "legendFormat": "{{check}}"
+          "expr": "min by (project, check) (status_cert_days_left)",
+          "legendFormat": "{{project}}"
         }
       ],
       "options": {
@@ -727,11 +1476,11 @@
               },
               {
                 "color": "yellow",
-                "value": 7
+                "value": 14
               },
               {
                 "color": "green",
-                "value": 21
+                "value": 29
               }
             ]
           }
@@ -743,7 +1492,148 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 24
+        "y": 43
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "state-timeline",
+      "title": "Юниты systemd",
+      "description": "Юниты, за которыми следит агент, и отдельно — результат последнего запуска самого агента по данным systemd. Последняя полоса независима от агента: если он падает при старте, свои метрики он не обновит, а эта полоса покраснеет. Красное у бота — уведомления не уходят вовсе.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (project, unit) (status_unit_active)",
+          "legendFormat": "{{project}} / {{unit}}"
+        },
+        {
+          "refId": "B",
+          "expr": "1 - max(node_systemd_unit_state{job=\"node\", name=\"status-agent.service\", state=\"failed\"})",
+          "legendFormat": "status / status-agent.service: последний запуск"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "mergeValues": true,
+        "showValue": "never",
+        "rowHeight": 0.8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 80
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "не работает",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "работает",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 37,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 51
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Последний завершённый инцидент",
+      "description": "Сколько длился последний закрытый инцидент каждой проверки. Одинаковые столбики у всех — общий сбой хоста или сети, а не отдельного сервиса. Минуты — норма для перезапуска, часы — повод для разбора.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (service) (status_incident_last_duration_seconds)",
+          "legendFormat": "{{service}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "left",
+        "sizing": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 600
+              },
+              {
+                "color": "red",
+                "value": 3600
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 38,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 51
       },
       "datasource": {
         "type": "prometheus",
@@ -759,7 +1649,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 59
       },
       "panels": [],
       "description": "Голос всего хозяйства: о релизах и сбоях узнают из него, поэтому молчащий бот — это отдельный сбой."
@@ -767,11 +1657,11 @@
     {
       "type": "stat",
       "title": "Последняя весть",
-      "description": "Сколько прошло с последнего сообщения. Само по себе большое значение нормально: бот пишет по событию.",
+      "description": "Сколько прошло с последнего уведомления о сбое или восстановлении. Большое значение нормально: бот пишет по событию. Счётчик живёт в памяти процесса, поэтому после перезапуска бота здесь «с запуска ни одного», пока не случится первый сбой.",
       "targets": [
         {
           "refId": "A",
-          "expr": "time() - max(statusbot_last_notification_timestamp_seconds)",
+          "expr": "time() - (max(statusbot_last_notification_timestamp_seconds) > 0)",
           "instant": true
         }
       ],
@@ -799,7 +1689,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "с запуска ни одного"
         },
         "overrides": []
       },
@@ -808,7 +1699,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 33
+        "y": 60
       },
       "datasource": {
         "type": "prometheus",
@@ -867,7 +1758,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 33
+        "y": 60
       },
       "datasource": {
         "type": "prometheus",
@@ -922,7 +1813,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 33
+        "y": 60
       },
       "datasource": {
         "type": "prometheus",
@@ -977,7 +1868,176 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 33
+        "y": 60
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Очередь выкатки",
+      "description": "Возраст самого старого события выкатки, которое бот принял, но ещё не отправил. Ноль — очередь пуста. Минуты и больше — Telegram не принимает сообщения, и о выкатках никто не узнаёт.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(statusbot_deploy_events_pending_age_seconds)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 120
+              },
+              {
+                "color": "red",
+                "value": 600
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 39,
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 64
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Без перезапуска",
+      "description": "Сколько процесс бота работает с последнего старта. Каждая выкатка бота сбрасывает число; постоянно маленькое значение без выкаток — бот падает и перезапускается по кругу.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - max(statusbot_start_timestamp_seconds)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 300
+              },
+              {
+                "color": "green",
+                "value": 3600
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 40,
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 64
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Выкаток доставлено за сутки",
+      "description": "Сообщений о выкатке, которые Telegram подтвердил. Ноль в день, когда выкатки были, — сломана доставка; сверяйте с «События выкатки».",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(statusbot_deploy_events_sent_total[24h])) or vector(0)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 41,
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 64
       },
       "datasource": {
         "type": "prometheus",
@@ -986,12 +2046,83 @@
     },
     {
       "type": "timeseries",
-      "title": "Сообщения бота",
-      "description": "Разделение по виду: релизы, сбои, ответы на команды.",
+      "title": "События выкатки",
+      "description": "Путь события выкатки через бота за час: принято в очередь, подтверждено Telegram, снято без сообщения (причина в легенде, «служебный started» — штатно). Принято должно сходиться с отправлено плюс отброшено; устойчивый разрыв — события застряли в очереди.",
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum(rate(statusbot_notifications_total[30m])) by (kind)",
+          "expr": "sum(increase(statusbot_deploy_events_accepted_total[$__interval]))",
+          "legendFormat": "принято"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(statusbot_deploy_events_sent_total[$__interval]))",
+          "legendFormat": "отправлено"
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (reason) (increase(statusbot_deploy_events_dropped_total[$__interval]))",
+          "legendFormat": "отброшено: {{reason}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 43,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 68
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "interval": "1h"
+    },
+    {
+      "type": "timeseries",
+      "title": "Уведомления",
+      "description": "Сколько уведомлений ушло за час, по виду: down — упало, still — всё ещё лежит, up — поднялось, release — замечена новая версия. Пусто — значит событий не было. Down без последующего up — либо сбой длится, либо бот потерял его конец. Сообщения из очереди выкатки — на панели «События выкатки».",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (kind) (increase(statusbot_notifications_total[$__interval]))",
           "legendFormat": "{{kind}}"
         }
       ],
@@ -1010,9 +2141,9 @@
         "defaults": {
           "unit": "short",
           "custom": {
-            "drawStyle": "line",
+            "drawStyle": "bars",
             "lineWidth": 1,
-            "fillOpacity": 10,
+            "fillOpacity": 60,
             "showPoints": "never",
             "stacking": {
               "mode": "none",
@@ -1028,7 +2159,8 @@
               }
             ]
           },
-          "decimals": 3
+          "decimals": 0,
+          "noValue": "уведомлений не было"
         },
         "overrides": []
       },
@@ -1037,22 +2169,28 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 37
+        "y": 76
       },
       "datasource": {
         "type": "prometheus",
         "uid": "samoylove-prometheus"
-      }
+      },
+      "interval": "1h"
     },
     {
       "type": "timeseries",
       "title": "Команды",
-      "description": "Чем пользуются в боте.",
+      "description": "Команды владельца за час. Семейство появляется в метриках только после первой команды с запуска бота, поэтому пустой график — это «команд не было», а не поломка. Нераспознанные команды отдельно: их рост значит, что меню бота и обработчик разошлись.",
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum(rate(statusbot_commands_total[30m])) by (command)",
+          "expr": "sum by (command) (increase(statusbot_commands_total[$__interval]))",
           "legendFormat": "{{command}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(statusbot_unknown_commands_total[$__interval]))",
+          "legendFormat": "не распознана"
         }
       ],
       "options": {
@@ -1070,9 +2208,9 @@
         "defaults": {
           "unit": "short",
           "custom": {
-            "drawStyle": "line",
+            "drawStyle": "bars",
             "lineWidth": 1,
-            "fillOpacity": 10,
+            "fillOpacity": 60,
             "showPoints": "never",
             "stacking": {
               "mode": "none",
@@ -1088,7 +2226,7 @@
               }
             ]
           },
-          "decimals": 3
+          "decimals": 0
         },
         "overrides": []
       },
@@ -1097,12 +2235,13 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 37
+        "y": 76
       },
       "datasource": {
         "type": "prometheus",
         "uid": "samoylove-prometheus"
-      }
+      },
+      "interval": "1h"
     },
     {
       "type": "row",
@@ -1113,14 +2252,14 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 84
       },
       "panels": []
     },
     {
       "type": "stat",
       "title": "Посетители за сутки",
-      "description": "Обращения к главной странице: грубая, но честная оценка посещаемости. Заходы на внутренние адреса и ассеты сюда не попадают.",
+      "description": "Обращения к главной странице за сутки. В число входит и сам агент: он открывает страницу раз в минуту, это около 1440 обращений в сутки фоном. Живые посетители — то, что сверх фона; заходы на внутренние адреса и ассеты сюда не попадают.",
       "targets": [
         {
           "refId": "A",
@@ -1161,7 +2300,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 46
+        "y": 85
       },
       "datasource": {
         "type": "prometheus",
@@ -1212,7 +2351,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 46
+        "y": 85
       },
       "datasource": {
         "type": "prometheus",
@@ -1271,7 +2410,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 46
+        "y": 85
       },
       "datasource": {
         "type": "prometheus",
@@ -1322,7 +2461,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 46
+        "y": 85
       },
       "datasource": {
         "type": "prometheus",
@@ -1381,7 +2520,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 50
+        "y": 89
       },
       "datasource": {
         "type": "prometheus",
@@ -1440,7 +2579,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 50
+        "y": 89
       },
       "datasource": {
         "type": "prometheus",
