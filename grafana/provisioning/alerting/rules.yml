@@ -2554,7 +2554,7 @@ groups:
         execErrState: Error
         for: 5m
         labels: { severity: warning }
-        annotations: { summary: "A job has been waiting for a home Linux runner for over 10 minutes", description: "Очередь на домашние Linux-раннеры копится: самое старое задание ждёт больше 10 минут. Если на панели «Идут и ждут» идущих четыре — раннеров не хватает (много параллельных PR и выкаток). Если идущих меньше — раннеры не берут работу: на хосте systemctl status ci-runner-cycle@ci-runner* и журнал раннера.", __dashboardUid__: "samoylove-ci", __panelId__: "17" }
+        annotations: { summary: "A job has been waiting for a home Linux runner for over 10 minutes", description: "Очередь на собственные Linux-раннеры копится: самое старое задание ждёт больше 10 минут. Если на панели «Идут и ждут» идущих четыре — раннеров не хватает (много параллельных PR и выкаток). Если идущих меньше — раннеры не берут работу: на хосте systemctl status ci-runner-cycle@ci-runner* и журнал раннера.", __dashboardUid__: "samoylove-ci", __panelId__: "17" }
 
       - uid: ci-queue-stuck-windows
         title: CIQueueStuckWindows
