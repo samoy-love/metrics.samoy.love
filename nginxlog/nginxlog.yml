@@ -98,6 +98,15 @@ namespaces:
           # которого лендинг вообще существует.
           - regexp: "^/downloads/.*$"
             replacement: "/downloads/"
+          # Пристрелка: видео клипов и экран рендера в админке. Оба — не
+          # «обработка запроса»: у видео request_time — это скачивание файла,
+          # у websockify (код 101) — вся длина сеанса VNC. В "other" они давали
+          # p95 на верхней корзине и ложный SiteLatencyHigh (15.09.2026),
+          # поэтому выделены и исключены из тревоги, как /downloads/.
+          - regexp: "^/clips/video/.*$"
+            replacement: "/clips/video/"
+          - regexp: "^/admin/vnc/.*$"
+            replacement: "/admin/vnc/"
           - regexp: '^.*\.(css|js|mjs|map|png|jpg|jpeg|webp|avif|gif|svg|ico|woff2?|ttf|eot)(\?.*)?$'
             replacement: "static"
           - regexp: "^.*$"
