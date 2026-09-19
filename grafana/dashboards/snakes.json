@@ -1,7 +1,7 @@
 {
   "uid": "samoylove-snakes",
   "title": "Snakes — игра",
-  "description": "Мультиплеерный захват территории: матчи, бой, соединения и сервер. Компонентов много, и ломаются они порознь — сеть может быть цела при вставшем тике.",
+  "description": "Мультиплеерный захват территории: матчи, бой, соединения, сервер и сайт с клиентом. Компонентов много, и ломаются они порознь — сеть может быть цела при вставшем тике, а игра жива при лежащей странице.",
   "tags": [
     "samoy.love",
     "проект"
@@ -376,7 +376,7 @@
     {
       "type": "stat",
       "title": "Матчей за сутки",
-      "description": "Сколько партий сыграно.",
+      "description": "Сколько партий доиграно до подведения итогов за последние сутки: счётчик растёт в момент конца матча.",
       "targets": [
         {
           "refId": "A",
@@ -426,12 +426,12 @@
     },
     {
       "type": "stat",
-      "title": "Входов за сутки",
-      "description": "Подключения к матчам. Много входов при малом числе матчей — люди не доигрывают.",
+      "title": "Входов людей за сутки",
+      "description": "Сколько раз живые игроки заходили в комнату за сутки. Боты сюда не входят: раньше счётчик складывал их с людьми, и один запуск комнаты с дюжиной ботов выглядел как наплыв игроков. Много входов при малом числе матчей — люди не доигрывают.",
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(snakes_joins_total[24h])) or vector(0)",
+          "expr": "sum(increase(snakes_joins_total{actor=\"player\"}[24h])) or vector(0)",
           "instant": true
         }
       ],
@@ -477,12 +477,12 @@
     },
     {
       "type": "stat",
-      "title": "Длина матча, медиана",
-      "description": "Половина партий короче этого времени.",
+      "title": "Длина матча, в среднем",
+      "description": "Средняя длина сыгранной партии за выбранный период — точная, из суммы и числа, а не оценка по корзинам. Матч идёт по таймеру (сейчас 5 минут); среднее заметно меньше таймера — часть партий заканчивается досрочно. «Нет матчей» — за период не закончилось ни одного.",
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum(rate(snakes_match_duration_seconds_bucket[6h])) by (le))",
+          "expr": "(sum(increase(snakes_match_duration_seconds_sum[$__range])) / sum(increase(snakes_match_duration_seconds_count[$__range]))) and on() sum(increase(snakes_match_duration_seconds_count[$__range])) > 0",
           "instant": true
         }
       ],
@@ -510,7 +510,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "нет матчей"
         },
         "overrides": []
       },
@@ -528,12 +529,12 @@
     },
     {
       "type": "stat",
-      "title": "Игроков на старте, медиана",
-      "description": "Наполненность комнаты в момент запуска матча.",
+      "title": "Людей на старте, в среднем",
+      "description": "Сколько живых игроков было в комнате, когда матч начинался, в среднем за выбранный период. Меньше двух — люди играют с ботами, а не друг с другом. Раньше здесь стояла медиана по корзинам гистограммы, и одиночный игрок показывался как 0,5 человека.",
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum(rate(snakes_room_players_at_start_bucket[6h])) by (le))",
+          "expr": "(sum(increase(snakes_room_players_at_start_sum[$__range])) / sum(increase(snakes_room_players_at_start_count[$__range]))) and on() sum(increase(snakes_room_players_at_start_count[$__range])) > 0",
           "instant": true
         }
       ],
@@ -561,7 +562,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "нет матчей"
         },
         "overrides": []
       },
@@ -580,7 +582,7 @@
     {
       "type": "timeseries",
       "title": "Матчи и входы",
-      "description": "Ритм игры в течение суток.",
+      "description": "Ритм игры: сколько матчей заканчивается и сколько раз заходят в комнаты. Входы людей и ботов разделены — боты досаживаются в комнату сами, их линия (правая ось, пунктир) к интересу к игре отношения не имеет.",
       "targets": [
         {
           "refId": "A",
@@ -589,8 +591,13 @@
         },
         {
           "refId": "B",
-          "expr": "60 * sum(rate(snakes_joins_total[10m]))",
-          "legendFormat": "входы в минуту"
+          "expr": "60 * sum(rate(snakes_joins_total{actor=\"player\"}[10m]))",
+          "legendFormat": "входы людей в минуту"
+        },
+        {
+          "refId": "C",
+          "expr": "60 * sum(rate(snakes_joins_total{actor=\"bot\"}[10m]))",
+          "legendFormat": "входы ботов в минуту"
         }
       ],
       "options": {
@@ -628,7 +635,34 @@
           },
           "decimals": 2
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*бот.*"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
       },
       "id": 13,
       "gridPos": {
@@ -645,15 +679,20 @@
     {
       "type": "timeseries",
       "title": "Длина матча",
-      "description": "Медиана и хвост. Разъехавшиеся линии означают, что часть партий затягивается.",
+      "description": "Среднее — точное, медиана и p95 — оценка по корзинам гистограммы (соседние границы 240 и 300 с), поэтому партия ровно по таймеру видна как ~270 с медианы. Среднее, ушедшее ниже медианы, означает, что часть партий обрывается досрочно.",
       "targets": [
         {
           "refId": "A",
+          "expr": "sum(rate(snakes_match_duration_seconds_sum[30m])) / sum(rate(snakes_match_duration_seconds_count[30m]))",
+          "legendFormat": "среднее"
+        },
+        {
+          "refId": "B",
           "expr": "histogram_quantile(0.5, sum(rate(snakes_match_duration_seconds_bucket[30m])) by (le))",
           "legendFormat": "медиана"
         },
         {
-          "refId": "B",
+          "refId": "C",
           "expr": "histogram_quantile(0.95, sum(rate(snakes_match_duration_seconds_bucket[30m])) by (le))",
           "legendFormat": "p95"
         }
@@ -707,153 +746,19 @@
       }
     },
     {
-      "type": "row",
-      "title": "Бой",
-      "id": 15,
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 18
-      },
-      "panels": [],
-      "description": "Что происходит внутри матча: захват территории, убийства, добивания."
-    },
-    {
       "type": "timeseries",
-      "title": "Убийства",
-      "description": "Раздельно по тому, кто убил: игрок или бот. Перекос в сторону ботов означает, что живых мало.",
+      "title": "Люди на старте и выжившие к концу",
+      "description": "Средние по матчам, закончившимся за последние полчаса. Люди на старте — только живые игроки. Выжившие — все, кто дожил до итогов, вместе с ботами. Выживших близко к нулю — матч превратился в мясорубку и до конца никто не доживает; людей на старте меньше двух — людям не с кем играть, кроме ботов.",
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum(rate(snakes_kills_total[10m])) by (actor)",
-          "legendFormat": "{{actor}}"
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "decimals": 2
-        },
-        "overrides": []
-      },
-      "id": 16,
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 0,
-        "y": 19
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "timeseries",
-      "title": "Смерти и замкнутые петли",
-      "description": "Петля — успешный захват территории, смерть — её цена.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "60 * sum(rate(snakes_deaths_total[10m]))",
-          "legendFormat": "смерти"
+          "expr": "sum(rate(snakes_room_players_at_start_sum[30m])) / sum(rate(snakes_room_players_at_start_count[30m]))",
+          "legendFormat": "людей на старте"
         },
         {
           "refId": "B",
-          "expr": "60 * sum(rate(snakes_loops_closed_total[10m]))",
-          "legendFormat": "петли"
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "stacking": {
-              "mode": "none",
-              "group": "A"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "decimals": 2
-        },
-        "overrides": []
-      },
-      "id": 17,
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 19
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      }
-    },
-    {
-      "type": "timeseries",
-      "title": "Захвачено клеток",
-      "description": "Объём территории, переходящей из рук в руки.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "60 * sum(rate(snakes_cells_captured_total[10m]))",
-          "legendFormat": "клеток в минуту"
+          "expr": "sum(rate(snakes_match_survivors_sum[30m])) / sum(rate(snakes_match_survivors_count[30m]))",
+          "legendFormat": "выживших к концу, с ботами"
         }
       ],
       "options": {
@@ -893,32 +798,136 @@
         },
         "overrides": []
       },
-      "id": 18,
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 19
-      },
+      "id": 31,
       "datasource": {
         "type": "prometheus",
         "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 18
       }
     },
     {
       "type": "timeseries",
-      "title": "Усиления и стиль",
-      "description": "Подобранные усиления и начисления за стиль: пользуются ли механиками вообще.",
+      "title": "Люди в игре: сейчас и неделю назад",
+      "description": "Живые игроки и та же кривая, сдвинутая на семь дней. Растёт ли игра, видно по тому, какая линия выше в одни и те же часы. Сегодняшняя линия стабильно ниже прошлонедельной — интерес падает.",
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum(rate(snakes_powerup_pickups_total[10m])) by (kind)",
-          "legendFormat": "усиление {{kind}}"
+          "expr": "sum(snakes_players)",
+          "legendFormat": "сейчас"
         },
         {
           "refId": "B",
-          "expr": "60 * sum(rate(snakes_style_awarded_total[10m]))",
-          "legendFormat": "стиль"
+          "expr": "sum(snakes_players offset 7d)",
+          "legendFormat": "неделю назад"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "неделю назад"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 32,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      }
+    },
+    {
+      "type": "row",
+      "title": "Бой",
+      "id": 15,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "panels": [],
+      "description": "Что происходит внутри матча: захват территории, убийства, добивания."
+    },
+    {
+      "type": "timeseries",
+      "title": "Убийства",
+      "description": "Убийства в минуту, раздельно по тому, кто убил. Боты — на правой оси пунктиром: их на порядки больше, и на общей оси линия людей лежала бы на нуле. Люди почти не убивают — либо их мало, либо боты слишком сильны.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "60 * label_replace(label_replace(sum(rate(snakes_kills_total[10m])) by (actor), \"actor\", \"люди\", \"actor\", \"player\"), \"actor\", \"боты\", \"actor\", \"bot\")",
+          "legendFormat": "убивают {{actor}}"
         }
       ],
       "options": {
@@ -956,12 +965,39 @@
           },
           "decimals": 2
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*бот.*"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
       },
-      "id": 19,
+      "id": 16,
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 8,
         "x": 0,
         "y": 27
       },
@@ -972,8 +1008,284 @@
     },
     {
       "type": "timeseries",
+      "title": "Смерти и замкнутые петли",
+      "description": "Петля — успешный захват территории, смерть — его цена. Раньше люди и боты складывались, и кривая целиком была кривой ботов. Теперь раздельно, боты — на правой оси. У людей смертей больше, чем петель, — игра наказывает раньше, чем успевает научить.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "60 * label_replace(label_replace(sum(rate(snakes_deaths_total[10m])) by (actor), \"actor\", \"люди\", \"actor\", \"player\"), \"actor\", \"боты\", \"actor\", \"bot\")",
+          "legendFormat": "смерти, {{actor}}"
+        },
+        {
+          "refId": "B",
+          "expr": "60 * label_replace(label_replace(sum(rate(snakes_loops_closed_total[10m])) by (actor), \"actor\", \"люди\", \"actor\", \"player\"), \"actor\", \"боты\", \"actor\", \"bot\")",
+          "legendFormat": "петли, {{actor}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*бот.*"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "id": 17,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 27
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Захвачено клеток",
+      "description": "Сколько клеток территории переходит из рук в руки, в минуту. Боты захватывают на три порядка больше людей, поэтому они на правой оси: общая сумма показывала только ботов.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "60 * label_replace(label_replace(sum(rate(snakes_cells_captured_total[10m])) by (actor), \"actor\", \"люди\", \"actor\", \"player\"), \"actor\", \"боты\", \"actor\", \"bot\")",
+          "legendFormat": "захватывают {{actor}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*бот.*"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "id": 18,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 27
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Усиления и стиль",
+      "description": "Подобранные усиления по типам — отдельно людьми и ботами — и начисления «Стиля». Стиль начисляется и ботам, поэтому его линия сама по себе о людях не говорит. Людская линия усилений на нуле при живых игроках — механику не замечают.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "60 * sum(rate(snakes_powerup_pickups_total{actor=\"player\"}[10m])) by (type)",
+          "legendFormat": "усиление {{type}}, люди"
+        },
+        {
+          "refId": "B",
+          "expr": "60 * sum(rate(snakes_powerup_pickups_total{actor=\"bot\"}[10m]))",
+          "legendFormat": "усиления, боты"
+        },
+        {
+          "refId": "C",
+          "expr": "60 * sum(rate(snakes_style_awarded_total[10m]))",
+          "legendFormat": "стиль, с ботами"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*бот.*"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "id": 19,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 35
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
       "title": "Контент и прогресс",
-      "description": "Контракты, дейлики, косметика, мутаторы — то, ради чего возвращаются.",
+      "description": "Контракты, дейлики, косметика, мутаторы — то, ради чего возвращаются. Контракты считаются и у ботов, поэтому растут и в комнате без людей; дейлики и косметика — только людские. Мутаторы — события матча, по ним видно, что матчи вообще идут.",
       "targets": [
         {
           "refId": "A",
@@ -1038,11 +1350,115 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 27
+        "y": 35
       },
       "datasource": {
         "type": "prometheus",
         "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Кто кого убивает",
+      "description": "Убийства за выбранный период в разрезе «убийца → жертва». Люди гибнут от ботов много чаще, чем убивают их сами, — боты слишком сильны для новичка. Строка «люди → людей» пустая — люди не встречаются друг с другом.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "label_replace(label_replace(label_replace(label_replace(sum by (killer, victim) (increase(snakes_kill_matchups_total[$__range])), \"killer\", \"люди\", \"killer\", \"player\"), \"killer\", \"боты\", \"killer\", \"bot\"), \"victim\", \"людей\", \"victim\", \"player\"), \"victim\", \"ботов\", \"victim\", \"bot\")",
+          "legendFormat": "{{killer}} → {{victim}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 33,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 43
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Отчего умирают люди",
+      "description": "Смерти живых игроков за выбранный период по причинам: self_trail — наехал на свой след, trail_cut — след перерезали, head_on — лобовое, wall — стена. Стена и свой след — ошибки управления: если они впереди, игроку не хватает обучения, а не соперников.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (reason) (increase(snakes_deaths_total{actor=\"player\"}[$__range]))",
+          "legendFormat": "{{reason}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 34,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 43
       }
     },
     {
@@ -1054,7 +1470,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 51
       },
       "panels": [],
       "description": "WebSocket — единственный канал игры. Его сбои выглядят для игрока как разрыв матча."
@@ -1062,7 +1478,7 @@
     {
       "type": "timeseries",
       "title": "Подключения и разрывы",
-      "description": "Разрывы, идущие вровень с подключениями, означают, что игроков выбрасывает.",
+      "description": "Принятые соединения и закрытия по причинам. normal — штатное закрытие; остальные — отказы. Разрывы не-normal, идущие вровень с подключениями, означают, что игроков выбрасывает.",
       "targets": [
         {
           "refId": "A",
@@ -1117,7 +1533,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 36
+        "y": 52
       },
       "datasource": {
         "type": "prometheus",
@@ -1192,7 +1608,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 36
+        "y": 52
       },
       "datasource": {
         "type": "prometheus",
@@ -1208,7 +1624,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 60
       },
       "panels": [],
       "description": "Тик — сердце матча. Его просадка ощущается игроком как лаг, даже когда сеть в порядке."
@@ -1216,11 +1632,11 @@
     {
       "type": "stat",
       "title": "Тик, p95",
-      "description": "Длительность обсчёта тика. Выше бюджета — мир начинает отставать.",
+      "description": "Длительность обсчёта тика за последние полчаса. Бюджет — 100 мс (тик 10 раз в секунду): оранжевое — съедена половина бюджета, красное — мир отстаёт от часов. «Комнат нет» — тиков за полчаса не было, мерить нечего.",
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum(rate(snakes_tick_duration_seconds_bucket[30m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(snakes_tick_duration_seconds_bucket[30m])) by (le)) and on() sum(increase(snakes_tick_duration_seconds_count[30m])) > 0",
           "instant": true
         }
       ],
@@ -1239,25 +1655,34 @@
       "fieldConfig": {
         "defaults": {
           "unit": "s",
-          "decimals": 4,
+          "decimals": 1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "blue",
+                "color": "green",
                 "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.05
+              },
+              {
+                "color": "red",
+                "value": 0.1
               }
             ]
-          }
+          },
+          "noValue": "комнат нет"
         },
         "overrides": []
       },
       "id": 25,
       "gridPos": {
         "h": 4,
-        "w": 6,
+        "w": 4,
         "x": 0,
-        "y": 45
+        "y": 61
       },
       "datasource": {
         "type": "prometheus",
@@ -1267,11 +1692,11 @@
     {
       "type": "stat",
       "title": "Тик, p99",
-      "description": "Хвост: редкие, но заметные подвисания.",
+      "description": "Хвост за полчаса: редкие, но заметные подвисания. Пороги те же, что у p95: 50 мс — половина бюджета, 100 мс — тик не укладывается.",
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.99, sum(rate(snakes_tick_duration_seconds_bucket[30m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(snakes_tick_duration_seconds_bucket[30m])) by (le)) and on() sum(increase(snakes_tick_duration_seconds_count[30m])) > 0",
           "instant": true
         }
       ],
@@ -1290,25 +1715,34 @@
       "fieldConfig": {
         "defaults": {
           "unit": "s",
-          "decimals": 4,
+          "decimals": 1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "blue",
+                "color": "green",
                 "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.05
+              },
+              {
+                "color": "red",
+                "value": 0.1
               }
             ]
-          }
+          },
+          "noValue": "комнат нет"
         },
         "overrides": []
       },
       "id": 26,
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 45
+        "w": 4,
+        "x": 4,
+        "y": 61
       },
       "datasource": {
         "type": "prometheus",
@@ -1361,9 +1795,9 @@
       "id": 27,
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 45
+        "w": 4,
+        "x": 8,
+        "y": 61
       },
       "datasource": {
         "type": "prometheus",
@@ -1416,9 +1850,9 @@
       "id": 28,
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 45
+        "w": 4,
+        "x": 12,
+        "y": 61
       },
       "datasource": {
         "type": "prometheus",
@@ -1426,9 +1860,117 @@
       }
     },
     {
+      "type": "stat",
+      "title": "Сбор метрик",
+      "description": "Отвечает ли процесс игры на сбор. Ноль — все числа на этой доске замёрзли на последнем значении, и нули в них ничего не значат.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=\"snakes\"}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "нет цели"
+        },
+        "overrides": []
+      },
+      "id": 36,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 61
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Сборка",
+      "description": "Какой релиз сейчас работает. Если после выкатки здесь старое имя — процесс не перезапустился.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (version) (snakes_build_info)",
+          "instant": true,
+          "legendFormat": "{{version}}"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 37,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 61
+      }
+    },
+    {
       "type": "timeseries",
       "title": "Длительность тика",
-      "description": "Медиана и хвост во времени.",
+      "description": "Медиана и хвост длительности тика во времени. Пунктир — бюджет 100 мс: линия p95 выше него означает, что комната не успевает за своими часами (на это же смотрит тревога SnakesTickSlow).",
       "targets": [
         {
           "refId": "A",
@@ -1468,6 +2010,9 @@
             "stacking": {
               "mode": "none",
               "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
             }
           },
           "thresholds": {
@@ -1476,6 +2021,10 @@
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.1
               }
             ]
           }
@@ -1487,11 +2036,138 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 49
+        "y": 65
       },
       "datasource": {
         "type": "prometheus",
         "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Тиков в секунду на комнату",
+      "description": "Сколько тиков комната обсчитывает в секунду. Норма — ровно 10: столько задаёт часовой шаг в 100 мс. Ниже 10 — сервер пропускает тики, и игра для всех в комнате идёт медленнее реального времени, даже если p95 длительности ещё в бюджете. Пусто — комнат не было.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(snakes_tick_duration_seconds_count[5m])) / sum(avg_over_time(snakes_rooms[5m])) and on() sum(avg_over_time(snakes_rooms[5m])) > 0",
+          "legendFormat": "тиков в секунду"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 9.5
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "id": 38,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 65
+      }
+    },
+    {
+      "type": "heatmap",
+      "title": "Длительность тика: распределение",
+      "description": "Сколько тиков попало в каждую корзину длительности. p99 прячет редкие выбросы в усреднении, а здесь каждый тик за 20–50 мс виден отдельной клеткой. Яркие клетки должны лежать внизу, в первых миллисекундах; клетки у 100 мс и выше — тики, которые игрок почувствовал.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (le) (increase(snakes_tick_duration_seconds_bucket[$__rate_interval]))",
+          "legendFormat": "{{le}}",
+          "format": "heatmap"
+        }
+      ],
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "exponent": 0.5,
+          "steps": 64,
+          "fill": "dark-orange",
+          "scale": "exponential",
+          "reverse": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "unit": "s",
+          "reverse": false
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "filterValues": {
+          "le": 1e-09
+        },
+        "tooltip": {
+          "mode": "single",
+          "yHistogram": true,
+          "showColorScale": false
+        },
+        "legend": {
+          "show": true
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 39,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 73
       }
     },
     {
@@ -1547,11 +2223,528 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 49
+        "y": 73
       },
       "datasource": {
         "type": "prometheus",
         "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Сайт snakes.samoy.love",
+      "id": 40,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 81
+      },
+      "panels": [],
+      "description": "Страница с клиентом игры глазами снаружи: проба blackbox, проверка статус-страницы и журнал nginx. Игра может работать, а страница с клиентом — нет, и наоборот."
+    },
+    {
+      "type": "stat",
+      "title": "Проба сайта",
+      "description": "Открывается ли https://snakes.samoy.love/ снаружи: проба blackbox прямо сейчас. Ноль — страницу с клиентом не получить, в игру не зайти, даже если сервер игры цел (тревога SiteDown).",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "probe_success{instance=\"https://snakes.samoy.love/\"}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 41,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 82
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Доступность за 7 дней",
+      "description": "Доля успешных проб blackbox за неделю. Ниже 99% — сайт лежал больше полутора часов за неделю. Провал 12–19.09.2026 — поломка самой пробы (не проходил DNS), а не сайта: статус-страница в эти дни видела его живым. Сверяйтесь с «Проверкой здоровья», прежде чем верить одной пробе.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg_over_time(probe_success{instance=\"https://snakes.samoy.love/\"}[7d])",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.99
+              },
+              {
+                "color": "green",
+                "value": 0.999
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 42,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 82
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Сертификат, дней",
+      "description": "Сколько дней до истечения TLS-сертификата. Let's Encrypt продлевается за 30 дней до конца; меньше 14 — продление не сработало (тревога CertificateExpiringSoon).",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(probe_ssl_earliest_cert_expiry{instance=\"https://snakes.samoy.love/\"} - time()) / 86400",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 14
+              },
+              {
+                "color": "green",
+                "value": 30
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 43,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 82
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Ответ nginx, p95",
+      "description": "95-й перцентиль времени ответа nginx по snakes.samoy.love за последний час. Статика отдаётся с того же хоста за миллисекунды; выше 250 мс — хост перегружен, выше секунды — тревога SiteLatencyHigh.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(samoylove_site_http_response_time_seconds_hist_bucket{host=\"snakes.samoy.love\"}[1h])))",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.25
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "нет запросов"
+        },
+        "overrides": []
+      },
+      "id": 44,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 82
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Ошибки 5xx за сутки",
+      "description": "Доля ответов 5xx среди всех запросов к snakes.samoy.love за сутки. Любое ненулевое значение — nginx не достучался до игры или отдал ошибку сам.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(increase(samoylove_site_http_response_count_total{host=\"snakes.samoy.love\", status=~\"5..\"}[24h])) or vector(0)) / sum(increase(samoylove_site_http_response_count_total{host=\"snakes.samoy.love\"}[24h]))",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.001
+              },
+              {
+                "color": "red",
+                "value": 0.01
+              }
+            ]
+          },
+          "noValue": "нет запросов"
+        },
+        "overrides": []
+      },
+      "id": 45,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 82
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Проверка здоровья",
+      "description": "Проверка статус-страницы snakes-health: отвечает ли сервер игры на свой адрес здоровья, а не только раздаётся ли страница. Упала она при живой пробе сайта — страница открывается, а играть нельзя.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "status_check_up{check=\"snakes-health\"}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 46,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 82
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Запросы к сайту",
+      "description": "Запросы в минуту по видам пути и ответы-ошибки по кодам. Основную часть «/» и «other» дают пробы мониторинга, а не люди, поэтому ровная полка — норма. Рост 4xx — кто-то стучится мимо; любая линия 5xx — сломалась раздача.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "60 * sum by (path) (rate(samoylove_site_http_response_count_total{host=\"snakes.samoy.love\"}[10m]))",
+          "legendFormat": "путь {{path}}"
+        },
+        {
+          "refId": "B",
+          "expr": "60 * sum by (status) (rate(samoylove_site_http_response_count_total{host=\"snakes.samoy.love\", status=~\"[45]..\"}[10m]))",
+          "legendFormat": "ответ {{status}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "ответ 5.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "ответ 4.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 47,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 86
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Проба сайта по фазам",
+      "description": "Из чего складывается время пробы blackbox: DNS, соединение, TLS, ожидание ответа, передача. Выросла одна фаза — виновата она: TLS и соединение — сеть или nginx, обработка — диск или сам nginx. Больше 3 с суммарно — тревога ProbeLatencyHigh.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "probe_http_duration_seconds{instance=\"https://snakes.samoy.love/\"}",
+          "legendFormat": "{{phase}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 48,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 86
       }
     }
   ]
