@@ -10,13 +10,29 @@
   "editable": false,
   "refresh": "1m",
   "schemaVersion": 39,
-  "version": 4,
+  "version": 5,
   "time": {
     "from": "now-24h",
     "to": "now"
   },
   "annotations": {
-    "list": []
+    "list": [
+      {
+        "name": "Выкатки",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "samoylove-prometheus"
+        },
+        "enable": false,
+        "iconColor": "rgba(115, 191, 105, 0.6)",
+        "expr": "cs2_parser_version_info unless cs2_parser_version_info offset 5m",
+        "step": "1m",
+        "titleFormat": "Выкатка",
+        "textFormat": "{{version}}",
+        "tagKeys": "",
+        "useValueForTime": false
+      }
+    ]
   },
   "links": [],
   "templating": {
@@ -167,11 +183,11 @@
     {
       "type": "stat",
       "title": "Страница матча, p95",
-      "description": "Разбор считается по ClickHouse на лету: медленно здесь — это медленно у человека.",
+      "description": "p95 за час. Разбор считается по ClickHouse на лету: медленно здесь — это медленно у человека. «не открывали» — за час не было ни одного захода, а не поломка сбора.",
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(cs2_http_request_duration_seconds_bucket{route=\"страница_матча\"}[15m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(cs2_http_request_duration_seconds_bucket{route=\"страница_матча\"}[1h]))) >= 0",
           "instant": true
         }
       ],
@@ -207,7 +223,8 @@
                 "value": 3
               }
             ]
-          }
+          },
+          "noValue": "не открывали"
         },
         "overrides": []
       },
@@ -638,6 +655,322 @@
       }
     },
     {
+      "type": "heatmap",
+      "title": "Время ответа страниц: распределение",
+      "description": "Сколько запросов уложилось в каждую ступень времени, без статики и служебных. Плотная полоса внизу — норма; второе облако выше секунды — отдельный медленный запрос, который p95 прячет, пока его доля меньше пяти процентов.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (le) (increase(cs2_http_request_duration_seconds_bucket{route!~\"статика|служебные\"}[$__rate_interval]))",
+          "legendFormat": "{{le}}",
+          "format": "heatmap"
+        }
+      ],
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "fill": "dark-orange",
+          "scale": "exponential",
+          "exponent": 0.5,
+          "steps": 64,
+          "reverse": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "unit": "s",
+          "reverse": false
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "cellValues": {
+          "unit": "short"
+        },
+        "filterValues": {
+          "le": 1e-09
+        },
+        "tooltip": {
+          "mode": "single",
+          "yHistogram": false,
+          "showColorScale": false
+        },
+        "legend": {
+          "show": true
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "id": 110,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 19
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Время ответа страниц: p50, p95, p99",
+      "description": "Все разделы, кроме статики и служебных, за 15 минут. p50 — как обычно, p99 — как у самого невезучего из сотни. Плохо — p95 выше секунды: страница матча и профиль считаются по ClickHouse, и это видно человеку.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(cs2_http_request_duration_seconds_bucket{route!~\"статика|служебные\"}[15m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(cs2_http_request_duration_seconds_bucket{route!~\"статика|служебные\"}[15m])))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(cs2_http_request_duration_seconds_bucket{route!~\"статика|служебные\"}[15m])))",
+          "legendFormat": "p99"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 111,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 19
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Доля пятисоток",
+      "description": "Пятисотки ко всем ответам за 15 минут, во времени: стат наверху показывает только последний час. Всплеск сразу после выкатки — то, что выкатили; ровная полка — поломка, которая держится.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(rate(cs2_http_requests_total{code=~\"5..\"}[15m])) or vector(0)) / clamp_min(sum(rate(cs2_http_requests_total[15m])), 0.0001)",
+          "legendFormat": "5xx"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
+            ]
+          },
+          "decimals": 1,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 112,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 27
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Заходы: сейчас и неделю назад",
+      "description": "Ответы сайта в час без статики и служебных, и та же кривая неделю назад пунктиром. Провал против прошлой недели при живом «Сайт отвечает» — люди не доходят: ссылка, бот или вход.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(cs2_http_requests_total{route!~\"статика|служебные\"}[1h])) * 3600",
+          "legendFormat": "сейчас"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(cs2_http_requests_total{route!~\"статика|служебные\"}[1h] offset 1w)) * 3600",
+          "legendFormat": "неделю назад"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisLabel": "в час"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "неделю назад"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "id": 113,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 27
+      }
+    },
+    {
       "type": "row",
       "title": "Цепочка: матчи приходят сами",
       "collapsed": false,
@@ -645,7 +978,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 34
       },
       "panels": []
     },
@@ -712,7 +1045,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 20
+        "y": 35
       },
       "datasource": {
         "type": "prometheus",
@@ -763,7 +1096,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 20
+        "y": 35
       },
       "datasource": {
         "type": "prometheus",
@@ -814,7 +1147,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 20
+        "y": 35
       },
       "datasource": {
         "type": "prometheus",
@@ -869,7 +1202,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 20
+        "y": 35
       },
       "datasource": {
         "type": "prometheus",
@@ -920,7 +1253,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 20
+        "y": 35
       },
       "datasource": {
         "type": "prometheus",
@@ -975,7 +1308,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 20
+        "y": 35
       },
       "datasource": {
         "type": "prometheus",
@@ -1050,7 +1383,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 24
+        "y": 39
       },
       "datasource": {
         "type": "prometheus",
@@ -1101,7 +1434,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "обращений не было"
         },
         "overrides": []
       },
@@ -1110,7 +1444,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 24
+        "y": 39
       },
       "datasource": {
         "type": "prometheus",
@@ -1161,7 +1495,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "скачиваний не было"
         },
         "overrides": []
       },
@@ -1170,7 +1505,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 31
+        "y": 46
       },
       "datasource": {
         "type": "prometheus",
@@ -1230,7 +1565,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 31
+        "y": 46
       },
       "datasource": {
         "type": "prometheus",
@@ -1286,7 +1621,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "скачиваний не было"
         },
         "overrides": []
       },
@@ -1295,7 +1631,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 31
+        "y": 46
       },
       "datasource": {
         "type": "prometheus",
@@ -1310,7 +1646,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 38
+        "y": 53
       },
       "panels": []
     },
@@ -1362,7 +1698,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 39
+        "y": 54
       },
       "datasource": {
         "type": "prometheus",
@@ -1421,7 +1757,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 39
+        "y": 54
       },
       "datasource": {
         "type": "prometheus",
@@ -1431,11 +1767,11 @@
     {
       "type": "stat",
       "title": "Время разбора, p95",
-      "description": "Обещано «под минуту». Дольше двух — человек ушёл со страницы раньше, чем разбор кончился.",
+      "description": "p95 за шесть часов: разборов единицы в час, и часовое окно почти всегда пустое. Обещано «под минуту»; дольше двух — человек ушёл со страницы раньше, чем разбор кончился.",
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(cs2_parse_duration_seconds_bucket[1h])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(cs2_parse_duration_seconds_bucket[6h]))) >= 0",
           "instant": true
         }
       ],
@@ -1471,7 +1807,8 @@
                 "value": 120
               }
             ]
-          }
+          },
+          "noValue": "разборов не было"
         },
         "overrides": []
       },
@@ -1480,7 +1817,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 39
+        "y": 54
       },
       "datasource": {
         "type": "prometheus",
@@ -1535,7 +1872,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 39
+        "y": 54
       },
       "datasource": {
         "type": "prometheus",
@@ -1586,7 +1923,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 39
+        "y": 54
       },
       "datasource": {
         "type": "prometheus",
@@ -1601,7 +1938,8 @@
         {
           "refId": "A",
           "expr": "cs2_parser_version_info",
-          "instant": true
+          "instant": true,
+          "legendFormat": "{{version}}"
         }
       ],
       "options": {
@@ -1637,7 +1975,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 39
+        "y": 54
       },
       "datasource": {
         "type": "prometheus",
@@ -1647,16 +1985,16 @@
     {
       "type": "timeseries",
       "title": "Время разбора по парсерам",
-      "description": "«go» — поток событий, «subtick» — сабтиковые тайминги. Раздельно затем, чтобы было видно, кто из двух стал узким местом.",
+      "description": "Окно — час: разборов единицы в час. «go» — поток событий, «subtick» — сабтиковые тайминги. Раздельно затем, чтобы было видно, кто из двух стал узким местом.",
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.50, sum by (le, parser) (rate(cs2_parse_duration_seconds_bucket[15m])))",
+          "expr": "histogram_quantile(0.50, sum by (le, parser) (rate(cs2_parse_duration_seconds_bucket[1h])))",
           "legendFormat": "{{parser}} p50"
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by (le, parser) (rate(cs2_parse_duration_seconds_bucket[15m])))",
+          "expr": "histogram_quantile(0.95, sum by (le, parser) (rate(cs2_parse_duration_seconds_bucket[1h])))",
           "legendFormat": "{{parser}} p95"
         }
       ],
@@ -1702,7 +2040,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 43
+        "y": 58
       },
       "datasource": {
         "type": "prometheus",
@@ -1762,11 +2100,166 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 43
+        "y": 58
       },
       "datasource": {
         "type": "prometheus",
         "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Разобрано за сутки: сейчас и неделю назад",
+      "description": "Матчи, доехавшие до конца пути, скользящим окном в сутки, и та же кривая неделю назад пунктиром. Плохо — сейчас заметно ниже прошлой недели при тех же людях: цепочка теряет матчи по дороге.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(cs2_parse_total{result=\"ok\"}[24h]))",
+          "legendFormat": "последние сутки"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(cs2_parse_total{result=\"ok\"}[24h] offset 1w))",
+          "legendFormat": "неделю назад"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "неделю назад"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "id": 308,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 65
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Документы отчёта отстают",
+      "description": "Матчи без документа отчёта текущей версии (страница считается на лету, медленнее) и матчи, разобранные старым составом данных. После выкатки новой версии расчёта оба растут и обязаны убывать до нуля; полка выше нуля — пересчёт не идёт.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_reports_outdated",
+          "legendFormat": "без документа отчёта"
+        },
+        {
+          "refId": "B",
+          "expr": "cs2_chain_matches_outdated",
+          "legendFormat": "старым составом данных"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 309,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 65
       }
     },
     {
@@ -1777,7 +2270,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 50
+        "y": 72
       },
       "panels": []
     },
@@ -1821,7 +2314,24 @@
                 "value": 1
               }
             ]
-          }
+          },
+          "min": 0,
+          "max": 1,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "выключен",
+                  "index": 0
+                },
+                "1": {
+                  "text": "запущен",
+                  "index": 1
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
@@ -1830,7 +2340,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 51
+        "y": 73
       },
       "datasource": {
         "type": "prometheus",
@@ -1899,7 +2409,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 51
+        "y": 73
       },
       "datasource": {
         "type": "prometheus",
@@ -1969,7 +2479,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 51
+        "y": 73
       },
       "datasource": {
         "type": "prometheus",
@@ -1984,7 +2494,8 @@
         {
           "refId": "A",
           "expr": "cs2_service_mode",
-          "instant": true
+          "instant": true,
+          "legendFormat": "{{mode}}"
         }
       ],
       "options": {
@@ -2020,7 +2531,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 51
+        "y": 73
       },
       "datasource": {
         "type": "prometheus",
@@ -2071,7 +2582,7 @@
         "h": 3,
         "w": 4,
         "x": 16,
-        "y": 55
+        "y": 77
       },
       "datasource": {
         "type": "prometheus",
@@ -2122,11 +2633,219 @@
         "h": 3,
         "w": 4,
         "x": 20,
-        "y": 55
+        "y": 77
       },
       "datasource": {
         "type": "prometheus",
         "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Цепочка одна",
+      "description": "Замок «цепочка одна» у экземпляра cs2-chain, которого видит сайт. «ведёт» = 1 — работники идут. «ведёт» = 0 — никто из видимых не держит замок, и матчи не приходят; «ждёт замка» = 1 — сайт видит лишний экземпляр, а ведёт кто-то другой. При «цепочка отвечает» ниже 100% оба числа — нули сайта, а не правда.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_chain_leader{state=\"leading\"}",
+          "legendFormat": "ведёт",
+          "instant": true
+        },
+        {
+          "refId": "B",
+          "expr": "cs2_chain_leader{state=\"waiting\"}",
+          "legendFormat": "ждёт замка",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ждёт замка"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 406,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 0,
+        "y": 80
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Цепочка отвечает на сбор",
+      "description": "Доля сборов за час, на которых cs2-chain ответила сайту. Числа работников на этом дашборде — её числа; без ответа сайт отдаёт свои нули, и тогда «очередь пуста» и «работник молчит» неправдивы. Плохо — ниже 99%.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg_over_time(cs2_chain_scrape_up[1h])",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.9
+              },
+              {
+                "color": "green",
+                "value": 0.99
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 407,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 4,
+        "y": 80
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Падения работников",
+      "description": "Паники фоновых работников за час, по работникам. Работник перезапускается сам через паузу и сайт не падает, но каждая паника — несделанная работа. Плохо — любая ненулевая точка, повторяющаяся — тем более.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (worker) (increase(cs2_worker_panics_total[1h]))",
+          "legendFormat": "{{worker}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "паник не было",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 408,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 16,
+        "x": 8,
+        "y": 80
       }
     },
     {
@@ -2137,18 +2856,18 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 58
+        "y": 87
       },
       "panels": []
     },
     {
       "type": "gauge",
       "title": "Суточный потолок ключа Steam",
-      "description": "Расход за сутки к потолку в 100 000 вызовов. Упереться значит остановить у ВСЕХ и историю матчей, и ники с аватарами, а выглядеть это будет как отказ Steam.",
+      "description": "Расход ключа за текущие сутки UTC по общему учёту сайта и цепочки (тот же счёт, по которому сервис сам себя тормозит) к потолку в 100 000 вызовов. Упереться значит остановить у ВСЕХ и историю матчей, и ники с аватарами, а выглядеть это будет как отказ Steam. Счётчик вызовов сюда не годится: он складывается из двух процессов и на каждой выкатке сбрасывается, а сброс Prometheus засчитывает как прирост.",
       "targets": [
         {
           "refId": "A",
-          "expr": "(sum(increase(cs2_steam_requests_total[24h])) or vector(0)) / clamp_min(max(cs2_external_limit{limit=\"steam_вызовов_в_сутки\"}), 1)",
+          "expr": "max(cs2_budget_used{resource=\"steam_key\",window=\"сутки\"}) / clamp_min(max(cs2_external_limit{limit=\"steam_вызовов_в_сутки\"}), 1)",
           "instant": true
         }
       ],
@@ -2168,7 +2887,7 @@
           "unit": "percentunit",
           "min": 0,
           "max": 1,
-          "decimals": 0,
+          "decimals": 1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -2194,7 +2913,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 59
+        "y": 88
       },
       "datasource": {
         "type": "prometheus",
@@ -2254,7 +2973,7 @@
         "h": 7,
         "w": 9,
         "x": 6,
-        "y": 59
+        "y": 88
       },
       "datasource": {
         "type": "prometheus",
@@ -2314,7 +3033,7 @@
         "h": 7,
         "w": 9,
         "x": 15,
-        "y": 59
+        "y": 88
       },
       "datasource": {
         "type": "prometheus",
@@ -2381,7 +3100,7 @@
         "h": 8,
         "w": 10,
         "x": 0,
-        "y": 66
+        "y": 95
       },
       "datasource": {
         "type": "prometheus",
@@ -2391,7 +3110,7 @@
     {
       "type": "stat",
       "title": "Профили устарели",
-      "description": "Профили Steam, не обновлявшиеся сутки. Растёт при отозванном ключе и при выеденном потолке: на страницах остаются старые ники и аватары.",
+      "description": "Профили Steam, не обновлявшиеся дольше восьми суток (недельный цикл и сутки запаса). Растёт при отозванном ключе и при выеденном потолке: на страницах остаются старые ники и аватары.",
       "targets": [
         {
           "refId": "A",
@@ -2436,7 +3155,7 @@
         "h": 4,
         "w": 4,
         "x": 10,
-        "y": 66
+        "y": 95
       },
       "datasource": {
         "type": "prometheus",
@@ -2487,7 +3206,7 @@
         "h": 4,
         "w": 4,
         "x": 14,
-        "y": 66
+        "y": 95
       },
       "datasource": {
         "type": "prometheus",
@@ -2538,7 +3257,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 66
+        "y": 95
       },
       "datasource": {
         "type": "prometheus",
@@ -2603,11 +3322,222 @@
         "h": 4,
         "w": 14,
         "x": 10,
-        "y": 70
+        "y": 99
       },
       "datasource": {
         "type": "prometheus",
         "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Ключ Steam: доля потолка",
+      "description": "Расход ключа по общему учёту сайта и цепочки: за сутки UTC к 100 000 и за десять секунд к темпу (вызов в секунду). Суточная кривая — пила, обнуляется в полночь UTC. Плохо — суточная выше 60% или десятисекундная, прижатая к 100%: ключ упирается в темп, и страницы ждут Steam.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(cs2_budget_used{resource=\"steam_key\",window=\"сутки\"}) / clamp_min(max(cs2_external_limit{limit=\"steam_вызовов_в_сутки\"}), 1)",
+          "legendFormat": "за сутки UTC"
+        },
+        {
+          "refId": "B",
+          "expr": "max(cs2_budget_used{resource=\"steam_key\",window=\"10с\"}) / clamp_min(10 * max(cs2_external_limit{limit=\"steam_вызовов_в_секунду\"}), 1)",
+          "legendFormat": "за 10 секунд"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.6
+              },
+              {
+                "color": "red",
+                "value": 0.85
+              }
+            ]
+          },
+          "decimals": 1,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 510,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 103
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Расход внешних сторон",
+      "description": "Game Coordinator и FACEIT — запросов за сутки UTC, CDN Valve — скачиваний прямо сейчас (потолок — десять одновременных). У GC лимитов не публикуют: резкий рост здесь — повод посмотреть на «молчание» в ответах сервера Valve.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_budget_used{resource!=\"steam_key\"}",
+          "legendFormat": "{{resource}}, {{window}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 511,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 103
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Доля отказов Steam по методам",
+      "description": "Всё, что не ok, к числу вызовов метода за шесть часов. «профиль_закрыт» и «не_найдено» — нормальные ответы про людей, «ошибка» и «ключ_отклонён» — нет. Метод, стоящий на 100%, работу не делает, а ключ тратит.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (method) (rate(cs2_steam_requests_total{result!=\"ok\"}[6h])) / sum by (method) (rate(cs2_steam_requests_total[6h]))",
+          "legendFormat": "{{method}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.2
+              },
+              {
+                "color": "red",
+                "value": 0.5
+              }
+            ]
+          },
+          "noValue": "обращений не было",
+          "decimals": 0,
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "id": 512,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 103
       }
     },
     {
@@ -2618,7 +3548,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 74
+        "y": 110
       },
       "panels": []
     },
@@ -2667,7 +3597,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 75
+        "y": 111
       },
       "datasource": {
         "type": "prometheus",
@@ -2693,6 +3623,11 @@
           "refId": "C",
           "expr": "cs2_active_users{window=\"30d\"}",
           "legendFormat": "за месяц"
+        },
+        {
+          "refId": "D",
+          "expr": "cs2_active_users{window=\"1d\"} offset 1w",
+          "legendFormat": "за сутки, неделю назад"
         }
       ],
       "options": {
@@ -2730,14 +3665,37 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "за сутки, неделю назад"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
       },
       "id": 601,
       "gridPos": {
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 75
+        "y": 111
       },
       "datasource": {
         "type": "prometheus",
@@ -2788,7 +3746,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "загрузок не было"
         },
         "overrides": []
       },
@@ -2797,7 +3756,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 75
+        "y": 111
       },
       "datasource": {
         "type": "prometheus",
@@ -2812,7 +3771,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 82
+        "y": 118
       },
       "panels": []
     },
@@ -2860,7 +3819,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 83
+        "y": 119
       },
       "datasource": {
         "type": "prometheus",
@@ -2920,7 +3879,7 @@
         "h": 4,
         "w": 5,
         "x": 4,
-        "y": 83
+        "y": 119
       },
       "datasource": {
         "type": "prometheus",
@@ -2985,7 +3944,7 @@
         "h": 8,
         "w": 15,
         "x": 9,
-        "y": 83
+        "y": 119
       },
       "datasource": {
         "type": "prometheus",
@@ -3023,10 +3982,6 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
-              },
-              {
                 "color": "red",
                 "value": null
               },
@@ -3048,7 +4003,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 87
+        "y": 123
       },
       "datasource": {
         "type": "prometheus",
@@ -3108,11 +4063,223 @@
         "h": 4,
         "w": 5,
         "x": 4,
-        "y": 87
+        "y": 123
       },
       "datasource": {
         "type": "prometheus",
         "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Квоты демок хватит на",
+      "description": "Свободное место, делённое на скорость роста за неделю. Демки хранятся без ретеншна, так что это и есть срок, к которому придётся заняться хранением. Плохо — меньше месяца.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(cs2_demo_storage_total_bytes - cs2_demo_storage_used_bytes) / clamp_min(deriv(cs2_demo_storage_used_bytes[7d]), 1)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 2592000
+              },
+              {
+                "color": "green",
+                "value": 7776000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 705,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 127
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Прирост за неделю",
+      "description": "Сколько места демки заняли за семь дней. Скачок без роста числа файлов — это не демки, а мусор в каталоге.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "delta(cs2_demo_storage_used_bytes[7d])",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 706,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 127
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Новых демок за неделю",
+      "description": "Сколько файлов прибавилось за семь дней. Ноль при живых игроках — матчи перестали доезжать до диска.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "delta(cs2_demos_stored_total[7d])",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 707,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 127
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Средний вес демки",
+      "description": "Занято, делённое на число файлов. Резкий рост — пошли длинные матчи или в каталог попадает не то.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_demo_storage_used_bytes / clamp_min(cs2_demos_stored_total, 1)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 708,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 127
       }
     },
     {
@@ -3125,7 +4292,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 91
+        "y": 131
       }
     },
     {
@@ -3159,8 +4326,12 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "green",
                 "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
               }
             ]
           }
@@ -3172,7 +4343,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 92
+        "y": 132
       },
       "datasource": {
         "type": "prometheus",
@@ -3210,8 +4381,12 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "green",
                 "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
               }
             ]
           }
@@ -3223,7 +4398,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 92
+        "y": 132
       },
       "datasource": {
         "type": "prometheus",
@@ -3274,7 +4449,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 92
+        "y": 132
       },
       "datasource": {
         "type": "prometheus",
@@ -3325,7 +4500,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 92
+        "y": 132
       },
       "datasource": {
         "type": "prometheus",
@@ -3340,7 +4515,7 @@
         {
           "refId": "A",
           "expr": "cs2_worker_backlog",
-          "legendFormat": "{{stage}}"
+          "legendFormat": "{{worker}}"
         }
       ],
       "fieldConfig": {
@@ -3358,7 +4533,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 96
+        "y": 136
       },
       "datasource": {
         "type": "prometheus",
@@ -3382,7 +4557,8 @@
           "custom": {
             "fillOpacity": 10,
             "lineWidth": 2
-          }
+          },
+          "noValue": "отправок не было"
         },
         "overrides": []
       },
@@ -3391,7 +4567,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 96
+        "y": 136
       },
       "datasource": {
         "type": "prometheus",
@@ -3415,7 +4591,8 @@
           "custom": {
             "fillOpacity": 10,
             "lineWidth": 2
-          }
+          },
+          "noValue": "обращений не было"
         },
         "overrides": []
       },
@@ -3424,7 +4601,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 104
+        "y": 144
       },
       "datasource": {
         "type": "prometheus",
@@ -3457,7 +4634,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 112
+        "y": 152
       },
       "datasource": {
         "type": "prometheus",
@@ -3473,6 +4650,11 @@
           "refId": "A",
           "expr": "cs2_chain_deliveries_failed",
           "legendFormat": "не дойдут"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (result) (increase(cs2_deliveries_total{result=~\"очередь_не_прочитана|матч_не_прочитан|не_поставлено_в_очередь|не_поставлено\"}[1h]))",
+          "legendFormat": "до очереди: {{result}}"
         }
       ],
       "fieldConfig": {
@@ -3481,7 +4663,8 @@
           "custom": {
             "fillOpacity": 10,
             "lineWidth": 2
-          }
+          },
+          "noValue": "отказов нет"
         },
         "overrides": []
       },
@@ -3490,7 +4673,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 112
+        "y": 152
       },
       "datasource": {
         "type": "prometheus",
@@ -3514,7 +4697,8 @@
           "custom": {
             "fillOpacity": 10,
             "lineWidth": 2
-          }
+          },
+          "noValue": "обращений не было"
         },
         "overrides": []
       },
@@ -3523,7 +4707,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 120
+        "y": 160
       },
       "datasource": {
         "type": "prometheus",
@@ -3547,7 +4731,8 @@
           "custom": {
             "fillOpacity": 10,
             "lineWidth": 2
-          }
+          },
+          "noValue": "событий не было"
         },
         "overrides": []
       },
@@ -3556,7 +4741,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 120
+        "y": 160
       },
       "datasource": {
         "type": "prometheus",
@@ -3571,7 +4756,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 128
+        "y": 168
       },
       "panels": []
     },
@@ -3627,7 +4812,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 129
+        "y": 169
       },
       "datasource": {
         "type": "prometheus",
@@ -3678,7 +4863,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 129
+        "y": 169
       },
       "datasource": {
         "type": "prometheus",
@@ -3733,7 +4918,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 129
+        "y": 169
       },
       "datasource": {
         "type": "prometheus",
@@ -3792,7 +4977,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 129
+        "y": 169
       },
       "datasource": {
         "type": "prometheus",
@@ -3825,7 +5010,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 133
+        "y": 173
       },
       "datasource": {
         "type": "prometheus",
@@ -3858,7 +5043,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 133
+        "y": 173
       },
       "datasource": {
         "type": "prometheus",
@@ -3909,7 +5094,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 141
+        "y": 181
       },
       "datasource": {
         "type": "prometheus",
@@ -3967,7 +5152,7 @@
         "h": 4,
         "w": 8,
         "x": 4,
-        "y": 141
+        "y": 181
       },
       "datasource": {
         "type": "prometheus",
@@ -4026,7 +5211,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 141
+        "y": 181
       },
       "datasource": {
         "type": "prometheus",
@@ -4064,11 +5249,230 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 141
+        "y": 181
       },
       "datasource": {
         "type": "prometheus",
         "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Контейнеры cs2 и cs2-render",
+      "collapsed": false,
+      "panels": [],
+      "id": 1000,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 185
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Память контейнеров",
+      "description": "Занято (всего минус доступное) и потолок контейнера. Разбор демки без потолка дважды клал машину, рендер тяжелее разбора. Плохо — занятое подходит к потолку: дальше OOM убивает процессы внутри.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "incus_memory_MemTotal_bytes{name=~\"cs2|cs2-render\"} - incus_memory_MemAvailable_bytes{name=~\"cs2|cs2-render\"}",
+          "legendFormat": "{{name}}: занято"
+        },
+        {
+          "refId": "B",
+          "expr": "incus_memory_MemTotal_bytes{name=~\"cs2|cs2-render\"}",
+          "legendFormat": "{{name}}: потолок"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*потолок"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "id": 1001,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 0,
+        "y": 186
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Процессор контейнеров",
+      "description": "Сколько ядер занято, по данным Incus. Длинная полка у cs2 без разборов в очереди — что-то крутится впустую; у cs2-render всплески — это задания рендера и есть.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (name) (rate(incus_cpu_seconds_total{name=~\"cs2|cs2-render\"}[5m]))",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisLabel": "ядер"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "id": 1002,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 10,
+        "y": 186
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Убито по памяти за неделю",
+      "description": "Процессы, убитые OOM внутри контейнера за семь дней. У cs2 это разбор демки, упёршийся в потолок, у cs2-render — игра или ffmpeg. Любое ненулевое число — задание, которое у человека не доехало.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (name) (increase(incus_memory_OOM_kills_total{name=~\"cs2|cs2-render\"}[7d]))",
+          "legendFormat": "{{name}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 1003,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 20,
+        "y": 186
       }
     }
   ]
