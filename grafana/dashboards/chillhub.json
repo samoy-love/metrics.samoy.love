@@ -105,12 +105,12 @@
     },
     {
       "type": "stat",
-      "title": "API манифестов",
-      "description": "Через него установленные лаунчеры узнают о новых версиях.",
+      "title": "API админки",
+      "description": "Проверка статус-агента launcher-admin: /admin/api/health отвечает «ok». Красное — нельзя выложить сборку или новость; игроков не затрагивает, выложенное раздаётся как обычно. Прежняя проверка launcher-api снята на стороне статус-агента: манифесты проверяет «Путь обновления».",
       "targets": [
         {
           "refId": "A",
-          "expr": "status_check_up{check=\"launcher-api\"}",
+          "expr": "status_check_up{check=\"launcher-admin\"}",
           "instant": true
         }
       ],
@@ -161,7 +161,7 @@
     {
       "type": "stat",
       "title": "Путь обновления",
-      "description": "Два шага подряд: узнать версию и забрать её манифест. Ловит случай, когда версия объявлена, а файла нет.",
+      "description": "Проверка launcher-build — два шага подряд: узнать последнюю версию и забрать её манифест. Это единственная внешняя проверка публичного API манифестов. Красное — версия объявлена, а забрать её нечем: обновление не доедет до игроков.",
       "targets": [
         {
           "refId": "A",
@@ -317,10 +317,208 @@
       },
       "id": 6,
       "gridPos": {
-        "h": 4,
+        "h": 6,
         "w": 6,
         "x": 0,
         "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Службы",
+      "description": "Активна ли systemd-служба на сервере, по данным статус-агента. Красное — процесс не запущен: chillhub-api — лаунчеры не видят обновлений, chillhub-admin — не принимается телеметрия и не работает админка.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "status_unit_active{project=\"launcher\"}",
+          "legendFormat": "{{unit}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "стоит",
+                  "index": 0
+                },
+                "1": {
+                  "text": "работает",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "id": 43,
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Доступность проверок",
+      "description": "Доля успешных проверок статус-агента за 7 и за 90 дней. Плохо — ниже 99.5% за неделю: это больше 50 минут простоя. 90-дневное число медленное и помнит старые аварии, недельное — показывает, стало ли лучше.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * status_check_uptime_ratio{project=\"launcher\", window=\"d7\"}",
+          "legendFormat": "{{check}} · 7 дн",
+          "instant": true
+        },
+        {
+          "refId": "B",
+          "expr": "100 * status_check_uptime_ratio{project=\"launcher\", window=\"d90\"}",
+          "legendFormat": "{{check}} · 90 дн",
+          "instant": true
+        }
+      ],
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "min": 95,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 99
+              },
+              {
+                "color": "green",
+                "value": 99.5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 44,
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Время ответа проверок",
+      "description": "Сколько отвечала каждая проверка статус-агента. Порог «медленно» у пути обновления — 4 с, у админки — 2 с; рост без падения — ранний признак, что до аварии недалеко.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "status_check_response_seconds{project=\"launcher\"}",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 45,
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 11
       },
       "datasource": {
         "type": "prometheus",
@@ -336,15 +534,15 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 18
       },
       "panels": [],
       "description": "Лендинг и раздача файлов: то, что видит человек до установки лаунчера."
     },
     {
       "type": "stat",
-      "title": "Посетители за сутки",
-      "description": "Обращения к главной странице: грубая, но честная оценка посещаемости. Заходы на внутренние адреса и ассеты сюда не попадают.",
+      "title": "Открытий главной за сутки",
+      "description": "Ответы на GET / за сутки, включая ботов и проверку статус-агента: это верхняя граница посещаемости, а не число людей. Смотреть на тренд, а не на величину; сравнение с прошлой неделей — на графике ниже.",
       "targets": [
         {
           "refId": "A",
@@ -385,7 +583,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 10
+        "y": 19
       },
       "datasource": {
         "type": "prometheus",
@@ -436,7 +634,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 10
+        "y": 19
       },
       "datasource": {
         "type": "prometheus",
@@ -445,12 +643,12 @@
     },
     {
       "type": "stat",
-      "title": "Доля ошибок за сутки",
-      "description": "Ответы 4xx и 5xx ко всем ответам. 4xx — чаще всего сканеры и старые ссылки, 5xx — всегда наша вина.",
+      "title": "Доля 5xx за сутки",
+      "description": "Ответы 5xx ко всем ответам nginx на launcher.samoy.love. Раньше здесь считались и 4xx — сканеры и 404 по выдуманным адресам дают около 12% всегда, и стат горел красным при исправном сайте. 4xx видны на графике «Коды ответов». Плохо — всё выше 1%: 5xx всегда наша вина (502 — лёг chillhub-api или chillhub-admin за nginx).",
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * (sum(increase(samoylove_site_http_response_count_total{host=\"launcher.samoy.love\", status=~\"[45]..\"}[24h])) or vector(0)) / clamp_min(sum(increase(samoylove_site_http_response_count_total{host=\"launcher.samoy.love\"}[24h])), 1)",
+          "expr": "100 * (sum(increase(samoylove_site_http_response_count_total{host=\"launcher.samoy.love\", status=~\"5..\"}[24h])) or vector(0)) / clamp_min(sum(increase(samoylove_site_http_response_count_total{host=\"launcher.samoy.love\"}[24h])), 1)",
           "instant": true
         }
       ],
@@ -495,7 +693,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 10
+        "y": 19
       },
       "datasource": {
         "type": "prometheus",
@@ -505,11 +703,11 @@
     {
       "type": "stat",
       "title": "Время ответа, p95",
-      "description": "Отдача статики с того же сервера. Десятки миллисекунд — норма, сотни означают, что диску или сети плохо.",
+      "description": "Время ответа nginx без раздачи сборок и установщика: у /content/ и /downloads/ request_time — это скачивание файла (p95 около 4 с), а не отклик сервера, и оно тянуло бы число вверх при здоровом сервере. Норма — единицы миллисекунд; сотни означают, что диску или сети плохо.",
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum(rate(samoylove_site_http_response_time_seconds_hist_bucket{host=\"launcher.samoy.love\"}[1h])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(samoylove_site_http_response_time_seconds_hist_bucket{host=\"launcher.samoy.love\", path!~\"/content/|/downloads/\"}[1h])) by (le))",
           "instant": true
         }
       ],
@@ -546,7 +744,117 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 10
+        "y": 19
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Скачиваний установщика за сутки",
+      "description": "Успешные ответы на /downloads/ — скачивания установщика лаунчера. Единственное число, ради которого лендинг существует. Ноль несколько суток подряд при живой главной — ссылка на установщик сломана или спрятана.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(samoylove_site_http_response_count_total{host=\"launcher.samoy.love\", path=\"/downloads/\", status=~\"2..\"}[24h])) or vector(0)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 46,
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 23
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "404 на установщик за сутки",
+      "description": "Запросы к /downloads/, на которые файла не нашлось. За 30 дней их столько же, сколько успешных скачиваний. Часть — сканеры, но всплеск сразу после выкатки лендинга означает, что ссылка ведёт на несуществующий файл.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(samoylove_site_http_response_count_total{host=\"launcher.samoy.love\", path=\"/downloads/\", status=\"404\"}[24h])) or vector(0)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 47,
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 23
       },
       "datasource": {
         "type": "prometheus",
@@ -605,7 +913,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 14
+        "y": 27
       },
       "datasource": {
         "type": "prometheus",
@@ -664,7 +972,170 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 14
+        "y": 27
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Главная и установщик: сейчас и неделю назад",
+      "description": "Ответы в час сейчас и ровно неделю назад (offset 1w). Отвечает на вопрос «больше или меньше заходят, чем обычно», снимая суточный ритм. Резкий рост главной без роста скачиваний — боты, а не люди.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(samoylove_site_http_response_count_total{host=\"launcher.samoy.love\", path=\"/\"}[1h]))",
+          "legendFormat": "главная"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(samoylove_site_http_response_count_total{host=\"launcher.samoy.love\", path=\"/\"}[1h] offset 1w))",
+          "legendFormat": "главная неделю назад"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(increase(samoylove_site_http_response_count_total{host=\"launcher.samoy.love\", path=\"/downloads/\", status=~\"2..\"}[1h])) or vector(0)",
+          "legendFormat": "скачивания установщика"
+        },
+        {
+          "refId": "D",
+          "expr": "sum(increase(samoylove_site_http_response_count_total{host=\"launcher.samoy.love\", path=\"/downloads/\", status=~\"2..\"}[1h] offset 1w)) or vector(0)",
+          "legendFormat": "скачивания неделю назад"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*неделю назад"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 48,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 35
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Время ответа сайта: p50, p95, p99",
+      "description": "Квантили отклика nginx без раздачи сборок и установщика (там время — это скачивание). Окно 15 минут: запросов мало, и на коротком окне квантиль скачет. Норма — миллисекунды; p99 в сотни миллисекунд при спокойном p50 — редкие тяжёлые запросы, все три линии вверх — плохо серверу.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(samoylove_site_http_response_time_seconds_hist_bucket{host=\"launcher.samoy.love\", path!~\"/content/|/downloads/\"}[15m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(samoylove_site_http_response_time_seconds_hist_bucket{host=\"launcher.samoy.love\", path!~\"/content/|/downloads/\"}[15m])))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(samoylove_site_http_response_time_seconds_hist_bucket{host=\"launcher.samoy.love\", path!~\"/content/|/downloads/\"}[15m])))",
+          "legendFormat": "p99"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 49,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 35
       },
       "datasource": {
         "type": "prometheus",
@@ -680,7 +1151,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 43
       },
       "panels": [],
       "description": "Его зовут установленные лаунчеры: проверка версий, манифесты, скачивание."
@@ -729,7 +1200,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 23
+        "y": 44
       },
       "datasource": {
         "type": "prometheus",
@@ -784,7 +1255,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 23
+        "y": 44
       },
       "datasource": {
         "type": "prometheus",
@@ -835,7 +1306,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 23
+        "y": 44
       },
       "datasource": {
         "type": "prometheus",
@@ -844,12 +1315,12 @@
     },
     {
       "type": "stat",
-      "title": "Проверок целостности",
-      "description": "Сверка хешей файлов сборки за сутки. Ненулевые расхождения означают битую раздачу.",
+      "title": "Запросов за сутки к прошлой неделе",
+      "description": "Изменение числа запросов к публичному API за последние сутки против тех же суток неделю назад. Лаунчер опрашивает API при каждом запуске, поэтому это прямой тренд живых клиентов. Плохо — провал больше чем на половину без видимой причины: лаунчеры перестали доходить (сертификат, DNS, сломанный клиент).",
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(chillhub_integrity_checks_total[24h])) or vector(0)",
+          "expr": "100 * (sum(increase(chillhub_http_requests_total{service=\"api\"}[24h])) / clamp_min(sum(increase(chillhub_http_requests_total{service=\"api\"}[24h] offset 1w)), 1) - 1)",
           "instant": true
         }
       ],
@@ -863,30 +1334,38 @@
         },
         "colorMode": "background",
         "graphMode": "none",
-        "textMode": "auto"
+        "textMode": "value"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "percent",
           "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "blue",
+                "color": "red",
                 "value": null
+              },
+              {
+                "color": "orange",
+                "value": -50
+              },
+              {
+                "color": "green",
+                "value": -20
               }
             ]
           }
         },
         "overrides": []
       },
-      "id": 18,
+      "id": 53,
       "gridPos": {
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 23
+        "y": 44
       },
       "datasource": {
         "type": "prometheus",
@@ -945,7 +1424,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 27
+        "y": 48
       },
       "datasource": {
         "type": "prometheus",
@@ -1004,7 +1483,198 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 27
+        "y": 48
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Время ответа API: p50, p95, p99",
+      "description": "Квантили отклика публичного API по гистограмме сервиса (корзины 5 мс…10 с), окно 15 минут. Норма — p95 в пределах 25 мс. p99 выше 0.5 с — лаунчеры ждут на старте; линия в 10 с — запросы упираются в верхнюю корзину, то есть висят.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(chillhub_http_request_duration_seconds_bucket{service=\"api\"}[15m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(chillhub_http_request_duration_seconds_bucket{service=\"api\"}[15m])))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(chillhub_http_request_duration_seconds_bucket{service=\"api\"}[15m])))",
+          "legendFormat": "p99"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 50,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 56
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "heatmap",
+      "title": "Распределение времени ответа API",
+      "description": "Сколько запросов попало в каждую корзину гистограммы. В отличие от квантилей видно форму: вторая «полоса» выше основной — отдельный медленный маршрут или холодный кэш, а не общее замедление. Плохо — заметная масса в корзинах от 0.5 с.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (le) (increase(chillhub_http_request_duration_seconds_bucket{service=\"api\"}[$__rate_interval]))",
+          "legendFormat": "{{le}}",
+          "format": "heatmap"
+        }
+      ],
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "steps": 64,
+          "exponent": 0.5,
+          "fill": "dark-orange",
+          "scale": "exponential",
+          "reverse": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "unit": "s",
+          "reverse": false
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "filterValues": {
+          "le": 1e-09
+        },
+        "tooltip": {
+          "mode": "single",
+          "yHistogram": false,
+          "showColorScale": false
+        },
+        "legend": {
+          "show": true
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "id": 51,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 56
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Время ответа API по маршрутам, p95",
+      "description": "p95 каждого маршрута за час. Показывает, КАКОЙ маршрут медленный, когда общий квантиль вырос. /api/games собирает список игр и законно медленнее остальных; разрывы линий — за час запросов к маршруту не было.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(chillhub_http_request_duration_seconds_bucket{service=\"api\"}[1h])))",
+          "legendFormat": "{{route}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 52,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 64
       },
       "datasource": {
         "type": "prometheus",
@@ -1020,19 +1690,26 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 72
       },
       "panels": [],
       "description": "Публикация сборок и новостей. Пользователей не затрагивает: уже выложенное раздаётся как обычно."
     },
     {
       "type": "stat",
-      "title": "Входов за сутки",
-      "description": "Успешные входы в админку. Всплеск в нерабочее время стоит объяснить.",
+      "title": "Входы в админку за сутки",
+      "description": "Попытки входа по результату. Раньше стат складывал успешные и неудачные в одно число. Успешный вход в нерабочее время стоит объяснить; десяток неудачных за сутки — кто-то подбирает пароль.",
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(chillhub_admin_logins_total[24h])) or vector(0)",
+          "expr": "sum(increase(chillhub_admin_logins_total{result=\"ok\"}[24h])) or vector(0)",
+          "legendFormat": "успешных",
+          "instant": true
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(chillhub_admin_logins_total{result=\"fail\"}[24h])) or vector(0)",
+          "legendFormat": "неудачных",
           "instant": true
         }
       ],
@@ -1046,7 +1723,7 @@
         },
         "colorMode": "background",
         "graphMode": "none",
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "fieldConfig": {
         "defaults": {
@@ -1062,14 +1739,43 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "неудачных"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 3
+                    },
+                    {
+                      "color": "red",
+                      "value": 10
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
       },
       "id": 22,
       "gridPos": {
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 36
+        "y": 73
       },
       "datasource": {
         "type": "prometheus",
@@ -1078,12 +1784,12 @@
     },
     {
       "type": "stat",
-      "title": "Запросов в минуту",
-      "description": "Нагрузка на админку. Постоянный поток без человека за пультом — обычно забытая открытая вкладка.",
+      "title": "Запросов в минуту (без проб)",
+      "description": "Нагрузка от людей в админке. Проба статус-агента /admin/api/health и приём телеметрии /metrics/report исключены: они живут в том же процессе, но дают около трёх четвертей её запросов (за неделю 9.9 тыс. из 13.3 тыс.), и прежнее число показывало пробу, а не человека. Постоянный поток без человека за пультом — обычно забытая открытая вкладка (опрос /admin/api/auth/verify).",
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum(rate(chillhub_http_requests_total{service=\"admin\"}[10m]))",
+          "expr": "60 * sum(rate(chillhub_http_requests_total{service=\"admin\", route!~\"/admin/api/health|/metrics/report\"}[10m]))",
           "instant": true
         }
       ],
@@ -1120,7 +1826,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 36
+        "y": 73
       },
       "datasource": {
         "type": "prometheus",
@@ -1175,7 +1881,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 36
+        "y": 73
       },
       "datasource": {
         "type": "prometheus",
@@ -1185,11 +1891,11 @@
     {
       "type": "stat",
       "title": "Время ответа, p95",
-      "description": "Отклик админки. Сюда же попадают тяжёлые операции публикации.",
+      "description": "Отклик админки на запросы людей, без пробы и телеметрии (те быстрые и тянули p95 к нулю). Сюда попадают загрузка сборки (/admin/api/upload/chunk и process — законно секунды). Пусто — за час в админку никто не заходил.",
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum(rate(chillhub_http_request_duration_seconds_bucket{service=\"admin\"}[1h])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(chillhub_http_request_duration_seconds_bucket{service=\"admin\", route!~\"/admin/api/health|/metrics/report\"}[1h])) by (le)) > 0",
           "instant": true
         }
       ],
@@ -1217,7 +1923,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "нет запросов"
         },
         "overrides": []
       },
@@ -1226,7 +1933,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 36
+        "y": 73
       },
       "datasource": {
         "type": "prometheus",
@@ -1236,11 +1943,11 @@
     {
       "type": "timeseries",
       "title": "Запросы админки по маршрутам",
-      "description": "Что именно делают в админке.",
+      "description": "Что именно делают в админке. Проба статус-агента и телеметрия исключены — они есть в своих разделах.",
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum(rate(chillhub_http_requests_total{service=\"admin\"}[10m])) by (route)",
+          "expr": "60 * sum(rate(chillhub_http_requests_total{service=\"admin\", route!~\"/admin/api/health|/metrics/report\"}[10m])) by (route)",
           "legendFormat": "{{route}}"
         }
       ],
@@ -1283,9 +1990,9 @@
       "id": 26,
       "gridPos": {
         "h": 8,
-        "w": 24,
+        "w": 12,
         "x": 0,
-        "y": 40
+        "y": 77
       },
       "datasource": {
         "type": "prometheus",
@@ -1293,33 +2000,14 @@
       }
     },
     {
-      "type": "row",
-      "title": "Телеметрия",
-      "id": 27,
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 48
-      },
-      "panels": [],
-      "description": "События, которые присылает сам лаунчер. Отвергнутые — это не шум, а сигнал: клиент шлёт то, чего сервер не ждёт."
-    },
-    {
       "type": "timeseries",
-      "title": "Принято и отвергнуто",
-      "description": "Расхождение между принятым и отвергнутым означает разъехавшиеся версии клиента и сервера.",
+      "title": "Время ответа админки по маршрутам, p95",
+      "description": "p95 маршрутов админки за час, без пробы и телеметрии. Загрузка сборки (upload/chunk, upload/process) законно идёт секунды; плохо — когда в секунды уходят списки и вход: процессу не хватает диска или памяти.",
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum(rate(chillhub_telemetry_events_total[10m]))",
-          "legendFormat": "принято"
-        },
-        {
-          "refId": "B",
-          "expr": "60 * sum(rate(chillhub_telemetry_rejected_total[10m]))",
-          "legendFormat": "отвергнуто"
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(chillhub_http_request_duration_seconds_bucket{service=\"admin\", route!~\"/admin/api/health|/metrics/report\"}[1h])))",
+          "legendFormat": "{{route}}"
         }
       ],
       "options": {
@@ -1335,7 +2023,7 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "reqpm",
+          "unit": "s",
           "custom": {
             "drawStyle": "line",
             "lineWidth": 1,
@@ -1358,12 +2046,91 @@
         },
         "overrides": []
       },
+      "id": 54,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 77
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Телеметрия",
+      "id": 27,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 85
+      },
+      "panels": [],
+      "description": "События, которые присылает сам лаунчер. Отвергнутые — это не шум, а сигнал: клиент шлёт то, чего сервер не ждёт."
+    },
+    {
+      "type": "timeseries",
+      "title": "Принято и отвергнуто за час",
+      "description": "События в час, а не в минуту: телеметрии единицы в час, и в минутах график показывал 0.01. Плохо — когда отвергнутых стабильно столько же или больше, чем принятых: разъехались версии клиента и сервера (причины — рядом).",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(chillhub_telemetry_events_total[1h])) or vector(0)",
+          "legendFormat": "принято"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(chillhub_telemetry_rejected_total[1h])) or vector(0)",
+          "legendFormat": "отвергнуто"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
       "id": 28,
       "gridPos": {
         "h": 8,
-        "w": 24,
+        "w": 12,
         "x": 0,
-        "y": 49
+        "y": 86
       },
       "datasource": {
         "type": "prometheus",
@@ -1372,12 +2139,12 @@
     },
     {
       "type": "timeseries",
-      "title": "Отвергнуто по причине",
-      "description": "unknown_game — клиент шлёт gameId, которого нет в реестре (игру удалили/переименовали, а старые клиенты ещё отчитываются по старому id). bad_body/unknown_event — разъехался контракт после выкатки клиента. store_failed — сервер не смог дописать файл (диск).",
+      "title": "Отвергнуто по причине за час",
+      "description": "unknown_game — клиент шлёт gameId, которого нет в реестре (игру удалили/переименовали, а старые клиенты ещё отчитываются по старому id). bad_body/unknown_event — разъехался контракт после выкатки клиента. store_failed — сервер не смог дописать файл (диск). Единица — штуки в час, как в правилах TelemetryRejectedHigh (порог 20, без unknown_game) и TelemetryUnknownGameHigh (порог 500 unknown_game): число на графике сравнимо с порогом напрямую.",
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum by (reason) (rate(chillhub_telemetry_rejected_total[10m]))",
+          "expr": "sum by (reason) (increase(chillhub_telemetry_rejected_total[1h]))",
           "legendFormat": "{{reason}}"
         }
       ],
@@ -1394,7 +2161,7 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "reqpm",
+          "unit": "short",
           "custom": {
             "drawStyle": "line",
             "lineWidth": 1,
@@ -1413,16 +2180,142 @@
                 "value": null
               }
             ]
-          }
+          },
+          "decimals": 0
         },
         "overrides": []
       },
       "id": 999,
       "gridPos": {
         "h": 8,
-        "w": 24,
+        "w": 12,
+        "x": 12,
+        "y": 86
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Принятые события по типу за час",
+      "description": "Из чего состоит телеметрия. game_session и launcher_start — фон живых клиентов; пропажа launcher_start при живых game_session означает сломанный отчёт в новой версии клиента. «Служебные прогоны» — события автотестов (installId test-…): приняты, но в продуктовые числа не идут.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (event) (increase(chillhub_telemetry_events_total[1h]))",
+          "legendFormat": "{{event}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(chillhub_telemetry_synthetic_total[1h]))",
+          "legendFormat": "служебные прогоны"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 55,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
         "x": 0,
-        "y": 57
+        "y": 94
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Ответы приёма телеметрии по кодам за час",
+      "description": "HTTP-ответы на /metrics/report. 400 — событие отвергнуто (причины — на соседнем графике), 429 — ограничитель частоты отрезал клиента, и его события потеряны без следа в счётчиках отвергнутого. Плохо — стабильные 429: лимит слишком тесен для настоящих клиентов.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (code) (increase(chillhub_http_requests_total{route=\"/metrics/report\"}[1h]))",
+          "legendFormat": "{{code}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "id": 56,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 94
       },
       "datasource": {
         "type": "prometheus",
@@ -1438,7 +2331,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 65
+        "y": 102
       },
       "panels": [],
       "description": "Это шлёт сам установленный лаунчер. Пусто здесь означает не поломку, а что клиент ещё не отчитывался: метрики заведены заранее, под уже написанный сбор. Панели стоят на месте намеренно — заводить их задним числом означает не увидеть первых же данных."
@@ -1487,7 +2380,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 66
+        "y": 103
       },
       "datasource": {
         "type": "prometheus",
@@ -1538,7 +2431,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 66
+        "y": 103
       },
       "datasource": {
         "type": "prometheus",
@@ -1589,7 +2482,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 66
+        "y": 103
       },
       "datasource": {
         "type": "prometheus",
@@ -1640,7 +2533,166 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 66
+        "y": 103
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Экономия трафика за 7 дней",
+      "description": "1 − скачано / весила бы полная загрузка, по установкам и обновлениям за неделю. Смысл лаунчера — качать только изменившееся. Установка с нуля экономии не даёт по определению, поэтому неделя из одних установок законно близка к нулю; плохо — падение при идущих обновлениях (см. «Доля обновлений целиком»).",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * (1 - sum(increase(chillhub_downloaded_bytes_total[7d])) / clamp_min(sum(increase(chillhub_build_full_bytes_total[7d])), 1))",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 57,
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 107
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Неудачных проверок целостности за сутки",
+      "description": "Проверки целостности установленной игры, которые клиент завершил не с ok. Раньше стат считал все проверки подряд, и успешная сверка выглядела так же, как битая. Плохо — любое ненулевое: у игрока файлы разошлись с манифестом, сколько именно файлов — в «Отказы у клиентов».",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(chillhub_integrity_checks_total{result!=\"ok\"}[24h])) or vector(0)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 18,
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 107
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Версии лаунчера за 7 дней",
+      "description": "Запуски лаунчера по версии клиента за неделю. Отвечает, как быстро игроки переезжают на новую версию. Плохо — старая версия держит большинство через несколько дней после выкатки: самообновление лаунчера не срабатывает.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (app_version) (increase(chillhub_launcher_starts_total[7d])) > 0",
+          "legendFormat": "{{app_version}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 58,
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 107
       },
       "datasource": {
         "type": "prometheus",
@@ -1650,16 +2702,16 @@
     {
       "type": "timeseries",
       "title": "Скачано клиентами",
-      "description": "Сколько байт реально ушло. Рядом — сколько заняла бы полная перекачка: разрыв между линиями и есть выигрыш дельта-патчинга.",
+      "description": "Сколько байт реально ушло. Рядом — сколько заняла бы полная перекачка: разрыв между линиями и есть выигрыш дельта-патчинга. Счётчики заводятся с первым событием после рестарта chillhub-admin, поэтому без «or vector(0)» тихие часы выглядели как No data, а не как ноль.",
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(chillhub_downloaded_bytes_total[30m]))",
+          "expr": "sum(rate(chillhub_downloaded_bytes_total[30m])) or vector(0)",
           "legendFormat": "скачано дельтами"
         },
         {
           "refId": "B",
-          "expr": "sum(rate(chillhub_build_full_bytes_total[30m]))",
+          "expr": "sum(rate(chillhub_build_full_bytes_total[30m])) or vector(0)",
           "legendFormat": "если бы качали целиком"
         }
       ],
@@ -1704,7 +2756,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 70
+        "y": 113
       },
       "datasource": {
         "type": "prometheus",
@@ -1768,7 +2820,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 70
+        "y": 113
       },
       "datasource": {
         "type": "prometheus",
@@ -1777,18 +2829,18 @@
     },
     {
       "type": "timeseries",
-      "title": "Отказы у клиентов",
-      "description": "Расхождение хешей означает битую раздачу и обязано быть нулём. Ошибки клиента — всё остальное, что у него не получилось.",
+      "title": "Отказы у клиентов за час",
+      "description": "Штуки в час — единица правил HashMismatchesHigh (порог 10) и ChillhubClientErrorsHigh (порог 20). Расхождение хешей означает битую раздачу и обязано быть нулём. Ошибки клиента разложены по коду классификации (метка code; прежняя легенда искала несуществующую метку kind и сливала все коды в одну безымянную линию).",
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum(rate(chillhub_hash_mismatches_total[30m]))",
-          "legendFormat": "расхождения хешей"
+          "expr": "sum(increase(chillhub_hash_mismatches_total[1h])) or vector(0)",
+          "legendFormat": "расхождения хешей (файлов)"
         },
         {
           "refId": "B",
-          "expr": "60 * sum(rate(chillhub_client_errors_total[30m])) by (kind)",
-          "legendFormat": "ошибка: {{kind}}"
+          "expr": "sum by (code) (increase(chillhub_client_errors_total[1h]))",
+          "legendFormat": "ошибка: {{code}}"
         }
       ],
       "options": {
@@ -1824,7 +2876,7 @@
               }
             ]
           },
-          "decimals": 3
+          "decimals": 0
         },
         "overrides": []
       },
@@ -1833,7 +2885,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 78
+        "y": 121
       },
       "datasource": {
         "type": "prometheus",
@@ -1842,23 +2894,23 @@
     },
     {
       "type": "timeseries",
-      "title": "Активации сборок и отзывы",
-      "description": "Активация — переключение пользователя на выложенную версию. Отзывы приходят из формы в лаунчере.",
+      "title": "Активации сборок, отзывы и техработы за час",
+      "description": "Активация — владелец в админке делает выложенную версию сборки текущей (не действие игрока). Отзывы приходят из формы в лаунчере, переключения техработ — из админки. Штуки в час.",
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum(rate(chillhub_build_activations_total[30m]))",
-          "legendFormat": "активации"
+          "expr": "sum(increase(chillhub_build_activations_total[1h])) or vector(0)",
+          "legendFormat": "активации сборок"
         },
         {
           "refId": "B",
-          "expr": "60 * sum(rate(chillhub_feedback_submissions_total[30m]))",
+          "expr": "sum(increase(chillhub_feedback_submissions_total[1h])) or vector(0)",
           "legendFormat": "отзывы"
         },
         {
           "refId": "C",
-          "expr": "60 * sum(rate(chillhub_maintenance_changes_total[30m]))",
-          "legendFormat": "переключения обслуживания"
+          "expr": "sum(increase(chillhub_maintenance_changes_total[1h])) or vector(0)",
+          "legendFormat": "переключения техработ"
         }
       ],
       "options": {
@@ -1894,7 +2946,7 @@
               }
             ]
           },
-          "decimals": 3
+          "decimals": 0
         },
         "overrides": []
       },
@@ -1903,7 +2955,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 78
+        "y": 121
       },
       "datasource": {
         "type": "prometheus",
@@ -1919,7 +2971,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 86
+        "y": 129
       },
       "panels": [],
       "description": "Доли и проценты, которых не было в счётчиках выше: у каждого правила ниже теперь панель с ровно той формулой, что оно вычисляет."
@@ -1985,7 +3037,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 87
+        "y": 130
       },
       "datasource": {
         "type": "prometheus",
@@ -1995,7 +3047,7 @@
     {
       "type": "timeseries",
       "title": "Доля обновлений целиком (без диффа)",
-      "description": "Весь смысл лаунчера — качать только изменившиеся файлы. mode=full как норма означает, что дифф не работает: сборка пересобралась целиком, хеши не совпали ни у кого. Формула правила DiffUpdatesNotWorking, окно 6 часов.",
+      "description": "Весь смысл лаунчера — качать только изменившиеся файлы. mode=full как норма означает, что дифф не работает: сборка пересобралась целиком, хеши не совпали ни у кого. Формула правила DiffUpdatesNotWorking, окно 6 часов. Знаменатель включает mode=unknown (старые клиенты без счётчиков файлов) — так считает правило; пока таких много, доля занижена. Ряд mode=full появится только с первым таким обновлением, до того панель — ровный ноль.",
       "targets": [
         {
           "refId": "A",
@@ -2053,7 +3105,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 87
+        "y": 130
       },
       "datasource": {
         "type": "prometheus",
@@ -2062,12 +3114,12 @@
     },
     {
       "type": "timeseries",
-      "title": "Доля ошибок публичного API",
-      "description": "5xx к общему числу ответов, окно 15 минут — формула правила LauncherErrorRateHigh. Раздельные счётчики ошибок и запросов есть выше («Ошибок за сутки», «Коды ответов API»), а доли до сих пор не было.",
+      "title": "Доля 5xx лаунчера (API и админка)",
+      "description": "5xx к общему числу ответов ОБОИХ процессов (chillhub-api и chillhub-admin), окно 15 минут — формула правила LauncherErrorRateHigh, где фильтра по service нет. Поэтому и заголовок не «публичный API»: знаменатель почти на две трети — проба админки. Пока 5xx не было ни разу, ряда ошибок не существует, и без «or vector(0)» панель показывала No data вместо нуля.",
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum(rate(chillhub_http_requests_total{code=~\"5..\"}[15m])) / clamp_min(sum(rate(chillhub_http_requests_total[15m])), 0.001)",
+          "expr": "100 * (sum(rate(chillhub_http_requests_total{code=~\"5..\"}[15m])) or vector(0)) / clamp_min(sum(rate(chillhub_http_requests_total[15m])), 0.001)",
           "legendFormat": "доля 5xx"
         }
       ],
@@ -2121,7 +3173,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 87
+        "y": 130
       },
       "datasource": {
         "type": "prometheus",
@@ -2131,11 +3183,11 @@
     {
       "type": "timeseries",
       "title": "Доля ошибок админки",
-      "description": "5xx к общему числу ответов админки, окно 15 минут — формула правила ChillhubAdminErrorRateHigh. Порог выше, чем у публичного API: трафик админки низкий и однопользовательский, доля скачет сильнее на тех же абсолютных числах.",
+      "description": "5xx к общему числу ответов админки, окно 15 минут — формула правила ChillhubAdminErrorRateHigh. Порог выше, чем у публичного API: трафик админки низкий и однопользовательский, доля скачет сильнее на тех же абсолютных числах. «or vector(0)» — чтобы ноль был нулём, а не No data, пока 5xx не случалось.",
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum(rate(chillhub_http_requests_total{service=\"admin\",code=~\"5..\"}[15m])) / clamp_min(sum(rate(chillhub_http_requests_total{service=\"admin\"}[15m])), 0.001)",
+          "expr": "100 * (sum(rate(chillhub_http_requests_total{service=\"admin\",code=~\"5..\"}[15m])) or vector(0)) / clamp_min(sum(rate(chillhub_http_requests_total{service=\"admin\"}[15m])), 0.001)",
           "legendFormat": "доля 5xx"
         }
       ],
@@ -2189,7 +3241,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 95
+        "y": 138
       },
       "datasource": {
         "type": "prometheus",
