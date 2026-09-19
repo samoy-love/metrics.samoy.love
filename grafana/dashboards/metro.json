@@ -46,12 +46,13 @@
         "x": 0,
         "y": 0
       },
-      "panels": []
+      "panels": [],
+      "description": "Агент статус-страницы проверяет сайт раз в минуту, blackbox — раз в 30 секунд. Оба ходят с того же сервера, поэтому видят nginx и сертификат, но не сеть до посетителя."
     },
     {
       "type": "stat",
       "title": "Сайт",
-      "description": "Схема метро.",
+      "description": "Схема метро: главная страница отвечает 200 по проверке агента статус-страницы.",
       "targets": [
         {
           "refId": "A",
@@ -87,14 +88,31 @@
                 "value": 1
               }
             ]
-          }
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "нет",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "да",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
       "id": 2,
       "gridPos": {
         "h": 4,
-        "w": 6,
+        "w": 4,
         "x": 0,
         "y": 1
       },
@@ -142,15 +160,32 @@
                 "value": 1
               }
             ]
-          }
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "нет",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "да",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
       "id": 3,
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 6,
+        "w": 4,
+        "x": 4,
         "y": 1
       },
       "datasource": {
@@ -161,7 +196,7 @@
     {
       "type": "stat",
       "title": "Сертификат",
-      "description": "Дней до истечения. Продление автоматическое, поэтому число, ползущее к нулю, означает, что автопродление сломалось.",
+      "description": "Дней до истечения по данным агента статус-страницы. Продление автоматическое, поэтому число, ползущее вниз, означает, что автопродление сломалось. Жёлтый — меньше 21 дня, красный — меньше 14: с этого порога уже горит тревога CertificateExpiringSoon.",
       "targets": [
         {
           "refId": "A",
@@ -194,7 +229,7 @@
               },
               {
                 "color": "yellow",
-                "value": 7
+                "value": 14
               },
               {
                 "color": "green",
@@ -208,7 +243,66 @@
       "id": 4,
       "gridPos": {
         "h": 4,
-        "w": 6,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Доступность за 24 часа",
+      "description": "Доля минутных проверок «Сайт», прошедших успешно, за последние 24 часа. Считается по агенту статус-страницы, а не по blackbox: у blackbox с 12 по 19.09.2026 пробы не доходили до сайта из-за маршрута, и его история показала бы неделю несуществующего простоя. Меньше 99,9% — был заметный простой, меньше 99% — больше семи часов в месяц. Если истории меньше окна, считается по той, что есть.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(sum_over_time(status_check_up{check=\"metro\"}[24h])) / sum(count_over_time(status_check_up{check=\"metro\"}[24h]))",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.99
+              },
+              {
+                "color": "green",
+                "value": 0.999
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 5,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
         "x": 12,
         "y": 1
       },
@@ -218,27 +312,280 @@
       }
     },
     {
+      "type": "stat",
+      "title": "Доступность за 7 дней",
+      "description": "Доля минутных проверок «Сайт», прошедших успешно, за последние 7 дней. Считается по агенту статус-страницы, а не по blackbox: у blackbox с 12 по 19.09.2026 пробы не доходили до сайта из-за маршрута, и его история показала бы неделю несуществующего простоя. Меньше 99,9% — был заметный простой, меньше 99% — больше семи часов в месяц. Если истории меньше окна, считается по той, что есть.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(sum_over_time(status_check_up{check=\"metro\"}[7d])) / sum(count_over_time(status_check_up{check=\"metro\"}[7d]))",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.99
+              },
+              {
+                "color": "green",
+                "value": 0.999
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 6,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Доступность за 30 дней",
+      "description": "Доля минутных проверок «Сайт», прошедших успешно, за последние 30 дней. Считается по агенту статус-страницы, а не по blackbox: у blackbox с 12 по 19.09.2026 пробы не доходили до сайта из-за маршрута, и его история показала бы неделю несуществующего простоя. Меньше 99,9% — был заметный простой, меньше 99% — больше семи часов в месяц. Если истории меньше окна, считается по той, что есть.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(sum_over_time(status_check_up{check=\"metro\"}[30d])) / sum(count_over_time(status_check_up{check=\"metro\"}[30d]))",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.99
+              },
+              {
+                "color": "green",
+                "value": 0.999
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 7,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Проба снаружи: время по фазам",
+      "description": "Из чего складывается ответ главной страницы для blackbox: DNS, TCP, TLS, обработка в nginx, передача тела. Слои сложены, верх графика — полное время. Норма — единицы миллисекунд: проба идёт с того же сервера. Выросла обработка — плохо nginx или диску; вырос TLS — процессору. Тревога ProbeLatencyHigh горит при полном времени больше 3 с.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "probe_http_duration_seconds{instance=\"https://metro.samoy.love/\"}",
+          "legendFormat": "{{phase}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 8,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "state-timeline",
+      "title": "История проверок",
+      "description": "Провал полосы — проверка не проходила, даже если сейчас всё зелёное. Верхняя полоса — blackbox, остальные — агент статус-страницы. Красный blackbox с 12 по 19.09.2026 при зелёном агенте — сломанный маршрут пробы, а не простой сайта.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "probe_success{instance=\"https://metro.samoy.love/\"}",
+          "legendFormat": "blackbox"
+        },
+        {
+          "refId": "B",
+          "expr": "max by (name) (status_check_up{check=~\"metro|metro-sw\"})",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mergeValues": true,
+        "showValue": "never"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 80
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "не отвечает",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "работает",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 9,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
       "type": "row",
-      "title": "Сайт",
-      "id": 5,
+      "title": "Посещаемость",
+      "id": 10,
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 5
+        "y": 13
       },
       "panels": [],
-      "description": "Офлайн-PWA: у вернувшегося посетителя запросы до сервера могут не доходить вовсе, и это норма."
+      "description": "Офлайн-PWA: у вернувшегося посетителя запросы до сервера могут не доходить вовсе, и это норма — посещаемость здесь нижняя оценка."
     },
     {
       "type": "stat",
       "title": "Посетители за сутки",
-      "description": "Обращения к главной странице: грубая, но честная оценка посещаемости. Заходы на внутренние адреса и ассеты сюда не попадают.",
+      "description": "Успешные GET главной страницы за сутки за вычетом собственных проверок: blackbox (каждые 30 с) и агента статус-страницы (раз в минуту). Без вычета здесь стояло бы около 3500, из которых живых — десятки. Оценка грубая: остаток включает и чужих роботов, погрешность — несколько заходов.",
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(samoylove_site_http_response_count_total{host=\"metro.samoy.love\", path=\"/\"}[24h]))",
+          "expr": "clamp_min(sum(increase(samoylove_site_http_response_count_total{host=\"metro.samoy.love\", path=\"/\", method=\"GET\", status=~\"2..|3..\"}[24h])) - sum(sum_over_time(probe_success{instance=\"https://metro.samoy.love/\"}[24h])) - sum(changes(status_agent_run_timestamp_seconds[24h])), 0)",
           "instant": true
         }
       ],
@@ -270,12 +617,12 @@
         },
         "overrides": []
       },
-      "id": 6,
+      "id": 11,
       "gridPos": {
         "h": 4,
-        "w": 6,
+        "w": 5,
         "x": 0,
-        "y": 6
+        "y": 14
       },
       "datasource": {
         "type": "prometheus",
@@ -285,7 +632,7 @@
     {
       "type": "stat",
       "title": "Отдано за сутки",
-      "description": "Сколько байт ушло посетителям. Резкий рост без роста посещаемости — обычно случайно попавший в раздачу тяжёлый файл.",
+      "description": "Сколько байт ушло с сайта, включая ответы пробам мониторинга. Резкий рост без роста посетителей — обычно случайно попавший в раздачу тяжёлый файл.",
       "targets": [
         {
           "refId": "A",
@@ -308,7 +655,6 @@
       "fieldConfig": {
         "defaults": {
           "unit": "bytes",
-          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -321,12 +667,12 @@
         },
         "overrides": []
       },
-      "id": 7,
+      "id": 12,
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 6
+        "w": 5,
+        "x": 5,
+        "y": 14
       },
       "datasource": {
         "type": "prometheus",
@@ -335,12 +681,12 @@
     },
     {
       "type": "stat",
-      "title": "Доля ошибок за сутки",
-      "description": "Ответы 4xx и 5xx ко всем ответам. 4xx — чаще всего сканеры и старые ссылки, 5xx — всегда наша вина.",
+      "title": "Доля 5xx за сутки",
+      "description": "Ответы 5xx ко всем ответам сайта. Статике отвечать 5xx нечем, поэтому любое ненулевое число — дефект на нашей стороне: жёлтый от 0,1%, красный от 1%. Тревога SiteErrorRateHigh смотрит на 15-минутное окно и порог 5%.",
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * (sum(increase(samoylove_site_http_response_count_total{host=\"metro.samoy.love\", status=~\"[45]..\"}[24h])) or vector(0)) / clamp_min(sum(increase(samoylove_site_http_response_count_total{host=\"metro.samoy.love\"}[24h])), 1)",
+          "expr": "100 * (sum(increase(samoylove_site_http_response_count_total{host=\"metro.samoy.love\", status=~\"5..\"}[24h])) or vector(0)) / clamp_min(sum(increase(samoylove_site_http_response_count_total{host=\"metro.samoy.love\"}[24h])), 1)",
           "instant": true
         }
       ],
@@ -369,23 +715,23 @@
               },
               {
                 "color": "yellow",
-                "value": 1
+                "value": 0.1
               },
               {
                 "color": "red",
-                "value": 5
+                "value": 1
               }
             ]
           }
         },
         "overrides": []
       },
-      "id": 8,
+      "id": 13,
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 6
+        "w": 5,
+        "x": 10,
+        "y": 14
       },
       "datasource": {
         "type": "prometheus",
@@ -394,12 +740,71 @@
     },
     {
       "type": "stat",
-      "title": "Время ответа, p95",
-      "description": "Отдача статики с того же сервера. Десятки миллисекунд — норма, сотни означают, что диску или сети плохо.",
+      "title": "Доля 4xx за сутки",
+      "description": "Ответы 4xx ко всем ответам. Почти всегда это сканеры (/wp-admin, /.env) и старые ссылки, а не поломка. Плохо — рост без сканеров: значит, пропал файл, на который ссылается сама страница; тогда смотреть «Коды ответов» и «Самые запрашиваемые разделы».",
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum(rate(samoylove_site_http_response_time_seconds_hist_bucket{host=\"metro.samoy.love\"}[1h])) by (le))",
+          "expr": "100 * (sum(increase(samoylove_site_http_response_count_total{host=\"metro.samoy.love\", status=~\"4..\"}[24h])) or vector(0)) / clamp_min(sum(increase(samoylove_site_http_response_count_total{host=\"metro.samoy.love\"}[24h])), 1)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 25
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 14,
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 15,
+        "y": 14
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Время ответа nginx, p95",
+      "description": "95-й перцентиль request_time по всем запросам за сутки. Нижняя корзина гистограммы — 5 мс, поэтому всё быстрее неё показывается как 2,5–5 мс: это значит «быстрее 5 мс». Жёлтый от 250 мс, красный от 1 с — порог тревоги SiteLatencyHigh.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(samoylove_site_http_response_time_seconds_hist_bucket{host=\"metro.samoy.love\"}[24h])))",
           "instant": true
         }
       ],
@@ -418,12 +823,86 @@
       "fieldConfig": {
         "defaults": {
           "unit": "s",
-          "decimals": 3,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "blue",
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.25
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 15,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 14
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Посетители в час: эта неделя и прошлая",
+      "description": "Та же оценка, что «Посетители за сутки», по часам, и тот же час неделю назад. Расхождение линий — реальное изменение посещаемости: собственные проверки уже вычтены, поэтому их смена на графике не видна.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "clamp_min(sum(increase(samoylove_site_http_response_count_total{host=\"metro.samoy.love\", path=\"/\", method=\"GET\", status=~\"2..|3..\"}[1h])) - sum(sum_over_time(probe_success{instance=\"https://metro.samoy.love/\"}[1h])) - sum(changes(status_agent_run_timestamp_seconds[1h])), 0)",
+          "legendFormat": "эта неделя",
+          "interval": "1h"
+        },
+        {
+          "refId": "B",
+          "expr": "clamp_min(sum(increase(samoylove_site_http_response_count_total{host=\"metro.samoy.love\", path=\"/\", method=\"GET\", status=~\"2..|3..\"}[1h] offset 1w)) - sum(sum_over_time(probe_success{instance=\"https://metro.samoy.love/\"}[1h] offset 1w)) - sum(changes(status_agent_run_timestamp_seconds[1h] offset 1w)), 0)",
+          "legendFormat": "неделю назад",
+          "interval": "1h"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
                 "value": null
               }
             ]
@@ -431,12 +910,81 @@
         },
         "overrides": []
       },
-      "id": 9,
+      "id": 16,
       "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 6
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Время ответа nginx: p50, p95, p99",
+      "description": "request_time из журнала nginx: от первого байта запроса до последнего байта ответа. Для статики с того же сервера норма — единицы миллисекунд; линии, прижатые к 5 мс, значат «быстрее нижней корзины». Плохо — p95 в сотнях миллисекунд: диск или процессор заняты. Разрыв p99 и p95 без роста p95 — обычно медленный клиент на большом файле, а не сервер.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(samoylove_site_http_response_time_seconds_hist_bucket{host=\"metro.samoy.love\"}[10m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(samoylove_site_http_response_time_seconds_hist_bucket{host=\"metro.samoy.love\"}[10m])))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(samoylove_site_http_response_time_seconds_hist_bucket{host=\"metro.samoy.love\"}[10m])))",
+          "legendFormat": "p99"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 17,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 18
       },
       "datasource": {
         "type": "prometheus",
@@ -446,11 +994,11 @@
     {
       "type": "timeseries",
       "title": "Запросы по разделам",
-      "description": "Куда именно ходят. Разделение по пути показывает, чем пользуются, а не только сколько заходов.",
+      "description": "Куда именно ходят, запросов в минуту. Постоянная подложка — собственные проверки: около трёх запросов в минуту на «/» и ещё немного на «other» и «static». Живой интерес — то, что сверх неё.",
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum(rate(samoylove_site_http_response_count_total{host=\"metro.samoy.love\"}[10m])) by (path)",
+          "expr": "60 * sum by (path) (rate(samoylove_site_http_response_count_total{host=\"metro.samoy.love\"}[10m]))",
           "legendFormat": "{{path}}"
         }
       ],
@@ -490,12 +1038,12 @@
         },
         "overrides": []
       },
-      "id": 10,
+      "id": 18,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 10
+        "y": 26
       },
       "datasource": {
         "type": "prometheus",
@@ -505,11 +1053,11 @@
     {
       "type": "timeseries",
       "title": "Коды ответов",
-      "description": "Всплеск 4xx обычно означает сканера или битую ссылку, любой 5xx — дефект на нашей стороне.",
+      "description": "Запросов в минуту по коду. Всплеск 4xx обычно означает сканера или битую ссылку, любой 5xx — дефект на нашей стороне.",
       "targets": [
         {
           "refId": "A",
-          "expr": "60 * sum(rate(samoylove_site_http_response_count_total{host=\"metro.samoy.love\"}[10m])) by (status)",
+          "expr": "60 * sum by (status) (rate(samoylove_site_http_response_count_total{host=\"metro.samoy.love\"}[10m]))",
           "legendFormat": "{{status}}"
         }
       ],
@@ -549,12 +1097,312 @@
         },
         "overrides": []
       },
-      "id": 11,
+      "id": 19,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 10
+        "y": 26
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Трафик по разделам",
+      "description": "Байт в секунду по разделам. Скачок по одному разделу без роста запросов к нему — вырос размер файла; ровный рост вместе с запросами — посетители.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (path) (rate(samoylove_site_http_response_size_bytes{host=\"metro.samoy.love\"}[10m]))",
+          "legendFormat": "{{path}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 20,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 34
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Самые запрашиваемые разделы",
+      "description": "Запросов за выбранный период по разделам. Путь сведён к нескольким значениям ещё на экспортёре (nginxlog/nginxlog.yml), всё незнакомое — «other». Большое «other» у статики — сканеры или служебные файлы вроде манифеста и service worker.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sort_desc(sum by (path) (increase(samoylove_site_http_response_count_total{host=\"metro.samoy.love\"}[$__range])))",
+          "legendFormat": "{{path}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 21,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 34
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "row",
+      "title": "События интерфейса",
+      "id": 22,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 42
+      },
+      "panels": [],
+      "description": "Приёмник /e/: маршруты считаются в браузере и работают офлайн, поэтому пустой POST без тела и cookie — единственный способ узнать, что приложением пользуются."
+    },
+    {
+      "type": "timeseries",
+      "title": "События в час",
+      "description": "Что делают на странице, по часам. События редкие, поэтому здесь сумма за час, а не частота: пустой график — либо никого не было, либо сломан приёмник; различить помогает «Ответы приёмника».",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (event) (increase(samoylove_event_http_response_count_total{host=\"metro.samoy.love\"}[1h]))",
+          "legendFormat": "{{event}}",
+          "interval": "1h"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "событий не было",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 23,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 43
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "События за период",
+      "description": "Сколько раз за выбранный период строили маршрут (route_built), выбирали станцию (station_pick) и ставили приложение (pwa_install). Событие, которого нет в списке nginxlog/nginxlog.yml, попадает в other и отсюда не видно. Самое первое событие каждого вида после перезапуска экспортёра журнала не считается: счётчик рождается сразу с единицей.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sort_desc(sum by (event) (increase(samoylove_event_http_response_count_total{host=\"metro.samoy.love\"}[$__range])))",
+          "legendFormat": "{{event}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "событий не было"
+        },
+        "overrides": []
+      },
+      "id": 24,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 43
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Ответы приёмника",
+      "description": "Приёмник /e/ обязан отвечать 204 и ничем больше. Любой другой код — дефект: событие потеряно.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "60 * sum by (status) (rate(samoylove_event_http_response_count_total{host=\"metro.samoy.love\"}[10m]))",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqpm",
+          "noValue": "запросов не было",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 25,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 43
       },
       "datasource": {
         "type": "prometheus",
