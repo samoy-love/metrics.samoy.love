@@ -112,6 +112,16 @@
       "includeVars": false,
       "keepTime": true,
       "targetBlank": false
+    },
+    {
+      "type": "link",
+      "keepTime": true,
+      "targetBlank": false,
+      "includeVars": false,
+      "icon": "dashboard",
+      "tooltip": "cs.samoy.love: разбор матчей CS2",
+      "title": "CI",
+      "url": "/d/samoylove-ci"
     }
   ],
   "panels": [
@@ -3528,6 +3538,300 @@
         "type": "prometheus",
         "uid": "samoylove-prometheus"
       }
+    },
+    {
+      "type": "row",
+      "title": "CI — свои раннеры",
+      "id": 55,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 101
+      },
+      "panels": [],
+      "description": "Очередь заданий GitHub Actions на домашних раннерах. Подробности и тревоги infra-ci — на дашборде «CI — раннеры и очередь»."
+    },
+    {
+      "type": "stat",
+      "title": "CI: ждут Linux",
+      "description": "Задания, ждущие домашний Linux-раннер (их четыре). Десяток надолго — раннеров не хватает или они не берут работу.",
+      "id": 56,
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 102
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(ci_jobs_queued{pool=\"home-linux\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "нет данных",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 4
+              },
+              {
+                "color": "orange",
+                "value": 8
+              },
+              {
+                "color": "red",
+                "value": 15
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "links": [
+        {
+          "title": "Дашборд: CI",
+          "url": "/d/samoylove-ci"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "CI: самое долгое ожидание, Linux",
+      "description": "Возраст самого старого ждущего задания на Linux. Больше 10 минут — тревога CIQueueStuckLinux.",
+      "id": 57,
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 102
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(ci_job_queue_oldest_seconds{pool=\"home-linux\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "noValue": "нет данных",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 180
+              },
+              {
+                "color": "orange",
+                "value": 600
+              },
+              {
+                "color": "red",
+                "value": 1200
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "links": [
+        {
+          "title": "Дашборд: CI",
+          "url": "/d/samoylove-ci"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "CI: ждут Windows",
+      "description": "Задания, ждущие win-builder. Машина спит и просыпается по требованию: одно задание на минуту-две — её загрузка.",
+      "id": 58,
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 102
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(ci_jobs_queued{pool=\"home-windows\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "нет данных",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 2
+              },
+              {
+                "color": "orange",
+                "value": 4
+              },
+              {
+                "color": "red",
+                "value": 8
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "links": [
+        {
+          "title": "Дашборд: CI",
+          "url": "/d/samoylove-ci"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "CI: самое долгое ожидание, Windows",
+      "description": "Возраст самого старого ждущего задания на win-builder. Больше 15 минут — тревога CIQueueStuckWindows.",
+      "id": 59,
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 102
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(ci_job_queue_oldest_seconds{pool=\"home-windows\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "noValue": "нет данных",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 300
+              },
+              {
+                "color": "orange",
+                "value": 900
+              },
+              {
+                "color": "red",
+                "value": 1800
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "links": [
+        {
+          "title": "Дашборд: CI",
+          "url": "/d/samoylove-ci"
+        }
+      ]
     }
   ]
 }
