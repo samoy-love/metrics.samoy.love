@@ -2511,3 +2511,134 @@ groups:
         for: 15m
         labels: { severity: warning }
         annotations: { summary: "Под клипы осталось меньше 4 ГБ: работник рендера встанет на двух", description: "Клипы стираются сами через месяц без обращений, так что это либо всплеск заказов, либо сироты — каталоги без записи в реестре (панель «Клипы: занято» покажет расхождение). Ниже двух гигабайт заказы перестают браться, и у людей клип «готовится» бесконечно. Решать владельцу: расширить квоту ZFS датасета tank/cs2-clips или укоротить срок жизни CS2_RENDER_CLIP_TTL.", __dashboardUid__: "samoylove-cs2", __panelId__: "908" }
+
+  # --- CI: очередь на своих раннерах -----------------------------------------
+  # Данные — сборщик ci-queue-collect на хосте (репозиторий home-server,
+  # scripts/ci-queue-collect.py), textfile node-host, опрос GitHub раз в 30 с.
+  # Сигнал — возраст САМОГО СТАРОГО ждущего задания, а не число ждущих: пачка
+  # из трёх PR ставит в очередь полтора десятка заданий на минуту, и это
+  # норма, а одно задание, ждущее десять минут, — нет.
+  #
+  # noDataState OK у правил очереди безопасен только вместе с последним
+  # правилом группы: если сборщик встал, ряды замирают, и об этом говорит
+  # CIQueueCollectorStale, а не молчание.
+  - orgId: 1
+    name: infra-ci
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: ci-queue-stuck-linux
+        title: CIQueueStuckLinux
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: max(ci_job_queue_oldest_seconds{pool="home-linux"}) > 600
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "A job has been waiting for a home Linux runner for over 10 minutes", description: "Очередь на домашние Linux-раннеры копится: самое старое задание ждёт больше 10 минут. Если на панели «Идут и ждут» идущих четыре — раннеров не хватает (много параллельных PR и выкаток). Если идущих меньше — раннеры не берут работу: на хосте systemctl status ci-runner-cycle@ci-runner* и журнал раннера.", __dashboardUid__: "samoylove-ci", __panelId__: "17" }
+
+      - uid: ci-queue-stuck-windows
+        title: CIQueueStuckWindows
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: max(ci_job_queue_oldest_seconds{pool="home-windows"}) > 900
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "A job has been waiting for win-builder for over 15 minutes", description: "Задание на Windows-раннер ждёт больше 15 минут, а машине на загрузку хватает минуты. Значит, win-builder не поднялась или раннер на ней офлайн: journalctl -u win-builder-ondemand на хосте, состояние службы раннера в VM (Home Server CLAUDE.md, раздел про win-builder).", __dashboardUid__: "samoylove-ci", __panelId__: "17" }
+
+      - uid: ci-linux-runners-missing
+        title: CILinuxRunnersMissing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1800, to: 0 }
+            model:
+              expr: (sum(ci_runners{os="linux",status="online"}) or vector(0)) < 3
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Fewer than 3 of 4 home Linux runners are online for 15 minutes", description: "Одноразовый раннер между заданиями пропадает на секунды, но не на 15 минут: он не вернулся после отката снапшота. Очередь пока может быть пуста, но следующая пачка PR пойдёт медленнее. На хосте: systemctl status 'ci-runner-cycle@*'.", __dashboardUid__: "samoylove-ci", __panelId__: "7" }
+
+      - uid: ci-queue-collector-stale
+        title: CIQueueCollectorStale
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1800, to: 0 }
+            model:
+              expr: (time() - max(ci_queue_collect_timestamp_seconds)) > 600 or max(ci_queue_collect_ok) == 0
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "CI queue collector has not reported for 10 minutes", description: "Сборщик очереди раннеров (ci-queue-collect на хосте) не пишет данные или не может опросить GitHub. Пока это так, тревоги об очереди молчат. На хосте: systemctl status ci-queue-collect.timer, journalctl -u ci-queue-collect.", __dashboardUid__: "samoylove-ci", __panelId__: "13" }
