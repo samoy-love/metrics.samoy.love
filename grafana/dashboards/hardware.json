@@ -214,7 +214,7 @@
     {
       "type": "stat",
       "title": "Температура NVMe",
-      "description": "Максимум по обоим дискам. Выше 70 °C контроллер начинает сбрасывать скорость.",
+      "description": "Максимум по всем датчикам обоих дисков, включая датчик контроллера Kingston («Sensor 2»): он штатно на 15–20 °C горячее общей температуры диска (Composite). Порог 70 °C совпадает с тревогой NVMeTemperatureHigh и взят с запасом: сами диски начинают защищаться позже — у ADATA с 78 °C, у Kingston с 84 °C (см. «Запас до порога»).",
       "id": 5,
       "gridPos": {
         "h": 4,
@@ -269,7 +269,7 @@
     {
       "type": "stat",
       "title": "Пул tank",
-      "description": "Состояние ZFS. Зелёный — ONLINE. Любое другое значение означает деградацию зеркала.",
+      "description": "Состояние ZFS по zpool list. Зелёный ONLINE — норма; любое другое слово означает, что зеркало деградировало или пул недоступен.",
       "id": 6,
       "gridPos": {
         "h": 4,
@@ -312,7 +312,54 @@
                 "value": 1
               }
             ]
-          }
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "ONLINE",
+                  "color": "green",
+                  "index": 0
+                },
+                "1": {
+                  "text": "DEGRADED",
+                  "color": "red",
+                  "index": 1
+                },
+                "2": {
+                  "text": "FAULTED",
+                  "color": "red",
+                  "index": 2
+                },
+                "3": {
+                  "text": "OFFLINE",
+                  "color": "red",
+                  "index": 3
+                },
+                "4": {
+                  "text": "UNAVAIL",
+                  "color": "red",
+                  "index": 4
+                },
+                "5": {
+                  "text": "REMOVED",
+                  "color": "red",
+                  "index": 5
+                },
+                "6": {
+                  "text": "SUSPENDED",
+                  "color": "red",
+                  "index": 6
+                },
+                "9": {
+                  "text": "неизвестно",
+                  "color": "red",
+                  "index": 7
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       }
@@ -389,11 +436,11 @@
     {
       "type": "timeseries",
       "title": "Процессор, iGPU и плата",
-      "description": "Tctl процессора, встроенная графика Radeon 780M и датчик платы. Для сравнения: в покое CPU держит около 46 °C, под полной нагрузкой — 88–89 °C.",
+      "description": "Tctl процессора, встроенная графика Radeon 780M, датчик платы SYSTIN, Wi-Fi и сетевой контроллер Realtek. Для сравнения: в покое CPU держит около 46 °C, под полной нагрузкой — 88–89 °C. Сетевой контроллер штатно около 60 °C, его собственный порог — 120 °C.",
       "id": 9,
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 8,
         "x": 0,
         "y": 6
       },
@@ -410,13 +457,18 @@
         },
         {
           "refId": "C",
-          "expr": "node_hwmon_temp_celsius{sensor=\"temp5\"} * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name=\"nct6799\"}",
+          "expr": "node_hwmon_temp_celsius * on(chip,sensor) group_left(label) node_hwmon_sensor_label{label=\"SYSTIN\"}",
           "legendFormat": "плата (SYSTIN)"
         },
         {
           "refId": "D",
           "expr": "node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name=\"mt7921_phy0\"}",
           "legendFormat": "Wi-Fi адаптер"
+        },
+        {
+          "refId": "E",
+          "expr": "node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name=\"r8169_0_800:00\"}",
+          "legendFormat": "Сетевая 2.5G (eno1)"
         }
       ],
       "fieldConfig": {
@@ -450,12 +502,12 @@
     {
       "type": "timeseries",
       "title": "Память и диски",
-      "description": "Модули DDR5 и оба NVMe. У памяти значимый порог — 65 °C (см. tRFC в CLAUDE.md), у дисков — 70 °C.",
+      "description": "Модули DDR5 и оба NVMe. У памяти значимый порог — 65 °C (см. tRFC в CLAUDE.md), у дисков — 70 °C. «Sensor 2» — датчик контроллера Kingston: он штатно на 15–20 °C горячее «Composite», а решения о троттлинге диск принимает по Composite.",
       "id": 10,
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
+        "w": 8,
+        "x": 8,
         "y": 6
       },
       "targets": [
@@ -466,8 +518,8 @@
         },
         {
           "refId": "B",
-          "expr": "node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name=\"nvme\"}",
-          "legendFormat": "NVMe {{chip}} {{sensor}}"
+          "expr": "node_hwmon_temp_celsius * on(chip,sensor) group_left(label) node_hwmon_sensor_label * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name=\"nvme\"}",
+          "legendFormat": "NVMe {{chip}} {{label}}"
         }
       ],
       "fieldConfig": {
@@ -480,6 +532,77 @@
             "spanNulls": true
           },
           "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Запас до порога",
+      "description": "Сколько градусов осталось до порога, с которого устройство начинает защищаться само. У дисков порог из прошивки (warning composite temperature): у Kingston около 84 °C, у ADATA около 78 °C. У процессора — Tjmax 95 °C, после которого 8700G сбрасывает частоту. Ниже 10 °C продув перестаёт справляться, ниже 5 °C троттлинг уже рядом.",
+      "id": 39,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(node_hwmon_temp_max_celsius - node_hwmon_temp_celsius) * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name=\"nvme\"}",
+          "legendFormat": "NVMe {{chip}}"
+        },
+        {
+          "refId": "B",
+          "expr": "95 - (node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name=\"k10temp\"})",
+          "legendFormat": "CPU до 95 °C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "green",
+                "value": 10
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -515,7 +638,7 @@
     {
       "type": "timeseries",
       "title": "Обороты вентиляторов",
-      "description": "Только реально вращающиеся: разъёмы без вентилятора всегда показывают 0 и отфильтрованы. fan2 — кулер процессора, fan5 — корпусный.",
+      "description": "Разъёмы с вентиляторами: fan2 — кулер процессора, fan5 — корпусный, fan1 и fan3 — остальные. Пустые fan4 и fan7 всегда показывают 0 и не выведены. Остальные выведены всегда: остановившийся вентилятор должен упасть в ноль на графике, а не исчезнуть с него.",
       "id": 12,
       "gridPos": {
         "h": 8,
@@ -526,7 +649,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "node_hwmon_fan_rpm > 0",
+          "expr": "node_hwmon_fan_rpm{instance=\"srv-host\",sensor=~\"fan[1235]\"}",
           "legendFormat": "{{sensor}}"
         }
       ],
@@ -561,7 +684,7 @@
     {
       "type": "timeseries",
       "title": "Уровень PWM",
-      "description": "Задание вентиляторам в процентах. 100 % означает, что кривая BIOS вышла на максимум и поднять обороты уже нечем — тогда вопрос не к режиму Silent, а к продуву корпуса.",
+      "description": "Задание вентиляторам в процентах. 100 % означает, что кривая BIOS вышла на максимум и поднять обороты уже нечем — тогда вопрос не к режиму Silent, а к продуву корпуса. Каналы pwm4 и pwm7 ведут на пустые разъёмы (pwm7 всегда на 100 %) и не выведены, чтобы не выглядеть упором; у fan5 своего канала PWM в выдаче нет.",
       "id": 13,
       "gridPos": {
         "h": 8,
@@ -572,7 +695,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "node_hwmon_pwm{sensor=~\"pwm[0-9]\"} / 255",
+          "expr": "node_hwmon_pwm{instance=\"srv-host\",sensor=~\"pwm[123]\"} / 255",
           "legendFormat": "{{sensor}}"
         }
       ],
@@ -778,6 +901,258 @@
       }
     },
     {
+      "type": "timeseries",
+      "title": "Давление на ресурсы (PSI)",
+      "description": "Доля времени, когда задачи стояли в ожидании ресурса. Честнее загрузки: 100 % CPU без давления — машина просто занята, а давление значит, что работа ждёт. «Кто-то ждёт» — хотя бы одна задача, «встали все» — все сразу. Плохо: память «встали все» дольше пары минут выше 5 % (идёт вытеснение и обмен со swap), диск «встали все» выше 10 % (упор в NVMe), CPU «кто-то ждёт» устойчиво выше 50 % (ядер не хватает).",
+      "id": 40,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(node_pressure_cpu_waiting_seconds_total{instance=\"srv-host\"}[5m])",
+          "legendFormat": "CPU: кто-то ждёт"
+        },
+        {
+          "refId": "B",
+          "expr": "rate(node_pressure_io_waiting_seconds_total{instance=\"srv-host\"}[5m])",
+          "legendFormat": "диск: кто-то ждёт"
+        },
+        {
+          "refId": "C",
+          "expr": "rate(node_pressure_io_stalled_seconds_total{instance=\"srv-host\"}[5m])",
+          "legendFormat": "диск: встали все"
+        },
+        {
+          "refId": "D",
+          "expr": "rate(node_pressure_memory_waiting_seconds_total{instance=\"srv-host\"}[5m])",
+          "legendFormat": "память: кто-то ждёт"
+        },
+        {
+          "refId": "E",
+          "expr": "rate(node_pressure_memory_stalled_seconds_total{instance=\"srv-host\"}[5m])",
+          "legendFormat": "память: встали все"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Обмен со swap",
+      "description": "Сколько байт в секунду уходит в swap и возвращается оттуда. Занятый swap сам по себе не страшен: ядро выносит туда то, что давно не трогали. Плохо, когда поток идёт постоянно и в обе стороны сразу — памяти не хватает прямо сейчас, и сервер тормозит на диске. Swap — 8 ГиБ.",
+      "id": 41,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(node_vmstat_pswpout{instance=\"srv-host\"}[5m]) * 4096",
+          "legendFormat": "в swap"
+        },
+        {
+          "refId": "B",
+          "expr": "rate(node_vmstat_pswpin{instance=\"srv-host\"}[5m]) * 4096",
+          "legendFormat": "из swap"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Потребление процессора (PPT)",
+      "description": "Мощность всего APU — ядра, графика и SoC — по датчику amdgpu. За неделю до 19.09.2026 она ни разу не поднималась выше 65 Вт: похоже на выставленный в BIOS потолок PPT (линия на графике). Полка на 65 Вт при частоте ниже обычной значит, что ядра упёрлись в питание, а не в температуру.",
+      "id": 42,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_hwmon_power_average_watt * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name=\"amdgpu\"}",
+          "legendFormat": "APU 8700G"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 65
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Встроенная графика 780M",
+      "description": "Загрузка и память iGPU. После 17.09.2026 игра и кодирование рендера клипов идут на GTX 1080 Ti, а 780M держит только экран sway в cs2-render — длинные полки на 99 % здесь теперь означают, что работа по ошибке уехала на встроенную графику. Карта NVIDIA сюда не попадает: коллектор drm читает только amdgpu. Номер card после добавления карты сдвинулся, поэтому берётся максимум по картам. VRAM — выделенные BIOS 512 МиБ, GTT — занятая графикой общая память.",
+      "id": 43,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max without(card) (node_drm_gpu_busy_percent{instance=\"srv-host\"}) / 100",
+          "legendFormat": "загрузка"
+        },
+        {
+          "refId": "B",
+          "expr": "max without(card) (node_drm_memory_vram_used_bytes{instance=\"srv-host\"})",
+          "legendFormat": "VRAM"
+        },
+        {
+          "refId": "C",
+          "expr": "max without(card) (node_drm_memory_gtt_used_bytes{instance=\"srv-host\"})",
+          "legendFormat": "GTT"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "VRAM|GTT"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
       "type": "row",
       "title": "Диски, ZFS и SMART",
       "id": 18,
@@ -786,7 +1161,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 48
       },
       "panels": [],
       "description": "Ресурс накопителей и целостность зеркала. ECC на 8700G нет, поэтому ошибки контрольных сумм ZFS — единственный сигнал о порче данных."
@@ -800,7 +1175,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 33
+        "y": 49
       },
       "targets": [
         {
@@ -855,7 +1230,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 33
+        "y": 49
       },
       "targets": [
         {
@@ -910,7 +1285,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 33
+        "y": 49
       },
       "targets": [
         {
@@ -961,7 +1336,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 33
+        "y": 49
       },
       "targets": [
         {
@@ -1012,7 +1387,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 33
+        "y": 49
       },
       "targets": [
         {
@@ -1059,7 +1434,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 33
+        "y": 49
       },
       "targets": [
         {
@@ -1098,6 +1473,348 @@
       }
     },
     {
+      "type": "stat",
+      "title": "Последний scrub",
+      "description": "Сколько прошло с завершения последнего scrub. Таймер zfs-scrub-monthly читает всё зеркало раз в месяц и сверяет контрольные суммы. Больше 35 дней — запуск пропущен: тихая порча на одном из дисков обнаружится только тогда, когда понадобится именно эта копия.",
+      "id": 44,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 53
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "zpool_scrub_age_seconds{pool=\"tank\"}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 3024000
+              },
+              {
+                "color": "red",
+                "value": 3888000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Фрагментация tank",
+      "description": "Фрагментация свободного места в пуле. Выше 50 % запись начинает искать место дольше; на NVMe это заметно позже, чем на HDD, но растёт вместе с заполненностью.",
+      "id": 45,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 53
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "zpool_fragmentation_ratio{pool=\"tank\"}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 0.7
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Резерв блоков NVMe",
+      "description": "Меньший из двух дисков: сколько резервных блоков осталось на подмену износившихся. Новый диск — 100 %. Падение ниже 20 % — диск доживает; ниже порога производителя (обычно 10 %) SMART объявит его неисправным.",
+      "id": 46,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 53
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "min(smart_nvme_available_spare_ratio)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.2
+              },
+              {
+                "color": "green",
+                "value": 0.5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "SMART самооценка",
+      "description": "Общий вердикт контроллера по обоим дискам (smartctl). FAILED у любого — диск сам считает себя неисправным, замену планировать сразу.",
+      "id": 47,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 53
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "min(smart_device_healthy)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "PASSED",
+                  "color": "green",
+                  "index": 0
+                },
+                "0": {
+                  "text": "FAILED",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Записано за сутки",
+      "description": "Больший из двух дисков за последние 24 часа — по нему идёт выработка ресурса. У Kingston заявлено 1000 ТБ: при 550 ГБ в сутки ресурса хватит лет на пять, при 1.1 ТБ — на два с половиной.",
+      "id": 48,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 53
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(increase(smart_nvme_written_bytes_total[1d]))",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 550000000000.0
+              },
+              {
+                "color": "red",
+                "value": 1100000000000.0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Возраст SMART и ZFS",
+      "description": "Сколько назад обновлялись smart.prom и zfs.prom. Сборщик пишет их раз в пять минут. Если он встал, node_exporter продолжает отдавать последние записанные значения, и все плитки SMART и ZFS выше выглядят живыми — эта плитка единственное, что это покажет.",
+      "id": 49,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 53
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(time() - node_textfile_mtime_seconds{instance=\"srv-host\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 900
+              },
+              {
+                "color": "red",
+                "value": 1800
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
       "type": "timeseries",
       "title": "Записано на диски",
       "description": "Накопленный объём записи — по нему считается выработка ресурса. У Kingston заявлен TBW 1000 ТБ.",
@@ -1106,7 +1823,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 37
+        "y": 57
       },
       "targets": [
         {
@@ -1152,7 +1869,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 37
+        "y": 57
       },
       "targets": [
         {
@@ -1203,7 +1920,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 37
+        "y": 57
       },
       "targets": [
         {
@@ -1242,6 +1959,154 @@
       }
     },
     {
+      "type": "timeseries",
+      "title": "Занятость NVMe",
+      "description": "Доля времени, когда у диска была в работе хотя бы одна операция. У NVMe с глубокими очередями 100 % ещё не предел, но устойчиво выше 80 % вместе с iowait и давлением на диск — упор в накопитель. Задержки операций не выведены намеренно: счётчик времени записи у nvme0n1 на этом ядре врёт (сотни секунд на секунду при единицах процентов занятости), и среднее время операции по нему бессмысленно.",
+      "id": 50,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 65
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(node_disk_io_time_seconds_total{instance=\"srv-host\",device=~\"nvme.*\"}[5m])",
+          "legendFormat": "{{device}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Операций в секунду",
+      "description": "IOPS по каждому диску. В зеркале запись идёт на оба диска одинаково, а чтение ZFS раскладывает между ними; на nvme0n1 сверху ещё корневая ext4 хоста.",
+      "id": 51,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 65
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(node_disk_reads_completed_total{instance=\"srv-host\",device=~\"nvme.*\"}[5m])",
+          "legendFormat": "чтение {{device}}"
+        },
+        {
+          "refId": "B",
+          "expr": "rate(node_disk_writes_completed_total{instance=\"srv-host\",device=~\"nvme.*\"}[5m])",
+          "legendFormat": "запись {{device}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "iops",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Кто занимает пул tank",
+      "description": "Место каждого датасета (без снимков и вложенных датасетов), друг над другом. Когда растёт заполненность пула, здесь видно, чей слой пошёл вверх: демки и клипы cs2 ограничены квотами, корни контейнеров web и cs2-render — нет.",
+      "id": 52,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 65
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_filesystem_size_bytes{instance=\"srv-host\",fstype=\"zfs\"} - node_filesystem_avail_bytes{instance=\"srv-host\",fstype=\"zfs\"}",
+          "legendFormat": "{{device}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 40,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
       "type": "row",
       "title": "Сеть и ограничение полосы",
       "id": 28,
@@ -1250,7 +2115,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 73
       },
       "panels": [],
       "description": "Кабельный интерфейс eno1 и работа шейпера wan-shaper, который держит сервер в пределах 600 Мбит вниз и 700 вверх, чтобы он не забивал канал целиком."
@@ -1262,9 +2127,9 @@
       "id": 29,
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 8,
         "x": 0,
-        "y": 46
+        "y": 74
       },
       "targets": [
         {
@@ -1309,24 +2174,24 @@
     {
       "type": "timeseries",
       "title": "Работа шейпера",
-      "description": "Отброшенные и превысившие лимит пакеты в классах HTB. Рост overlimits — это и есть срабатывание ограничения: трафик придержан, а не потерян. Массовые drops означают переполнение очереди.",
+      "description": "Счётчики корневого HTB: eno1 — отдача, ifb-eno1 — приём. Корень суммирует оба класса — интернет с лимитом и локальную сеть без него, — а по классам node_exporter не разбивает. Поэтому overlimits — это в основном заимствование полосы локальным классом, а не упор в лимит интернета: рост без одновременного трафика наружу ничего не значит. Плохой признак — drops: переполнилась очередь, и пакеты потеряны.",
       "id": 30,
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 46
+        "w": 8,
+        "x": 8,
+        "y": 74
       },
       "targets": [
         {
           "refId": "A",
           "expr": "rate(node_qdisc_drops_total[5m])",
-          "legendFormat": "drops {{device}} {{kind}}"
+          "legendFormat": "drops {{device}}"
         },
         {
           "refId": "B",
           "expr": "rate(node_qdisc_overlimits_total[5m])",
-          "legendFormat": "overlimits {{device}} {{kind}}"
+          "legendFormat": "overlimits {{device}}"
         }
       ],
       "fieldConfig": {
@@ -1358,6 +2223,68 @@
       }
     },
     {
+      "type": "timeseries",
+      "title": "Ошибки и обрывы линка",
+      "description": "События на внешних интерфейсах за последний час. Ошибки (битые кадры, CRC) должны быть строго нулём: иначе кабель или порт. Потери приёма на eno1 бывают и в норме — чаще всего это пакеты, которым ядро не нашло получателя, а не порча на проводе; плохо, если они растут вместе с трафиком. Перепад линка — кабель переподключался или порт роутера перезапускался; без перезагрузки сервера его быть не должно.",
+      "id": 53,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 74
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(node_network_receive_errs_total{instance=\"srv-host\",device=~\"eno1|wlp8s0\"}[1h]) + increase(node_network_transmit_errs_total{instance=\"srv-host\",device=~\"eno1|wlp8s0\"}[1h])",
+          "legendFormat": "ошибки {{device}}"
+        },
+        {
+          "refId": "B",
+          "expr": "increase(node_network_receive_drop_total{instance=\"srv-host\",device=~\"eno1|wlp8s0\"}[1h])",
+          "legendFormat": "потери приёма {{device}}"
+        },
+        {
+          "refId": "C",
+          "expr": "increase(node_network_transmit_drop_total{instance=\"srv-host\",device=~\"eno1|wlp8s0\"}[1h])",
+          "legendFormat": "потери отдачи {{device}}"
+        },
+        {
+          "refId": "D",
+          "expr": "increase(node_network_carrier_changes_total{instance=\"srv-host\",device=~\"eno1|wlp8s0\"}[1h])",
+          "legendFormat": "перепады линка {{device}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0,
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
       "type": "row",
       "title": "Контейнеры и виртуалки",
       "id": 31,
@@ -1366,7 +2293,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 54
+        "y": 82
       },
       "panels": [],
       "description": "Данные от самого Incus: web с прод-сайтами, четыре сборочных раннера, speedtest и Windows-машина win-builder. Внутрь ничего ставить не пришлось."
@@ -1380,7 +2307,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 55
+        "y": 83
       },
       "targets": [
         {
@@ -1426,7 +2353,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 55
+        "y": 83
       },
       "targets": [
         {
@@ -1466,23 +2393,23 @@
     {
       "type": "timeseries",
       "title": "Сеть по инстансам",
-      "description": "Суммарный трафик всех интерфейсов инстанса.",
+      "description": "Трафик внешнего интерфейса инстанса (eth0 у контейнеров). Внутренние мосты Docker, veth, pelican0 и lo не суммируются: пакет, прошедший через docker0 и veth внутри web, иначе считался бы два-три раза.",
       "id": 34,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 63
+        "y": 91
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(name) (rate(incus_network_receive_bytes_total[5m])) * 8",
+          "expr": "sum by(name) (rate(incus_network_receive_bytes_total{device!~\"lo|docker.*|br-.*|veth.*|pelican.*\"}[5m])) * 8",
           "legendFormat": "приём {{name}}"
         },
         {
           "refId": "B",
-          "expr": "sum by(name) (rate(incus_network_transmit_bytes_total[5m])) * 8",
+          "expr": "sum by(name) (rate(incus_network_transmit_bytes_total{device!~\"lo|docker.*|br-.*|veth.*|pelican.*\"}[5m])) * 8",
           "legendFormat": "отдача {{name}}"
         }
       ],
@@ -1517,24 +2444,24 @@
     {
       "type": "timeseries",
       "title": "Время работы инстансов",
-      "description": "Аптайм каждого. Обнуление линии — перезапуск: именно так выглядела история win-builder, у которого раз в час пропадала аренда DHCP и сторож перезагружал машину.",
+      "description": "Время с запуска каждого инстанса. Обнуление линии — перезапуск: именно так выглядела история win-builder, у которого раз в час пропадала аренда DHCP и сторож перезагружал машину. Раннеры CI пересоздаются после каждой задачи, у них короткие зубья — это норма. Остановленный инстанс пропадает с графика, а не падает в ноль: Incus отдаёт метрики только запущенных.",
       "id": 35,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 63
+        "y": 91
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "incus_uptime_seconds / 3600",
+          "expr": "incus_time_seconds - incus_boot_time_seconds",
           "legendFormat": "{{name}}"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "h",
+          "unit": "s",
           "custom": {
             "lineWidth": 2,
             "fillOpacity": 8,
@@ -1542,6 +2469,319 @@
             "spanNulls": true
           },
           "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Процессор: инстансы против хоста",
+      "description": "Сколько ядер занято всем сервером и сколько из них — инстансами Incus. Разница — сам хост: ZFS (сжатие, контрольные суммы), ядро, сеть и демон Incus. Если разница растёт без роста инстансов, работу делает хост, и в панелях по инстансам её не найти. Windows-машина без агента в сумму инстансов может не попасть — её время тогда целиком в разнице.",
+      "id": 54,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 99
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(node_cpu_seconds_total{instance=\"srv-host\",mode!~\"idle|iowait|steal\"}[5m]))",
+          "legendFormat": "весь сервер"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(incus_cpu_seconds_total[5m]))",
+          "legendFormat": "все инстансы"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(node_cpu_seconds_total{instance=\"srv-host\",mode!~\"idle|iowait|steal\"}[5m])) - sum(rate(incus_cpu_seconds_total[5m]))",
+          "legendFormat": "сам хост"
+        },
+        {
+          "refId": "D",
+          "expr": "count(node_cpu_seconds_total{instance=\"srv-host\",mode=\"idle\"})",
+          "legendFormat": "потоков всего"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "потоков всего"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Память: инстансы против хоста",
+      "description": "Занятая память всего сервера, сумма по инстансам и ARC. Разница между первым и вторым — почти целиком ARC плюс ядро: ZFS формально держит кэш занятым, но отдаёт его под давлением. Плохо, когда сумма инстансов подходит к объёму за вычетом ARC — тогда их лимиты вместе больше, чем есть памяти.",
+      "id": 55,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 99
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_memory_MemTotal_bytes{instance=\"srv-host\"} - node_memory_MemAvailable_bytes{instance=\"srv-host\"}",
+          "legendFormat": "весь сервер"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(incus_memory_MemTotal_bytes - incus_memory_MemAvailable_bytes)",
+          "legendFormat": "все инстансы"
+        },
+        {
+          "refId": "C",
+          "expr": "node_zfs_arc_size{instance=\"srv-host\"}",
+          "legendFormat": "ARC (ZFS)"
+        },
+        {
+          "refId": "D",
+          "expr": "node_memory_MemTotal_bytes{instance=\"srv-host\"}",
+          "legendFormat": "всего"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "всего"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Чтение с дисков по инстансам",
+      "description": "Чтение с физических дисков, отнесённое к инстансу, — то, что не нашлось в ARC. Записи здесь нет намеренно: ZFS пишет группами транзакций от имени ядра, cgroup контейнера этой записи не получает, и Incus отдаёт для контейнеров почти ноль. Честная запись видна только у виртуалки win-builder и суммарно — на панели «Дисковый ввод-вывод».",
+      "id": 56,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 107
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(name) (rate(incus_disk_read_bytes_total[5m]))",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Процессы по инстансам",
+      "description": "Число процессов в каждом инстансе. Рост без остановки — утечка: зомби или сборка, которая плодит процессы и не убирает за собой. Обрыв до нуля — перезапуск инстанса.",
+      "id": 57,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 107
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "incus_procs_total",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Убито за нехваткой памяти",
+      "description": "Сколько процессов ядро убило за последний час. У инстанса — он упёрся в собственный лимит памяти (web 12 ГиБ, cs2 8 ГиБ, раннеры 6–16 ГиБ); линия появляется только если такое было. «Весь сервер» считает все убийства, включая инстансы; если он выше суммы инстансов — кончилась память самой машины. Любое значение выше нуля — что-то упало посреди работы.",
+      "id": 58,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 107
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(incus_memory_OOM_kills_total[1h]) > 0",
+          "legendFormat": "{{name}}"
+        },
+        {
+          "refId": "B",
+          "expr": "increase(node_vmstat_oom_kill{instance=\"srv-host\"}[1h])",
+          "legendFormat": "весь сервер"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "spanNulls": true,
+            "drawStyle": "bars"
+          },
+          "min": 0,
+          "decimals": 0
         },
         "overrides": []
       },
@@ -1569,26 +2809,260 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 71
+        "y": 115
       },
       "panels": [],
       "description": "Юниты, которые держат инфраструктуру. Внутренние службы сайтов — в дашборде сводки, здесь только хостовые."
     },
     {
+      "type": "stat",
+      "title": "Юнитов в failed",
+      "description": "Сколько отслеживаемых юнитов хоста systemd считает упавшими окончательно. Норма — ноль.",
+      "id": 59,
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 116
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(node_systemd_unit_state{instance=\"srv-host\",state=\"failed\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Состояние systemd",
+      "description": "Общее состояние системы. running — всё запущено; degraded — хотя бы один юнит на хосте упал, включая те, что не отслеживаются на этом дашборде.",
+      "id": 60,
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 116
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_systemd_system_running{instance=\"srv-host\"}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "running",
+                  "color": "green",
+                  "index": 0
+                },
+                "0": {
+                  "text": "degraded",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Часы синхронизированы",
+      "description": "Синхронизировано ли время ядра с NTP. Уехавшие часы ломают TLS, подписи и сопоставление журналов с метриками.",
+      "id": 61,
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 116
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_timex_sync_status{instance=\"srv-host\"}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "да",
+                  "color": "green",
+                  "index": 0
+                },
+                "0": {
+                  "text": "нет",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Аптайм хоста",
+      "description": "Время с последней загрузки сервера. Внезапно маленькое значение без плановой перезагрузки — пропадало питание или машина зависла; ИБП к NUT пока не подключён.",
+      "id": 62,
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 116
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - node_boot_time_seconds{instance=\"srv-host\"}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
       "type": "timeseries",
       "title": "Состояние юнитов",
-      "description": "1 — служба активна. Сюда попадают incus, три таблицы изоляции, шейпер, сторож Windows-машины, fail2ban и цикл раннеров. Провал в 0 у любой линии означает, что служба упала.",
+      "description": "1 — служба активна. Сюда попадают incus, ZFS, три таблицы изоляции, шейпер, сторож Windows-машины, fail2ban, ssh и циклы раннеров. Провал в 0 у любой линии означает, что служба упала. node-textfile-collect не выведен: он запускается таймером раз в пять минут и между запусками штатно неактивен.",
       "id": 37,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 72
+        "y": 120
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "node_systemd_unit_state{instance=\"srv-host\",state=\"active\"} == 1",
+          "expr": "node_systemd_unit_state{instance=\"srv-host\",state=\"active\",name!=\"node-textfile-collect.service\"}",
           "legendFormat": "{{name}}"
         }
       ],
@@ -1624,18 +3098,18 @@
     {
       "type": "timeseries",
       "title": "Перезапуски служб",
-      "description": "Счётчик автоматических перезапусков. Растущая линия — признак службы, которая падает и поднимается по кругу.",
+      "description": "Сколько раз systemd перезапустил службу за последний час. Циклы раннеров CI (ci-runner-cycle@) не выведены: они перезапускаются после каждой задачи по устройству, и их десятки в сутки заглушали бы остальное. У всех прочих любое значение выше нуля значит, что служба падала.",
       "id": 38,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 72
+        "y": 120
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "node_systemd_service_restart_total{instance=\"srv-host\"}",
+          "expr": "increase(node_systemd_service_restart_total{instance=\"srv-host\",name!~\"ci-runner-cycle@.+\"}[1h])",
           "legendFormat": "{{name}}"
         }
       ],
@@ -1648,7 +3122,8 @@
             "showPoints": "never",
             "spanNulls": true
           },
-          "min": 0
+          "min": 0,
+          "decimals": 0
         },
         "overrides": []
       },
