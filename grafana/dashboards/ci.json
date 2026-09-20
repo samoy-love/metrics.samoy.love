@@ -52,7 +52,7 @@
     },
     {
       "type": "stat",
-      "title": "В очереди — Linux",
+      "title": "В очереди — большие",
       "description": "Задания на собственных Linux-раннерах (метка self-hosted), которые ждут свободный раннер. Раннеров четыре; одно-два задания в очереди на минуту — норма при нескольких PR, десяток — раннеров не хватает или они не берут работу.",
       "id": 3,
       "gridPos": {
@@ -110,7 +110,7 @@
     },
     {
       "type": "stat",
-      "title": "Ждёт дольше всех — Linux",
+      "title": "Ждёт дольше всех — большие",
       "description": "Сколько ждёт самое старое задание в очереди Linux. До пары минут — пересоздание одноразового раннера; больше 10 минут — тревога «очередь копится».",
       "id": 4,
       "gridPos": {
@@ -285,7 +285,7 @@
     {
       "type": "stat",
       "title": "Linux-раннеры онлайн",
-      "description": "Регистрации собственных Linux-раннеров со статусом online. Их четыре; раннер одноразовый и между заданиями ненадолго пропадает, поэтому кратковременный провал до трёх — норма, долгий — раннер не вернулся после отката снапшота.",
+      "description": "Регистрации собственных Linux-раннеров со статусом online: восемь больших (метка home) и три лёгких (light), итого одиннадцать. Раннер одноразовый и между заданиями ненадолго пропадает, поэтому провал на один-два — норма, долгий — раннер не вернулся после отката снимка.",
       "id": 7,
       "gridPos": {
         "h": 4,
@@ -324,15 +324,15 @@
               },
               {
                 "color": "orange",
-                "value": 2
+                "value": 5
               },
               {
                 "color": "yellow",
-                "value": 3
+                "value": 8
               },
               {
                 "color": "green",
-                "value": 4
+                "value": 11
               }
             ]
           }
@@ -403,7 +403,7 @@
     },
     {
       "type": "stat",
-      "title": "Идёт заданий — Linux",
+      "title": "Идёт заданий — большие",
       "description": "Сколько заданий сейчас исполняется на собственных Linux-раннерах. Потолок — число раннеров (4).",
       "id": 9,
       "gridPos": {
@@ -541,7 +541,7 @@
     },
     {
       "type": "stat",
-      "title": "Ожидание за сутки, p95 — Linux",
+      "title": "Ожидание за сутки, p95 — большие",
       "description": "95-й процентиль того, сколько задания Linux ждали раннер до старта, за последние 24 часа. Цель — меньше двух минут.",
       "id": 12,
       "gridPos": {
@@ -718,7 +718,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 13
       },
       "panels": [],
       "description": "Копится ли очередь и хватает ли раннеров."
@@ -732,7 +732,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 10
+        "y": 14
       },
       "targets": [
         {
@@ -782,7 +782,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 10
+        "y": 14
       },
       "targets": [
         {
@@ -841,19 +841,19 @@
     },
     {
       "type": "timeseries",
-      "title": "Загрузка Linux-раннеров",
-      "description": "Доля собственных Linux-раннеров, занятых заданиями: идущие задания / раннеры онлайн. Долго у 100% при непустой очереди — пятый раннер окупится.",
+      "title": "Загрузка раннеров",
+      "description": "Доля собственных Linux-раннеров, занятых заданиями: идущие задания больших и лёгких, делённые на число раннеров онлайн. Долго у 100% при непустой очереди — раннеров не хватает; но упирается это обычно не в процессор, а в диск: при одиннадцати параллельных заданиях load average хоста уходит за 17 при четырёх занятых ядрах.",
       "id": 18,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 18
+        "y": 22
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(ci_jobs_running{pool=\"home-linux\"}) / clamp_min(sum(ci_runners{os=\"linux\",status=\"online\"}), 1)",
+          "expr": "sum(ci_jobs_running{pool=~\"home-linux|home-light\"}) / clamp_min(sum(ci_runners{os=\"linux\",status=\"online\"}), 1)",
           "legendFormat": "занято"
         }
       ],
@@ -887,14 +887,14 @@
     },
     {
       "type": "timeseries",
-      "title": "Идут и ждут — Linux",
+      "title": "Идут и ждут — большие",
       "description": "Идущие и ждущие задания Linux на одном графике. Ждущих много, а идущих меньше четырёх — раннеры не берут работу (проверить ci-runner-cycle@* на хосте); ждущих много при четырёх идущих — раннеров просто не хватает.",
       "id": 19,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 18
+        "y": 22
       },
       "targets": [
         {
@@ -950,7 +950,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 30
       },
       "panels": [],
       "description": "Время от создания задания до старта на раннере — то, что человек видит как «CI тупит». Гистограмма ci_job_queue_wait_seconds."
@@ -964,7 +964,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 27
+        "y": 31
       },
       "targets": [
         {
@@ -1015,7 +1015,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 27
+        "y": 31
       },
       "targets": [
         {
@@ -1061,7 +1061,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 35
+        "y": 39
       },
       "targets": [
         {
@@ -1123,7 +1123,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 35
+        "y": 39
       },
       "targets": [
         {
@@ -1172,7 +1172,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 43
+        "y": 47
       },
       "panels": [],
       "description": "Сколько раннеры берут у хоста. Метрики Incus по инстансам ci-runner* и win-builder."
@@ -1186,7 +1186,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 44
+        "y": 48
       },
       "targets": [
         {
@@ -1232,7 +1232,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 44
+        "y": 48
       },
       "targets": [
         {
@@ -1278,7 +1278,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 52
+        "y": 56
       },
       "targets": [
         {
@@ -1324,7 +1324,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 52
+        "y": 56
       },
       "targets": [
         {
@@ -1359,6 +1359,168 @@
           "mode": "multi",
           "sort": "desc"
         }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "В очереди — лёгкие",
+      "description": "Задания, ждущие лёгкий раннер (метка light, их три): линтеры, тесты на Node, снимки страниц, покрытие. Работы в них секунды, поэтому очередь здесь рассасывается быстро.",
+      "id": 30,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(ci_jobs_queued{pool=\"home-light\"})"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 4
+              },
+              {
+                "color": "orange",
+                "value": 8
+              },
+              {
+                "color": "red",
+                "value": 15
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Ждёт дольше всех — лёгкие",
+      "description": "Возраст самого старого задания в очереди лёгких. Больше пяти минут — их не хватает или они не берут работу.",
+      "id": 31,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(ci_job_queue_oldest_seconds{pool=\"home-light\"})"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 120
+              },
+              {
+                "color": "orange",
+                "value": 300
+              },
+              {
+                "color": "red",
+                "value": 600
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Идёт заданий — лёгкие",
+      "description": "Сколько заданий сейчас исполняется на лёгких раннерах. Потолок — три.",
+      "id": 32,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(ci_jobs_running{pool=\"home-light\"})"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
       }
     }
   ]

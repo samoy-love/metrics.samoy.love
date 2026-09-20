@@ -3310,6 +3310,35 @@ groups:
         labels: { severity: warning }
         annotations: { summary: "A job has been waiting for a home Linux runner for over 10 minutes", description: "Очередь на собственные Linux-раннеры копится: самое старое задание ждёт больше 10 минут. Если на панели «Идут и ждут» идущих четыре — раннеров не хватает (много параллельных PR и выкаток). Если идущих меньше — раннеры не берут работу: на хосте systemctl status ci-runner-cycle@ci-runner* и журнал раннера.", __dashboardUid__: "samoylove-ci", __panelId__: "17" }
 
+      - uid: ci-queue-stuck-light
+        title: CIQueueStuckLight
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'max(ci_job_queue_oldest_seconds{pool="home-light"}) > 300'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "A job has been waiting for a light runner for over 5 minutes", description: "Очередь на лёгкие раннеры (метка light, их три): линтеры, тесты на Node, снимки страниц и покрытие. Работы в таком задании секунды, поэтому пять минут ожидания значат, что лёгких не хватает или они не берут работу. Порог ниже, чем у больших, по той же причине.", __dashboardUid__: "samoylove-ci", __panelId__: "17" }
+
       - uid: ci-queue-stuck-windows
         title: CIQueueStuckWindows
         condition: C
@@ -3347,7 +3376,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 1800, to: 0 }
             model:
-              expr: (sum(ci_runners{os="linux",status="online"}) or vector(0)) < 3
+              expr: (sum(ci_runners{os="linux",status="online"}) or vector(0)) < 9
               instant: true
               refId: A
           - refId: C
@@ -3366,7 +3395,7 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: warning }
-        annotations: { summary: "Fewer than 3 of 4 home Linux runners are online for 15 minutes", description: "Одноразовый раннер между заданиями пропадает на секунды, но не на 15 минут: он не вернулся после отката снапшота. Очередь пока может быть пуста, но следующая пачка PR пойдёт медленнее. На хосте: systemctl status 'ci-runner-cycle@*'.", __dashboardUid__: "samoylove-ci", __panelId__: "7" }
+        annotations: { summary: "Fewer than 9 of 11 self-hosted Linux runners are online for 15 minutes", description: "Одноразовый раннер между заданиями пропадает на секунды, но не на 15 минут: он не вернулся после отката снапшота. Флот с 21.09.2026 — восемь больших (метка home) и три лёгких (light), порог 9 терпит двух в пересоздании. Очередь пока может быть пуста, но следующая пачка PR пойдёт медленнее. На хосте: systemctl status 'ci-runner-cycle@*'.", __dashboardUid__: "samoylove-ci", __panelId__: "7" }
 
       - uid: ci-queue-collector-stale
         title: CIQueueCollectorStale
