@@ -107,7 +107,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+              expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.15
               instant: true
               refId: A
           - refId: C
@@ -307,7 +307,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name="nvme"} > 70
+              expr: node_hwmon_temp_celsius{sensor="temp1"} * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name="nvme"} > 70
               instant: true
               refId: A
           - refId: C
@@ -588,6 +588,296 @@ groups:
         for: 30m
         labels: { severity: warning }
         annotations: { summary: "SMART/ZFS textfile collector is failing, disk health is unknown" }
+
+      - uid: hw-instance-oom-kills
+        title: InstanceOOMKills
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1800, to: 0 }
+            model:
+              expr: 'increase(incus_memory_OOM_kills_total{name!~"ci-runner.*"}[15m]) > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        labels: { severity: warning }
+        annotations: { summary: "A process was killed by the out-of-memory killer inside an instance", description: "Процесс убит за нехватку памяти в инстансе (метка name): он умер молча, и то, что он делал, не доехало. Разбор 19.09.2026: все 17 убийств в web — это Chromium рендерера скриншотов с лимитом 512 МБ, шесть в cs2-render — старый потолок игры, поднятый с тех пор. Считается increase, а не changes: у одноразовых раннеров счётчик обнуляется на каждом задании, поэтому они исключены по имени. Нарочные потолки внутри cs2 (работник, разбор демки под limitmem) метрика Incus отличить не умеет — для этого нужен сбор по cgroup." }
+
+      - uid: hw-swap-in-use
+        title: SwapInUse
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 3600, to: 0 }
+            model:
+              expr: '(node_memory_SwapTotal_bytes{job="node-host"} - node_memory_SwapFree_bytes{job="node-host"}) > 2*1024^3'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "Host uses more than 2 GiB of swap", description: "Хост вытеснил в swap больше 2 ГиБ: памяти не хватает. Фон — 0,1–0,2 ГиБ; 14–16.09.2026 было 6,5 ГиБ, и MemoryLow при этом молчал. Сумма лимитов инстансов вдвое больше физической памяти, поэтому лечится уменьшением лимитов тех, кто их не использует." }
+
+      - uid: hw-memory-pressure
+        title: HostMemoryPressure
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 900, to: 0 }
+            model:
+              expr: 'rate(node_pressure_memory_stalled_seconds_total{job="node-host"}[5m]) > 0.05'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "Host tasks stall on memory more than 5% of the time", description: "Все задачи хоста больше 5% времени ждут память (PSI). За неделю до 19.09.2026 максимум был 7,7%. Кто съел — панель «Память инстансов» на дашборде железа; частый виновник — cs2-render с открытой игрой." }
+
+      - uid: hw-io-pressure
+        title: HostIOPressure
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1200, to: 0 }
+            model:
+              expr: 'rate(node_pressure_io_stalled_seconds_total{job="node-host"}[5m]) > 0.15'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Host tasks stall on disk IO more than 15% of the time", description: "Все задачи хоста больше 15% времени ждут диск (PSI): упор в NVMe. За неделю до 19.09.2026 максимум был 6%. Смотреть занятость NVMe и запись по инстансам." }
+
+      - uid: hw-swap-thrashing
+        title: SwapThrashing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 900, to: 0 }
+            model:
+              expr: 'rate(node_vmstat_pswpin{job="node-host"}[5m]) > 1000 and rate(node_vmstat_pswpout{job="node-host"}[5m]) > 1000'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "Host is swapping in and out continuously", description: "Страницы одновременно и вытесняются в swap, и читаются обратно — памяти не хватает прямо сейчас, всё тормозит. Swap за неделю до 19.09.2026 бывал занят до 7 из 8 ГиБ." }
+
+      - uid: hw-zpool-scrub-overdue
+        title: ZpoolScrubOverdue
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 7200, to: 0 }
+            model:
+              expr: 'zpool_scrub_age_seconds > 40*86400'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: warning }
+        annotations: { summary: "Monthly ZFS scrub has not completed for 40 days", description: "Ежемесячный scrub пула пропущен (таймер zfs-scrub-monthly@tank). Без него тихая порча данных на диске не обнаруживается." }
+
+      - uid: hw-nvme-spare-low
+        title: NVMeSpareLow
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 7200, to: 0 }
+            model:
+              expr: 'smart_nvme_available_spare_ratio < 0.2'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: warning }
+        annotations: { summary: "NVMe spare blocks below 20%", description: "Резерв запасных блоков NVMe кончается — диск начал активно заменять изношенные ячейки. Готовить замену диска." }
+
+      - uid: hw-nvme-write-rate-high
+        title: NVMeWriteRateHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 7200, to: 0 }
+            model:
+              expr: 'increase(smart_nvme_written_bytes_total[1d]) > 1.1e12'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: warning }
+        annotations: { summary: "NVMe writes above 1.1 TB per day", description: "При такой записи ресурс Kingston (1000 ТБ) уйдёт меньше чем за 2,5 года. 19.09.2026 было около 437 ГБ в сутки на диск. Искать, кто пишет: запись по инстансам и датасетам." }
+
+      - uid: hw-link-flap
+        title: LinkFlap
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 3600, to: 0 }
+            model:
+              expr: 'increase(node_network_carrier_changes_total{job="node-host",device="eno1"}[1h]) > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        labels: { severity: warning }
+        annotations: { summary: "Wired uplink eno1 lost carrier", description: "Проводной линк сервера пропадал за последний час. За неделю до 19.09.2026 было 4 перепада — кабель или порт роутера." }
+
+      - uid: hw-time-not-synced
+        title: TimeNotSynced
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1800, to: 0 }
+            model:
+              expr: 'node_timex_sync_status{job="node-host"} == 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Host clock is not synchronized", description: "Часы хоста не синхронизированы (NTP). Уехавшие часы ломают TLS, сроки токенов и сопоставление журналов." }
 
   - orgId: 1
     name: infra-services
@@ -1024,6 +1314,64 @@ groups:
         labels: { severity: warning }
         annotations: { summary: "nginx log lines are not parsed — log_format and exporter format have diverged", __dashboardUid__: "samoylove-overview", __panelId__: "34" }
 
+      - uid: product-event-receiver-errors
+        title: EventReceiverErrors
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 3600, to: 0 }
+            model:
+              expr: 'sum(increase(samoylove_event_http_response_count_total{status!="204"}[1h])) > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        labels: { severity: warning }
+        annotations: { summary: "Event receiver answered something other than 204", description: "Приёмник событий сайтов обязан отвечать только 204; любой другой код — потерянные события." }
+
+      - uid: product-probe-disagrees-with-agent
+        title: ProbeDisagreesWithAgent
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 3600, to: 0 }
+            model:
+              expr: '(probe_success{instance="https://samoy.love/"} == 0 and on() max(status_check_up{check="samoylove"}) == 1) or (probe_success{instance="https://metro.samoy.love/"} == 0 and on() max(status_check_up{check="metro"}) == 1) or (probe_success{instance="https://launcher.samoy.love/"} == 0 and on() max(status_check_up{check="launcher"}) == 1) or (probe_success{instance="https://snakes.samoy.love/"} == 0 and on() max(status_check_up{check="snakes"}) == 1) or (probe_success{instance="https://status.samoy.love/"} == 0 and on() max(status_check_up{check="status-page"}) == 1) or (probe_success{instance="https://die.samoy.love/"} == 0 and on() max(status_check_up{check="die"}) == 1) or (probe_success{instance="https://cs.samoy.love/"} == 0 and on() max(status_check_up{check="cs2-health"}) == 1)'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "Blackbox probe fails while the status agent sees the site up", description: "Сломан маршрут самой пробы, а не сайт: так 12–19.09.2026 SiteDown неделю горел critical при живых сайтах (DNS пробы). Смотреть blackbox-exporter и резолв внутри стека мониторинга." }
+
   - orgId: 1
     name: product-chillhub
     folder: Alerts
@@ -1329,6 +1677,93 @@ groups:
         labels: { severity: warning }
         annotations: { summary: "More than 20 client-side errors reported by the launcher within an hour", __dashboardUid__: "samoylove-chillhub", __panelId__: "36" }
 
+      - uid: product-chillhub-telemetry-rate-limited
+        title: ChillhubTelemetryRateLimited
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 3600, to: 0 }
+            model:
+              expr: 'sum(increase(chillhub_http_requests_total{route="/metrics/report",code="429"}[1h])) > 20'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "Launcher telemetry is being rate limited", description: "Ограничитель частоты отбрасывает телеметрию лаунчеров (429). TelemetryRejected этого не видит: 429 не попадает в chillhub_telemetry_rejected_total." }
+
+      - uid: product-chillhub-admin-login-failures
+        title: ChillhubAdminLoginFailures
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 3600, to: 0 }
+            model:
+              expr: 'sum(increase(chillhub_admin_logins_total{result="fail"}[1h])) > 10'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        labels: { severity: warning }
+        annotations: { summary: "More than 10 failed admin logins in an hour", description: "Похоже на подбор пароля к админке лаунчера." }
+
+      - uid: product-chillhub-integrity-check-failed
+        title: ChillhubIntegrityCheckFailed
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 3600, to: 0 }
+            model:
+              expr: 'sum(increase(chillhub_integrity_checks_total{result!="ok"}[1h])) > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        labels: { severity: warning }
+        annotations: { summary: "A launcher integrity check failed", description: "У игрока файлы игры разошлись с манифестом." }
+
   - orgId: 1
     name: product-status
     folder: Alerts
@@ -1424,6 +1859,64 @@ groups:
         for: 15m
         labels: { severity: critical }
         annotations: { summary: "Bot cannot send messages: incident notifications will not arrive", __dashboardUid__: "samoylove-status", __panelId__: "18" }
+
+      - uid: product-status-bot-restart-loop
+        title: StatusBotRestartLoop
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 3600, to: 0 }
+            model:
+              expr: 'changes(statusbot_start_timestamp_seconds[1h]) > 3'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        labels: { severity: warning }
+        annotations: { summary: "Status bot restarted more than 3 times in an hour", description: "Процесс бота перезапускается по кругу: systemd поднимает его, он падает. Журнал samoylove-bot." }
+
+      - uid: product-status-cert-renewal-missed
+        title: CertRenewalMissed
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 43200, to: 0 }
+            model:
+              expr: 'min by (project) (status_cert_days_left) < 25'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 6h
+        labels: { severity: warning }
+        annotations: { summary: "A certificate was not renewed at 30 days left", description: "Certbot продлевает за 30 дней до конца; меньше 25 — продление сломано. Так 19.09.2026 нашёлся launcher: certbot.service падал молча месяц. Смотреть journalctl -u certbot в контейнере web." }
 
   - orgId: 1
     name: product-snakes
@@ -1557,6 +2050,122 @@ groups:
         for: 10m
         labels: { severity: warning }
         annotations: { summary: "Game tick p95 is over budget — every player feels the lag", __dashboardUid__: "samoylove-snakes", __panelId__: "29" }
+
+      - uid: product-snakes-tick-rate-low
+        title: SnakesTickRateLow
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1200, to: 0 }
+            model:
+              expr: 'sum(rate(snakes_tick_duration_seconds_count[5m])) / sum(avg_over_time(snakes_rooms[5m])) < 9 and on() sum(avg_over_time(snakes_rooms[5m])) > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "Snakes rooms tick below 9 per second", description: "Сервер пропускает тики: игра идёт медленнее реального времени. SnakesTickSlow смотрит только на длительность тика и может молчать." }
+
+      - uid: product-snakes-ws-abnormal-closes
+        title: SnakesWsAbnormalCloses
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1200, to: 0 }
+            model:
+              expr: 'sum(rate(snakes_ws_closed_total{reason=~"panic|write_error|send_backpressure"}[10m])) * 60 > 1'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "Snakes WebSocket connections close abnormally", description: "Соединения игроков рвутся по нашей вине (паника, ошибка записи, переполнение очереди отправки) чаще раза в минуту." }
+
+      - uid: product-snakes-ws-panic
+        title: SnakesWsPanic
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1200, to: 0 }
+            model:
+              expr: 'sum(increase(snakes_ws_closed_total{reason="panic"}[10m])) > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        labels: { severity: warning }
+        annotations: { summary: "Snakes connection handler panicked", description: "Паника в обработчике соединения — ошибка в коде, а не нагрузка. Журнал snakes.service." }
+
+      - uid: product-snakes-matches-stalled
+        title: SnakesMatchesStalled
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1800, to: 0 }
+            model:
+              expr: 'sum(snakes_matches_running) > 0 and on() sum(increase(snakes_matches_total[15m])) == 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        labels: { severity: warning }
+        annotations: { summary: "Snakes matches are running but none finished in 15 minutes", description: "Матч идёт по таймеру 5 минут; если матч «идёт» 15 минут и ни один не закончился — комната зависла." }
 
   # ═══════════════════════════════════════════════════════════════════════════
   # РАЗБОР МАТЧЕЙ CS2 — ЕДИНСТВЕННАЯ ГРУППА ПРАВИЛ ПО-РУССКИ, И ЭТО РЕШЕНИЕ
@@ -2220,7 +2829,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: 'sum(increase(cs2_steam_requests_total[24h])) / clamp_min(max(cs2_external_limit{limit="steam_вызовов_в_сутки"}), 1) > 0.8'
+              expr: 'max(cs2_budget_used{resource="steam_key",window="сутки"}) / clamp_min(max(cs2_external_limit{limit="steam_вызовов_в_сутки"}), 1) > 0.8'
               instant: true
               refId: A
           - refId: C
@@ -2512,6 +3121,151 @@ groups:
         labels: { severity: warning }
         annotations: { summary: "Под клипы осталось меньше 4 ГБ: работник рендера встанет на двух", description: "Клипы стираются сами через месяц без обращений, так что это либо всплеск заказов, либо сироты — каталоги без записи в реестре (панель «Клипы: занято» покажет расхождение). Ниже двух гигабайт заказы перестают браться, и у людей клип «готовится» бесконечно. Решать владельцу: расширить квоту ZFS датасета tank/cs2-clips или укоротить срок жизни CS2_RENDER_CLIP_TTL.", __dashboardUid__: "samoylove-cs2", __panelId__: "908" }
 
+      - uid: cs2-chain-no-leader
+        title: "CS2: цепочку никто не ведёт"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1200, to: 0 }
+            model:
+              expr: 'max(cs2_chain_leader{state="leading"}) == 0 and on() max(cs2_chain_scrape_up) == 1'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: critical }
+        annotations: { summary: "Ни один процесс не держит замок цепочки матчей", description: "Матчи перестают приходить сами, а сайт при этом выглядит здоровым. Проверить cs2-chain в контейнере cs2: запущен ли, не завис ли на замке в Postgres." }
+
+      - uid: cs2-chain-scrape-down
+        title: "CS2: цепочка не отвечает на сбор"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1800, to: 0 }
+            model:
+              expr: 'avg_over_time(cs2_chain_scrape_up[15m]) < 0.5'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Сайт не может снять метрики процесса цепочки", description: "Числа работников на дашборде становятся нулями сайта, и часть тревог про цепочку врёт. Проверить, жив ли cs2-chain и отвечает ли его порт метрик." }
+
+      - uid: cs2-worker-panics
+        title: "CS2: работник падает с паникой"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1800, to: 0 }
+            model:
+              expr: 'sum by (worker) (increase(cs2_worker_panics_total[30m])) >= 2'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        labels: { severity: warning }
+        annotations: { summary: "Работник цепочки паникует", description: "Работник ловит панику и перезапускается — задание, на котором он падает, не пройдёт никогда. Порог 2, а не 1: сумма счётчиков сайта и цепочки даёт ложный прирост при выкатке. Журнал cs2-chain, строка с паникой." }
+
+      - uid: cs2-reports-behind
+        title: "CS2: документы отчёта не догоняют"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 7200, to: 0 }
+            model:
+              expr: 'cs2_reports_outdated > 0 and deriv(cs2_reports_outdated[1h]) >= 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 6h
+        labels: { severity: warning }
+        annotations: { summary: "Пересчёт документов отчёта встал", description: "Страницы матчей считаются на лету и медленнее, пока документы устаревшие. Проверить работника пересчёта." }
+
+      - uid: cs2-steam-rate
+        title: "CS2: ключ Steam упирается в темп"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1800, to: 0 }
+            model:
+              expr: 'max(cs2_budget_used{resource="steam_key",window="10с"}) / (10 * max(cs2_external_limit{limit="steam_вызовов_в_секунду"})) > 0.9'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "Вызовы Steam идут на пределе частоты", description: "Страницы ждут Steam: фоновый сбор занял почти весь темп ключа. Смотреть расход по работникам на дашборде cs2." }
+
   # --- CI: очередь на своих раннерах -----------------------------------------
   # Данные — сборщик ci-queue-collect на хосте (репозиторий home-server,
   # scripts/ci-queue-collect.py), textfile node-host, опрос GitHub раз в 30 с.
@@ -2769,3 +3523,177 @@ groups:
         for: 5m
         labels: { severity: warning }
         annotations: { summary: "A textfile metrics file on the host has not been updated for 30 minutes", description: "Сборщик на хосте завис или его таймер встал (файл — метка file: smart.prom и zfs.prom пишет node-textfile-collect раз в 5 минут, ci.prom — ci-queue-collect раз в 30 секунд). Старые значения при этом выглядят живыми, и SmartCollectFailing молчит." }
+
+      - uid: mon-scrape-target-missing
+        title: ScrapeTargetMissing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1800, to: 0 }
+            model:
+              expr: 'absent(up{job="node-host"}) or absent(up{job="incus"}) or absent(up{job="cs2-api"})'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "A file_sd scrape target disappeared", description: "Цель из file_sd пропала целиком: файл /etc/prometheus/targets/*.yml опустел или удалён. up == 0 при этом не бывает, поэтому остальные тревоги молчат." }
+
+      - uid: mon-prometheus-ingestion-stopped
+        title: PrometheusIngestionStopped
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 900, to: 0 }
+            model:
+              expr: 'sum(rate(prometheus_tsdb_head_samples_appended_total[5m])) == 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "Prometheus stopped ingesting samples", description: "Сбор встал целиком: все панели замерли, а тревоги смотрят на устаревшие данные. Журнал контейнера samoylove-prometheus." }
+
+      - uid: mon-prometheus-tsdb-failures
+        title: PrometheusTsdbFailures
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 3600, to: 0 }
+            model:
+              expr: '(increase(prometheus_tsdb_compactions_failed_total[1h]) + increase(prometheus_tsdb_wal_corruptions_total[1h]) + increase(prometheus_tsdb_wal_writes_failed_total[1h])) > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        labels: { severity: warning }
+        annotations: { summary: "Prometheus TSDB reports compaction or WAL failures", description: "Хранилище Prometheus портится: сбой уплотнения или журнала WAL. История может пропасть — смотреть журнал контейнера и место на томе." }
+
+      - uid: mon-prometheus-tsdb-near-limit
+        title: PrometheusTsdbNearSizeLimit
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 7200, to: 0 }
+            model:
+              expr: 'prometheus_tsdb_storage_blocks_bytes / prometheus_tsdb_retention_limit_bytes > 0.85'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: warning }
+        annotations: { summary: "Prometheus TSDB above 85% of its size limit", description: "Упёршись в лимит размера, Prometheus молча удаляет историю раньше 90 дней. 19.09.2026 было занято 8%." }
+
+      - uid: mon-grafana-scheduler-behind
+        title: GrafanaAlertSchedulerBehind
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1200, to: 0 }
+            model:
+              expr: 'grafana_alerting_scheduler_behind_seconds > 30'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "Grafana alert scheduler is behind", description: "Тревоги вычисляются с опозданием на столько же, насколько отстаёт планировщик." }
+
+      - uid: mon-scrape-near-timeout
+        title: ScrapeNearTimeout
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1800, to: 0 }
+            model:
+              expr: 'max by (job) (scrape_duration_seconds) > 8'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "A scrape job takes close to the 10s timeout", description: "Таймаут опроса 10 с; цель, которая к нему подходит, скоро начнёт выпадать из сбора." }
