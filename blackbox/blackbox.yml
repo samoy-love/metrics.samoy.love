@@ -17,3 +17,17 @@ modules:
       ip_protocol_fallback: false
       fail_if_ssl: false
       fail_if_not_ssl: true
+      # Проба обязана быть узнаваемой по User-Agent: nginx на хосте не пишет
+      # запросы с префиксом samoylove- в журнал посещаемости
+      # (deploy-kit/nginx/conf.d/samoylove-log-metrics.conf, map
+      # $samoylove_metrics_loggable). Без этого две пробы в минуту на каждый
+      # сайт складываются в «посещаемость» главной страницы, а у тихих сайтов
+      # составляют её целиком: дашборды вычитали пробы формулой, а тревога о
+      # падении трафика считала по загрязнённому ряду и падения не видела.
+      #
+      # Имя пишется своё, а не штатное Blackbox-Exporter/<версия>: правило в
+      # nginx одно на все наши ходилки — «начинается на samoylove-», — и
+      # обновление образа его не ломает. Штатное имя в том же map оставлено
+      # запасным вариантом.
+      headers:
+        User-Agent: "samoylove-blackbox (+https://metrics.samoy.love)"
