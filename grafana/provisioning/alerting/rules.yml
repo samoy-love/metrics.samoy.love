@@ -1218,6 +1218,7 @@ groups:
                 0.2 * sum by (host) (increase(samoylove_site_http_response_count_total{path="/"}[6h] offset 1w))
                 and
                 sum by (host) (increase(samoylove_site_http_response_count_total{path="/"}[6h] offset 1w)) > 50
+                and on() (vector(time()) > 1790640000)
               instant: true
               refId: A
           - refId: C
@@ -1236,7 +1237,7 @@ groups:
         execErrState: Error
         for: 2h
         labels: { severity: warning }
-        annotations: { summary: "{{ $labels.host }}: traffic is five times lower than a week ago", __dashboardUid__: "samoylove-overview", __panelId__: "32" }
+        annotations: { summary: "{{ $labels.host }}: traffic is five times lower than a week ago", description: "Сравнение идёт с тем же окном неделю назад. С 20.09.2026 журнал посещаемости не считает наши собственные проверки — проба blackbox и агент статус-страницы давали у тихих сайтов почти весь трафик главной. Неделю после этой правки сравнивать не с чем: прошлая неделя ещё с пробами, и любое окно выглядит падением в тридцать раз. Отсюда условие на время в выражении: правило молчит до 29.09.2026, когда в сравнение попадёт неделя чистых данных. После этой даты условие убрать.", __dashboardUid__: "samoylove-overview", __panelId__: "32" }
 
       - uid: product-site-latency-high
         title: SiteLatencyHigh
