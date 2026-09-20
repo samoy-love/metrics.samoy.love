@@ -158,12 +158,31 @@ services:
       - /opt/samoylove-metrics/.env
     environment:
       ENABLE_METRICS: "false"
+      # ОДИН БРАУЗЕР НА ВЕСЬ РЕНДЕРЕР, А НЕ ПО ЭКЗЕМПЛЯРУ НА ЗАПРОС.
+      #
+      # По умолчанию каждый запрос поднимает свой Chromium (4–6 процессов по
+      # 85–140 МБ), и два скриншота разом гарантированно пробивают лимит.
+      # Скриншот нужен только к переходу тревоги, параллельность здесь не
+      # нужна вовсе: очередь из двух картинок подождёт.
+      RENDERING_MODE: clustered
+      RENDERING_CLUSTERING_MODE: context
+      RENDERING_CLUSTERING_MAX_CONCURRENCY: "1"
+      # У docker /dev/shm по умолчанию 64 МБ, и Chromium спотыкается об это
+      # отдельно от лимита памяти.
+      RENDERING_ARGS: --no-sandbox,--disable-gpu,--disable-dev-shm-usage
     deploy:
       resources:
         limits:
           # Headless Chromium под капотом — тяжелее, чем кажется по задаче.
+          #
+          # 512 МБ не хватало: с 12.09.2026 по 19.09.2026 OOM-killer убил
+          # Chromium 17 раз, пик cgroup — 496 МБ из 512. Каждое убийство —
+          # тревога, ушедшая в чат текстом без картинки, ради которой
+          # рендерер и заведён, и молча: в журнале Grafana видно только
+          # чужой отказ. В контейнере web из 12 ГиБ занято полтора, так что
+          # полгигабайта здесь ничего не стоят.
           cpus: "1.0"
-          memory: 512m
+          memory: 1g
     logging: *default-logging
 
   node-exporter:
