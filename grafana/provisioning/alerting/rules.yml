@@ -3384,7 +3384,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 1800, to: 0 }
             model:
-              expr: (sum(ci_runners{os="linux",status="online"}) or vector(0)) < 9
+              expr: (sum(ci_runners{os="linux",status="online"}) or vector(0)) < 7
               instant: true
               refId: A
           - refId: C
@@ -3403,7 +3403,7 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: warning }
-        annotations: { summary: "Fewer than 9 of 11 self-hosted Linux runners are online for 15 minutes", description: "Одноразовый раннер между заданиями пропадает на секунды, но не на 15 минут: он не вернулся после отката снапшота. Флот с 21.09.2026 — восемь больших (метка home) и три лёгких (light), порог 9 терпит двух в пересоздании. Очередь пока может быть пуста, но следующая пачка PR пойдёт медленнее. На хосте: systemctl status 'ci-runner-cycle@*'.", __dashboardUid__: "samoylove-ci", __panelId__: "7" }
+        annotations: { summary: "Fewer than 7 of 9 self-hosted Linux runners are online for 15 minutes", description: "Одноразовый раннер между заданиями пропадает на секунды, но не на 15 минут: он не вернулся после отката снапшота. Флот с 21.09.2026 — шесть больших (метка home) и три лёгких (light), порог 7 терпит двух в пересоздании. Восьми больших было больше, чем выдерживали память и диск хоста. Очередь пока может быть пуста, но следующая пачка PR пойдёт медленнее. На хосте: systemctl status 'ci-runner-cycle@*'.", __dashboardUid__: "samoylove-ci", __panelId__: "7" }
 
       - uid: ci-queue-collector-stale
         title: CIQueueCollectorStale
