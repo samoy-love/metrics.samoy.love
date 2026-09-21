@@ -107,7 +107,9 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.15
+              # Только хост: node_exporter внутри web видит ту же память хоста, и без
+              # фильтра тревога приходила дважды (22.09.2026: 58 раз в Pending за неделю).
+              expr: node_memory_MemAvailable_bytes{job="node-host"} / node_memory_MemTotal_bytes{job="node-host"} < 0.15
               instant: true
               refId: A
           - refId: C
@@ -675,6 +677,122 @@ groups:
         for: 10m
         labels: { severity: warning }
         annotations: { summary: "Host tasks stall on memory more than 5% of the time", description: "Все задачи хоста больше 5% времени ждут память (PSI). За неделю до 19.09.2026 максимум был 7,7%. Кто съел — панель «Память инстансов» на дашборде железа; частый виновник — cs2-render с открытой игрой." }
+
+      - uid: hw-host-global-oom
+        title: HostGlobalOOM
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1800, to: 0 }
+            model:
+              expr: 'increase(node_vmstat_oom_kill{job="node-host"}[15m]) > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        labels: { severity: critical }
+        annotations: { summary: "The kernel killed a process because the whole host ran out of memory", description: "Ядро убило процесс из-за нехватки памяти на всём хосте, а не внутри потолка инстанса: жертвой мог стать Postgres или ClickHouse прода. InstanceOOMKills такое не видит — он считает только счётчики инстансов. 21.09.2026 так было дважды (steamwebhelper, процессы раннеров). Кто съел — HostMemoryPressure и панель «Память инстансов»; журнал — journalctl -k | grep global_oom." }
+
+      - uid: hw-zpool-capacity-high
+        title: ZpoolCapacityHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 900, to: 0 }
+            model:
+              expr: 'zpool_capacity_ratio{job="node-host"} > 0.8'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "ZFS pool is more than 80% full", description: "Пул заполнен больше чем на 80 %: у ZFS после этого падает скорость записи и растёт фрагментация. DiskSpaceLow смотрит только корень хоста (ext4), пул он не видит. Смотреть zfs list -o space: снимки sanoid, квоты демок и клипов, диск cs2-win." }
+
+      - uid: hw-zpool-capacity-critical
+        title: ZpoolCapacityCritical
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 900, to: 0 }
+            model:
+              expr: 'zpool_capacity_ratio{job="node-host"} > 0.9'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: critical }
+        annotations: { summary: "ZFS pool is more than 90% full", description: "Пул заполнен больше чем на 90 %: до остановки записи на всех контейнерах недалеко. Освобождать место сейчас: старые снимки, кэш CI (/srv/ci-cache), тома игр." }
+
+      - uid: hw-smart-unhealthy
+        title: SmartDeviceUnhealthy
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 900, to: 0 }
+            model:
+              expr: 'smart_device_healthy{job="node-host"} == 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        labels: { severity: critical }
+        annotations: { summary: "A disk reports SMART failure", description: "SMART диска (метка device, model) сообщил, что он неисправен. Пул — зеркало из двух NVMe, второй держит данные, но замену надо планировать сразу: корень хоста лежит только на Kingston без зеркала." }
 
       - uid: hw-io-pressure
         title: HostIOPressure
@@ -3384,7 +3502,9 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 1800, to: 0 }
             model:
-              expr: (sum(ci_runners{os="linux",status="online"}) or vector(0)) < 7
+              # max за 5 минут: одноразовый раннер на 10–13 с уходит в offline при
+              # каждом откате, и без сглаживания тревога висела в Pending сотни раз.
+              expr: max_over_time(((sum(ci_runners{os="linux",status="online"}) or vector(0)))[5m:30s]) < 5
               instant: true
               refId: A
           - refId: C
@@ -3403,7 +3523,7 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: warning }
-        annotations: { summary: "Fewer than 7 of 9 self-hosted Linux runners are online for 15 minutes", description: "Одноразовый раннер между заданиями пропадает на секунды, но не на 15 минут: он не вернулся после отката снапшота. Флот с 21.09.2026 — шесть больших (метка home) и три лёгких (light), порог 7 терпит двух в пересоздании. Восьми больших было больше, чем выдерживали память и диск хоста. Очередь пока может быть пуста, но следующая пачка PR пойдёт медленнее. На хосте: systemctl status 'ci-runner-cycle@*'.", __dashboardUid__: "samoylove-ci", __panelId__: "7" }
+        annotations: { summary: "Fewer than 5 of 7 self-hosted Linux runners are online for 15 minutes", description: "Одноразовый раннер между заданиями пропадает на секунды, но не на 15 минут: он не вернулся после отката снапшота. Флот с 22.09.2026 — четыре больших (метка home) и три лёгких (light), порог 5 терпит двух в пересоздании. Шесть больших вместе с базами в Docker при всплеске CI загоняли хост в нехватку памяти, и прод cs2 вставал на минуты. Очередь пока может быть пуста, но следующая пачка PR пойдёт медленнее. На хосте: systemctl status 'ci-runner-cycle@*'.", __dashboardUid__: "samoylove-ci", __panelId__: "7" }
 
       - uid: ci-queue-collector-stale
         title: CIQueueCollectorStale
