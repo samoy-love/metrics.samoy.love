@@ -1,7 +1,7 @@
 {
   "uid": "samoylove-ci",
   "title": "CI — раннеры и очередь",
-  "description": "Очередь заданий GitHub Actions на своих раннерах: четыре одноразовых Linux-контейнера и Windows-машина win-builder по требованию. Данные — сборщик ci-queue-collect на хосте (репозиторий home-server) через textfile node-host и метрики Incus.",
+  "description": "Очередь заданий GitHub Actions на своих раннерах: семь одноразовых Linux-контейнеров (четыре больших ci-runner и три лёгких ci-light) и Windows-машина win-builder по требованию. Данные — сборщик ci-queue-collect на хосте (репозиторий home-server) через textfile node-host и метрики Incus.",
   "tags": [
     "samoy.love",
     "CI",
@@ -285,7 +285,7 @@
     {
       "type": "stat",
       "title": "Linux-раннеры онлайн",
-      "description": "Регистрации собственных Linux-раннеров со статусом online: шесть больших (метка home) и три лёгких (light), итого девять. Раннер одноразовый и между заданиями ненадолго пропадает, поэтому провал на один-два — норма, долгий — раннер не вернулся после отката снимка. Восьми больших было больше, чем выдерживали память и диск хоста: 21.09.2026 хост четыре раза за четыре часа упирался в глобальный OOM.",
+      "description": "Регистрации собственных Linux-раннеров со статусом online: четыре больших (метка home) и три лёгких (light), итого семь; раннеры ci-runner-5…8 сняты 22.09.2026. Раннер одноразовый и между заданиями ненадолго пропадает, поэтому провал на один-два — норма, долгий — раннер не вернулся после отката снимка. Шести больших было больше, чем выдерживали память и диск хоста: 21.09.2026 хост четыре раза за четыре часа упирался в глобальный OOM.",
       "id": 7,
       "gridPos": {
         "h": 4,
@@ -324,15 +324,15 @@
               },
               {
                 "color": "orange",
-                "value": 4
+                "value": 3
               },
               {
                 "color": "yellow",
-                "value": 7
+                "value": 5
               },
               {
                 "color": "green",
-                "value": 9
+                "value": 7
               }
             ]
           }
@@ -842,7 +842,7 @@
     {
       "type": "timeseries",
       "title": "Загрузка раннеров",
-      "description": "Доля собственных Linux-раннеров, занятых заданиями: идущие задания больших и лёгких, делённые на число раннеров онлайн. Долго у 100% при непустой очереди — раннеров не хватает; но упирается это обычно не в процессор, а в диск: при одиннадцати параллельных заданиях load average хоста уходит за 17 при четырёх занятых ядрах.",
+      "description": "Доля собственных Linux-раннеров, занятых заданиями: идущие задания больших и лёгких, делённые на число раннеров онлайн. Долго у 100% при непустой очереди — раннеров не хватает. Сверху обрезано на 100%: GitHub ещё держит задание «идущим», когда одноразовый раннер уже снят, и после перезагрузки хоста отношение уходило за 250%.",
       "id": 18,
       "gridPos": {
         "h": 8,
@@ -853,7 +853,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(ci_jobs_running{pool=~\"home-linux|home-light\"}) / clamp_min(sum(ci_runners{os=\"linux\",status=\"online\"}), 1)",
+          "expr": "clamp_max(sum(ci_jobs_running{pool=~\"home-linux|home-light\"}) / clamp_min(sum(ci_runners{os=\"linux\",status=\"online\"}), 1), 1)",
           "legendFormat": "занято"
         }
       ],
@@ -1175,7 +1175,7 @@
         "y": 47
       },
       "panels": [],
-      "description": "Сколько раннеры берут у хоста. Метрики Incus по инстансам ci-runner* и win-builder."
+      "description": "Сколько раннеры берут у хоста. Метрики Incus по инстансам ci-runner*, ci-light*, ci-db (базы для тестов) и win-builder; снятые раннеры доживают на графике до конца окна."
     },
     {
       "type": "timeseries",
@@ -1191,7 +1191,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (name) (rate(incus_cpu_seconds_total{name=~\"ci-runner.*|win-builder\",mode!=\"idle\"}[2m]))",
+          "expr": "sum by (name) (rate(incus_cpu_seconds_total{name=~\"ci-.*|win-builder\",mode!=\"idle\"}[2m]))",
           "legendFormat": "{{name}}"
         }
       ],
@@ -1237,7 +1237,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max by (name) (incus_memory_MemTotal_bytes{name=~\"ci-runner.*|win-builder\"} - incus_memory_MemAvailable_bytes{name=~\"ci-runner.*|win-builder\"})",
+          "expr": "(max by (name) (incus_memory_MemTotal_bytes{name=~\"ci-.*|win-builder\"} - incus_memory_MemAvailable_bytes{name=~\"ci-.*|win-builder\"})) > 0",
           "legendFormat": "{{name}}"
         }
       ],
@@ -1283,7 +1283,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (name) (rate(incus_network_receive_bytes_total{name=~\"ci-runner.*|win-builder\",device!=\"lo\"}[2m]))",
+          "expr": "sum by (name) (rate(incus_network_receive_bytes_total{name=~\"ci-.*|win-builder\",device!=\"lo\"}[2m]))",
           "legendFormat": "{{name}}"
         }
       ],
@@ -1317,8 +1317,8 @@
     },
     {
       "type": "timeseries",
-      "title": "Диск раннеров, запись",
-      "description": "Запись на диск по раннерам (сборка, кэш Go и Docker).",
+      "title": "Диск раннеров, чтение",
+      "description": "Чтение с физических дисков, отнесённое к раннеру, — то, что не нашлось в ARC. Запись здесь не показывается: ZFS пишет группами транзакций от имени ядра, и Incus отдаёт для контейнеров ноль — прежняя панель записи рисовала нули у всех Linux-раннеров. Честная запись есть только у виртуалки win-builder и суммарно по дискам — в дашборде «Железо».",
       "id": 29,
       "gridPos": {
         "h": 8,
@@ -1329,7 +1329,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (name) (rate(incus_disk_written_bytes_total{name=~\"ci-runner.*|win-builder\"}[2m]))",
+          "expr": "sum by (name) (rate(incus_disk_read_bytes_total{name=~\"ci-.*|win-builder\"}[2m]))",
           "legendFormat": "{{name}}"
         }
       ],
