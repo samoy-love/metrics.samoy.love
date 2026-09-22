@@ -582,7 +582,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: smart_collect_ok == 0 or zpool_collect_ok == 0
+              expr: smart_collect_ok == 0 or zpool_collect_ok == 0 or host_oom_collect_ok == 0
               instant: true
               refId: A
           - refId: C
@@ -601,7 +601,7 @@ groups:
         execErrState: Error
         for: 30m
         labels: { severity: warning }
-        annotations: { summary: "SMART/ZFS textfile collector is failing, disk health is unknown" }
+        annotations: { summary: "SMART/ZFS/OOM textfile collector is failing, disk health or host OOM is unknown" }
 
       - uid: hw-instance-oom-kills
         title: InstanceOOMKills
@@ -698,7 +698,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 1800, to: 0 }
             model:
-              expr: 'increase(node_vmstat_oom_kill{job="node-host"}[15m]) > 0'
+              expr: 'increase(host_global_oom_kills_total{job="node-host"}[15m]) > 0'
               instant: true
               refId: A
           - refId: C
@@ -717,7 +717,7 @@ groups:
         execErrState: Error
         for: 0m
         labels: { severity: critical }
-        annotations: { summary: "The kernel killed a process because the whole host ran out of memory", description: "Ядро убило процесс из-за нехватки памяти на всём хосте, а не внутри потолка инстанса: жертвой мог стать Postgres или ClickHouse прода. InstanceOOMKills такое не видит — он считает только счётчики инстансов. 21.09.2026 так было дважды (steamwebhelper, процессы раннеров). Кто съел — HostMemoryPressure и панель «Память инстансов»; журнал — journalctl -k | grep global_oom." }
+        annotations: { summary: "The kernel killed a process because the whole host ran out of memory", description: "Ядро убило процесс из-за нехватки памяти на всём хосте, а не внутри потолка инстанса: жертвой мог стать Postgres или ClickHouse прода. InstanceOOMKills такое не видит — он считает только счётчики инстансов. Считается по строкам ядра oom-kill с global_oom (node-textfile-collect): node_vmstat_oom_kill растёт и от потолка контейнера, и 22.09.2026 так ложно сработал на рендерере Grafana. 21.09.2026 так было дважды (steamwebhelper, процессы раннеров). Кто съел — HostMemoryPressure и панель «Память инстансов»; журнал — journalctl -k | grep global_oom." }
 
       - uid: hw-zpool-capacity-high
         title: ZpoolCapacityHigh
