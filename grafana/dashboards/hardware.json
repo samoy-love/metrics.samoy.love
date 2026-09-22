@@ -3141,6 +3141,977 @@
           "sort": "desc"
         }
       }
+    },
+    {
+      "type": "row",
+      "title": "Windows-машина рендера cs2-win: GTX 1080 Ti и Windows",
+      "id": 63,
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 128
+      },
+      "description": "Метрики изнутри виртуалки: windows_exporter (процессор, память, диск, сеть, процессы игры и кодировщика) и nvidia-smi раз в минуту через textfile. Хост карту не видит — она проброшена в виртуалку целиком. Цель сбора job=\"cs2-win\"; пустые панели значат, что экспортёр не отвечает, — это видно на плитке «Экспортёр»."
+    },
+    {
+      "type": "stat",
+      "title": "Экспортёр",
+      "id": 64,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 129
+      },
+      "description": "Отвечает ли windows_exporter на cs2-win. Ноль дольше пяти минут — тревога WindowsExporterDown.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(up{job=\"cs2-win\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "цель не заведена",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "не отвечает"
+                },
+                "1": {
+                  "text": "отвечает"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "nvidia-smi",
+      "id": 65,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 129
+      },
+      "description": "Удался ли последний опрос карты (раз в минуту). Ноль дольше 10 минут — тревога GPUCollectFailing: драйвер отвалился или карта пропала из виртуалки.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(nvidia_smi_collect_ok{job=\"cs2-win\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "нет данных от cs2-win",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "сбой"
+                },
+                "1": {
+                  "text": "в порядке"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Температура GPU",
+      "id": 66,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 129
+      },
+      "description": "У GTX 1080 Ti сброс частот начинается около 84 °C, аварийный порог — около 91 °C. Выше 84 °C десять минут — тревога GPUTemperatureHigh.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(nvidia_gpu_temperature_celsius{job=\"cs2-win\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "noValue": "нет данных от cs2-win",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 84
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Загрузка GPU",
+      "id": 67,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 129
+      },
+      "description": "Занятость графического ядра прямо сейчас: во время рендера ролика — десятки процентов, в простое — ноль.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(nvidia_gpu_utilization_ratio{job=\"cs2-win\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "noValue": "нет данных от cs2-win",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Память Windows занята",
+      "id": 68,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 129
+      },
+      "description": "Занято от памяти виртуалки. У самого лимита Windows уходит в файл подкачки, и рендер тормозит.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "1 - max(windows_memory_available_bytes{job=\"cs2-win\"}) / max(windows_memory_physical_total_bytes{job=\"cs2-win\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "noValue": "нет данных от cs2-win",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.8
+              },
+              {
+                "color": "red",
+                "value": 0.92
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Свободно на C:",
+      "id": 69,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 129
+      },
+      "description": "Свободное место системного диска: туда пишутся временные файлы записи и кодирования.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(windows_logical_disk_free_bytes{job=\"cs2-win\",volume=\"C:\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "нет данных от cs2-win",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10000000000.0
+              },
+              {
+                "color": "green",
+                "value": 25000000000.0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU: ядро, кодировщик, память",
+      "id": 70,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 133
+      },
+      "description": "Занятость графического ядра, аппаратного кодировщика NVENC и декодера, и шины памяти. Кодировщик работает, когда ffmpeg сжимает записанный ролик.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(nvidia_gpu_utilization_ratio{job=\"cs2-win\"})",
+          "legendFormat": "ядро"
+        },
+        {
+          "refId": "B",
+          "expr": "max(nvidia_gpu_encoder_utilization_ratio{job=\"cs2-win\"})",
+          "legendFormat": "кодировщик"
+        },
+        {
+          "refId": "C",
+          "expr": "max(nvidia_gpu_decoder_utilization_ratio{job=\"cs2-win\"})",
+          "legendFormat": "декодер"
+        },
+        {
+          "refId": "D",
+          "expr": "max(nvidia_gpu_memory_utilization_ratio{job=\"cs2-win\"})",
+          "legendFormat": "шина памяти"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "noValue": "нет данных от cs2-win",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "max": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU: температура, питание, вентилятор",
+      "id": 71,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 133
+      },
+      "description": "Температура (левая ось), потребление и лимит питания (правая ось), скорость вентилятора. Потребление у лимита при росте температуры — карта упирается в охлаждение виртуалки или корпуса.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(nvidia_gpu_temperature_celsius{job=\"cs2-win\"})",
+          "legendFormat": "температура"
+        },
+        {
+          "refId": "B",
+          "expr": "max(nvidia_gpu_power_draw_watts{job=\"cs2-win\"})",
+          "legendFormat": "потребление"
+        },
+        {
+          "refId": "C",
+          "expr": "max(nvidia_gpu_power_limit_watts{job=\"cs2-win\"})",
+          "legendFormat": "лимит питания"
+        },
+        {
+          "refId": "D",
+          "expr": "100 * max(nvidia_gpu_fan_speed_ratio{job=\"cs2-win\"})",
+          "legendFormat": "вентилятор, %"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 0,
+          "noValue": "нет данных от cs2-win",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "потребление"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "watt"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "лимит питания"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "watt"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "GPU: видеопамять и частоты",
+      "id": 72,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 141
+      },
+      "description": "Занятая и вся видеопамять (левая ось) и частоты ядра и памяти (правая ось). Частота ядра, провалившаяся под нагрузкой, — сброс по температуре или питанию.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(nvidia_gpu_memory_used_bytes{job=\"cs2-win\"})",
+          "legendFormat": "занято"
+        },
+        {
+          "refId": "B",
+          "expr": "max(nvidia_gpu_memory_total_bytes{job=\"cs2-win\"})",
+          "legendFormat": "всего"
+        },
+        {
+          "refId": "C",
+          "expr": "max(nvidia_gpu_clock_sm_hertz{job=\"cs2-win\"})",
+          "legendFormat": "частота ядра"
+        },
+        {
+          "refId": "D",
+          "expr": "max(nvidia_gpu_clock_memory_hertz{job=\"cs2-win\"})",
+          "legendFormat": "частота памяти"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "noValue": "нет данных от cs2-win",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "частота ядра"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "hertz"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "частота памяти"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "hertz"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Windows: процессор",
+      "id": 73,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 141
+      },
+      "description": "Сколько процессорного времени виртуалки занято целиком и кем из тех, кто делает рендер: игра, наш работник, ffmpeg, Steam. В ядрах.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(windows_cpu_time_total{job=\"cs2-win\",mode!=\"idle\"}[5m]))",
+          "legendFormat": "вся машина"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (process) (rate(windows_process_cpu_time_total{job=\"cs2-win\"}[5m]))",
+          "legendFormat": "{{process}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "нет данных от cs2-win",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Windows: память",
+      "id": 74,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 149
+      },
+      "description": "Вся память виртуалки, доступная и выделенная (commit). Выделенное выше всей — Windows живёт в файле подкачки.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(windows_memory_physical_total_bytes{job=\"cs2-win\"})",
+          "legendFormat": "всего"
+        },
+        {
+          "refId": "B",
+          "expr": "max(windows_memory_available_bytes{job=\"cs2-win\"})",
+          "legendFormat": "доступно"
+        },
+        {
+          "refId": "C",
+          "expr": "max(windows_memory_committed_bytes{job=\"cs2-win\"})",
+          "legendFormat": "выделено"
+        },
+        {
+          "refId": "D",
+          "expr": "sum by (process) (windows_process_working_set_bytes{job=\"cs2-win\"})",
+          "legendFormat": "{{process}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "noValue": "нет данных от cs2-win",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Windows: диск",
+      "id": 75,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 149
+      },
+      "description": "Чтение и запись по томам. Запись — это прежде всего сырые кадры и готовые ролики.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (volume) (rate(windows_logical_disk_write_bytes_total{job=\"cs2-win\",volume=\"C:\"}[5m]))",
+          "legendFormat": "запись {{volume}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (volume) (rate(windows_logical_disk_read_bytes_total{job=\"cs2-win\",volume=\"C:\"}[5m]))",
+          "legendFormat": "чтение {{volume}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "min": 0,
+          "noValue": "нет данных от cs2-win",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Windows: сеть",
+      "id": 76,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 149
+      },
+      "description": "Трафик виртуалки: демки приходят с сервера, готовые ролики уходят обратно.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(windows_net_bytes_received_total{job=\"cs2-win\"}[5m])) * 8",
+          "legendFormat": "приём"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(windows_net_bytes_sent_total{job=\"cs2-win\"}[5m])) * 8",
+          "legendFormat": "отдача"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "min": 0,
+          "noValue": "нет данных от cs2-win",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "row",
+      "title": "Квоты процессора контейнеров",
+      "id": 77,
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 157
+      },
+      "description": "С 22.09.2026 раннерам CI, ci-db, cs2 и web процессор выдаётся квотой (limits.cpu.allowance), а не ядрами. Упор в квоту Incus не показывает; его пишет сборщик cgroup-cpu-collect на хосте (cpu.stat каждого контейнера). Пусто — сборщик на хосте не установлен или не отработал."
+    },
+    {
+      "type": "timeseries",
+      "title": "Простой из-за квоты",
+      "id": 78,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 158
+      },
+      "description": "Сколько секунд в секунду контейнер стоял, упёршись в свою квоту процессора. 0,5 — половину времени работа ждала процессор. Постоянный простой у раннера или ci-db — квота мала для тестов.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (name) (rate(incus_cgroup_cpu_throttled_seconds_total[5m])) > 0",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "простоя нет или сборщик не отвечает",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Доля периодов с упором в квоту",
+      "id": 79,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 158
+      },
+      "description": "Доля 100-миллисекундных периодов планировщика, в которых контейнер исчерпал квоту. Выше 10 % — задачи в нём заметно замедляются.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (name) (rate(incus_cgroup_cpu_throttled_periods_total[5m])) / sum by (name) (rate(incus_cgroup_cpu_periods_total[5m])) > 0",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "noValue": "простоя нет или сборщик не отвечает",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      }
     }
   ]
 }
