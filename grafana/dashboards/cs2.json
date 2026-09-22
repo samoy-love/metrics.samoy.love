@@ -5691,6 +5691,175 @@
           }
         ]
       }
+    },
+    {
+      "type": "row",
+      "title": "Вход в админку",
+      "id": 1200,
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 211
+      },
+      "description": "Вход в /admin по паролю владельца. После пяти неверных паролей за 15 минут вход закрывается, и попытки считаются как blocked."
+    },
+    {
+      "type": "stat",
+      "title": "Неверных паролей за 15 минут",
+      "id": 1201,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 0,
+        "y": 212
+      },
+      "description": "Неверные пароли и попытки при закрытом входе за последние 15 минут. Больше нуля без входа владельца — кто-то подбирает пароль; от пяти неверных или любой blocked приходит тревога «CS2: кто-то подбирает пароль админки».",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(cs2_admin_login_total{result=~\"wrong|blocked\"}[15m]))",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "нет данных от сервиса",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Вход в админку по исходам",
+      "id": 1202,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 20,
+        "x": 4,
+        "y": 212
+      },
+      "description": "Сколько попыток входа в админку было за час: ok — вошёл владелец, wrong — неверный пароль, blocked — попытка, когда вход уже закрыт после пяти неверных за 15 минут. Нули — нормальное состояние.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (increase(cs2_admin_login_total[1h]))",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "noValue": "нет данных от сервиса",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ok"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "wrong"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "blocked"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }
