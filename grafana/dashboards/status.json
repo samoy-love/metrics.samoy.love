@@ -2226,7 +2226,8 @@
               }
             ]
           },
-          "decimals": 0
+          "decimals": 0,
+          "noValue": "команд не было"
         },
         "overrides": []
       },

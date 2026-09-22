@@ -3471,11 +3471,11 @@
     {
       "type": "timeseries",
       "title": "Доля отказов Steam по методам",
-      "description": "Всё, что не ok, к числу вызовов метода за шесть часов. «профиль_закрыт» и «не_найдено» — нормальные ответы про людей, «ошибка» и «ключ_отклонён» — нет. Метод, стоящий на 100%, работу не делает, а ключ тратит.",
+      "description": "Всё, что не ok, к числу вызовов метода за шесть часов. «профиль_закрыт» и «не_найдено» — нормальные ответы про людей, «ошибка» и «ключ_отклонён» — нет. Метод, стоящий на 100%, работу не делает, а ключ тратит. Отказом не считаются обычные ответы: «нет_новых» (история матчей кончилась, так GetNextMatchSharingCode отвечает на каждом круге), «профиль_закрыт» и «не_найдено». Пока они считались, метод истории стоял на 100 % отказов.",
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (method) (rate(cs2_steam_requests_total{result!=\"ok\"}[6h])) / sum by (method) (rate(cs2_steam_requests_total[6h]))",
+          "expr": "sum by (method) (rate(cs2_steam_requests_total{result!~\"ok|нет_новых|профиль_закрыт|не_найдено\"}[6h])) / sum by (method) (rate(cs2_steam_requests_total[6h]))",
           "legendFormat": "{{method}}"
         }
       ],
@@ -5258,7 +5258,7 @@
     },
     {
       "type": "row",
-      "title": "Контейнеры cs2 и cs2-render",
+      "title": "Машины cs2: cs2, cs2-render, cs2-win",
       "collapsed": false,
       "panels": [],
       "id": 1000,
@@ -5267,7 +5267,8 @@
         "w": 24,
         "x": 0,
         "y": 185
-      }
+      },
+      "description": "cs2-win — Windows-машина рендера движком HLAE (GTX 1080 Ti); у виртуалки Incus не считает убийства по памяти, поэтому в плитке убийств её нет."
     },
     {
       "type": "timeseries",
@@ -5276,12 +5277,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "incus_memory_MemTotal_bytes{name=~\"cs2|cs2-render\"} - incus_memory_MemAvailable_bytes{name=~\"cs2|cs2-render\"}",
+          "expr": "incus_memory_MemTotal_bytes{name=~\"cs2|cs2-render|cs2-win\"} - incus_memory_MemAvailable_bytes{name=~\"cs2|cs2-render|cs2-win\"}",
           "legendFormat": "{{name}}: занято"
         },
         {
           "refId": "B",
-          "expr": "incus_memory_MemTotal_bytes{name=~\"cs2|cs2-render\"}",
+          "expr": "incus_memory_MemTotal_bytes{name=~\"cs2|cs2-render|cs2-win\"}",
           "legendFormat": "{{name}}: потолок"
         }
       ],
@@ -5364,7 +5365,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (name) (rate(incus_cpu_seconds_total{name=~\"cs2|cs2-render\"}[5m]))",
+          "expr": "sum by (name) (rate(incus_cpu_seconds_total{name=~\"cs2|cs2-render|cs2-win\"}[5m]))",
           "legendFormat": "{{name}}"
         }
       ],
@@ -5473,6 +5474,146 @@
         "w": 4,
         "x": 20,
         "y": 186
+      }
+    },
+    {
+      "type": "row",
+      "title": "Витрина недели",
+      "id": 1100,
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 194
+      },
+      "description": "Сколько людей в витрине недели и на какой она ступени. По прошлой неделе выбирается ступень: лига — с 30 авторов и 100 голосующих, обратно в клуб — после двух недель подряд меньше 15 авторов или 50 голосующих."
+    },
+    {
+      "type": "stat",
+      "title": "Витрина недели: ступень",
+      "id": 1101,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 0,
+        "y": 195
+      },
+      "description": "Ступень витрины сейчас: клуб — один общий зачёт, лига — полки по дивизионам. Меняется только в понедельник.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(cs2_highlight_stage)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "нет данных от сервиса",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "клуб",
+                  "color": "blue"
+                },
+                "1": {
+                  "text": "лига",
+                  "color": "green"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Витрина недели: авторы и голосующие",
+      "id": 1102,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 20,
+        "x": 4,
+        "y": 195
+      },
+      "description": "Авторы (прислали клип) и голосующие этой и прошлой недели. Пороги лиги — 30 авторов и 100 голосующих за прошлую неделю; обратно в клуб — меньше 15 или 50 две недели подряд.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (role, week) (cs2_highlight_people)",
+          "legendFormat": "{{role}}, {{week}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "noValue": "нет данных от сервиса",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
       }
     }
   ]

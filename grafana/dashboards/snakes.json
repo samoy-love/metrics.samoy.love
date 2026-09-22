@@ -729,7 +729,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "нет матчей"
         },
         "overrides": []
       },
@@ -794,7 +795,8 @@
               }
             ]
           },
-          "decimals": 1
+          "decimals": 1,
+          "noValue": "нет матчей"
         },
         "overrides": []
       },
@@ -2027,7 +2029,8 @@
                 "value": 0.1
               }
             ]
-          }
+          },
+          "noValue": "комнат нет"
         },
         "overrides": []
       },
@@ -2094,7 +2097,8 @@
               }
             ]
           },
-          "decimals": 1
+          "decimals": 1,
+          "noValue": "комнат нет"
         },
         "overrides": []
       },
