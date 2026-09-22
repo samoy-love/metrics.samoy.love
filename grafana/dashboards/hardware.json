@@ -2781,7 +2781,8 @@
             "drawStyle": "bars"
           },
           "min": 0,
-          "decimals": 0
+          "decimals": 0,
+          "noValue": "не было"
         },
         "overrides": []
       },

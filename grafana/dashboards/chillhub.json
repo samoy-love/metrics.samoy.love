@@ -2313,7 +2313,8 @@
               }
             ]
           },
-          "decimals": 0
+          "decimals": 0,
+          "noValue": "отчётов не было"
         },
         "overrides": []
       },
