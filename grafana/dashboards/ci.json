@@ -1180,7 +1180,7 @@
     {
       "type": "timeseries",
       "title": "CPU раннеров, ядра",
-      "description": "Сколько ядер (из 16 потоков хоста) занимает каждый раннер. Замер 19.09.2026: в пике около одного ядра на раннер — тесты упираются в ожидания, а не в процессор.",
+      "description": "Сколько ядер занимает каждый раннер. С 22.09.2026 раннеры и ci-db делят двенадцать потоков хоста (2–7 и 10–15) и ограничены квотой: большой — четыре ядра, лёгкий — три, ci-db — два. Линия, упёршаяся в свою квоту, значит, что задание ждёт процессор, а не диск или сеть.",
       "id": 26,
       "gridPos": {
         "h": 8,
@@ -1226,7 +1226,7 @@
     {
       "type": "timeseries",
       "title": "Память раннеров",
-      "description": "Занятая память по раннерам (MemTotal − MemAvailable внутри инстанса). Лимит Linux-раннера — 6 ГиБ (первого — 16), win-builder — 6 ГиБ.",
+      "description": "Занятая память по раннерам (MemTotal − MemAvailable внутри инстанса). Лимиты на 22.09.2026: большой раннер — 4 ГиБ, лёгкий — 2 ГиБ, ci-db — 5 ГиБ, win-builder — 4 ГиБ. У остановленного инстанса линии нет.",
       "id": 27,
       "gridPos": {
         "h": 8,
@@ -1521,6 +1521,225 @@
           }
         },
         "overrides": []
+      }
+    },
+    {
+      "type": "row",
+      "title": "Общие тестовые базы ci-db",
+      "id": 33,
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 64
+      },
+      "description": "Контейнер ci-db с 22.09.2026 держит одну пару серверов Postgres и ClickHouse на все шарды тестов cs2 (samoy-love/cs2#617): задания больше не поднимают базы в своём Docker. Если ci-db лёг или упёрся в память, падают все тесты на базах разом."
+    },
+    {
+      "type": "stat",
+      "title": "ci-db работает",
+      "id": 34,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 0,
+        "y": 65
+      },
+      "description": "Сколько ci-db работает с последнего запуска. Пусто — Incus о нём не знает: контейнер остановлен или удалён.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(incus_time_seconds{name=\"ci-db\"} - incus_boot_time_seconds{name=\"ci-db\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "не запущен",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "ci-db: память",
+      "id": 35,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 4,
+        "y": 65
+      },
+      "description": "Занятая память и лимит контейнера. Занятое у лимита — следующая пачка тестов получит убийство по памяти внутри баз (правая ось — сколько процессов убито за час).",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "incus_memory_MemTotal_bytes{name=\"ci-db\"}",
+          "legendFormat": "лимит"
+        },
+        {
+          "refId": "B",
+          "expr": "incus_memory_MemTotal_bytes{name=\"ci-db\"} - incus_memory_MemAvailable_bytes{name=\"ci-db\"}",
+          "legendFormat": "занято"
+        },
+        {
+          "refId": "C",
+          "expr": "increase(incus_memory_OOM_kills_total{name=\"ci-db\"}[1h])",
+          "legendFormat": "убито по памяти за час"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "убито по памяти за час"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "ci-db: процессор и чтение с диска",
+      "id": 36,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 14,
+        "y": 65
+      },
+      "description": "Ядра, которые занимают базы (квота — два), и чтение с физических дисков (правая ось). Процессор у квоты во время прогонов — тесты ждут базы.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(incus_cpu_seconds_total{name=\"ci-db\"}[2m]))",
+          "legendFormat": "ядра"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(incus_disk_read_bytes_total{name=\"ci-db\"}[2m]))",
+          "legendFormat": "чтение"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "чтение"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "Bps"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
       }
     }
   ]
