@@ -144,6 +144,13 @@ scrape_configs:
   # --- Посещаемость статики -------------------------------------------------
   # Экспортёр журнала nginx: статика всех сайтов домена. Клиентских
   # счётчиков на этих сайтах нет и не будет — см. nginxlog/nginxlog.yml.
+  # Windows-машина рендера cs2-win: windows_exporter и nvidia-smi через его
+  # textfile. Адрес — в /etc/samoylove-metrics/targets/cs2-win.yml на сервере,
+  # как у cs2 и хоста: репозиторий публичный.
+  - job_name: cs2-win
+    file_sd_configs:
+      - files: ["/etc/prometheus/targets/cs2-win.yml"]
+
   - job_name: nginxlog
     static_configs:
       - targets: ["nginxlog-exporter:4040"]

@@ -255,7 +255,15 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name="k10temp"} > 92
+              # 95 °C у 8700G — штатный предел (Tjmax): под нагрузкой процессор держит
+              # его сам, сбрасывая частоту, и прежний порог 92 горел на каждом
+              # тяжёлом прогоне CI. За неделю до 22.09.2026 при 94 °C и выше
+              # средняя частота ни разу не падала ниже 4,49 ГГц (медиана 4,72) —
+              # выше базовых 4,2. Беда начинается, когда предела не хватает:
+              # пятнадцать минут у предела И частота ниже базовой (охлаждение
+              # не справляется и отнимает производительность), либо выше 97 °C
+              # (защита не удерживает предел).
+              expr: '(min_over_time((node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name="k10temp"})[15m:1m]) >= 94 and on() avg(avg_over_time(node_cpu_scaling_frequency_hertz{job="node-host"}[15m])) < 4.2e9) or max_over_time((node_hwmon_temp_celsius * on(chip) group_left(chip_name) node_hwmon_chip_names{chip_name="k10temp"})[5m:1m]) > 97'
               instant: true
               refId: A
           - refId: C
@@ -274,7 +282,7 @@ groups:
         execErrState: Error
         for: 10m
         labels: { severity: critical }
-        annotations: { summary: "CPU above 92C for 10 minutes (throttling limit is 95C)" }
+        annotations: { summary: "CPU is throttling below base clock at its 95 C limit, or above 97 C", description: "Процессор 15 минут у предела 95 °C и при этом ниже базовой частоты 4,2 ГГц — охлаждение не справляется и отнимает производительность; или температура выше 97 °C — защита не удерживает предел. Штатный упор в 95 °C при нагрузке на полной частоте тревогой не считается. Проверить обороты кулера и пыль, график частоты — «Железо».", __dashboardUid__: "samoylove-hardware", __panelId__: "9" }
 
       - uid: hw-dimm-temp-high
         title: MemoryTemperatureHigh
@@ -942,6 +950,93 @@ groups:
         for: 1h
         labels: { severity: warning }
         annotations: { summary: "NVMe writes above 1.1 TB per day", description: "При такой записи ресурс Kingston (1000 ТБ) уйдёт меньше чем за 2,5 года. 19.09.2026 было около 437 ГБ в сутки на диск. Искать, кто пишет: запись по инстансам и датасетам." }
+
+      - uid: hw-win-exporter-down
+        title: WindowsExporterDown
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 900, to: 0 }
+            model:
+              expr: 'up{job="cs2-win"} == 0 or absent(up{job="cs2-win"})'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "windows_exporter on cs2-win is not answering", description: "Prometheus не достучался до windows_exporter на Windows-машине рендера пять минут: машина выключена, зависла или служба экспортёра встала. Рендер движком HLAE при этом тоже, скорее всего, стоит. Экран — vmview на хосте, службы — ssh render@cs2-win.", __dashboardUid__: "samoylove-hardware", __panelId__: "64" }
+
+      - uid: hw-gpu-collect-failing
+        title: GPUCollectFailing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 900, to: 0 }
+            model:
+              expr: 'nvidia_smi_collect_ok{job="cs2-win"} == 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "nvidia-smi on cs2-win has been failing for 10 minutes", description: "Опрос GTX 1080 Ti через nvidia-smi не удаётся десять минут: драйвер отвалился или карта пропала из виртуалки после перезагрузки хоста. Рендер на GPU в таком состоянии не пойдёт.", __dashboardUid__: "samoylove-hardware", __panelId__: "65" }
+
+      - uid: hw-gpu-temp-high
+        title: GPUTemperatureHigh
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 900, to: 0 }
+            model:
+              expr: 'nvidia_gpu_temperature_celsius{job="cs2-win"} > 84'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "GTX 1080 Ti above 84 C for 10 minutes", description: "У GTX 1080 Ti с 84 °C начинается сброс частот, около 91 °C — аварийный. Десять минут выше 84 — карте не хватает продува в корпусе сервера: рендер замедлится раньше, чем что-то сломается.", __dashboardUid__: "samoylove-hardware", __panelId__: "71" }
 
       - uid: hw-link-flap
         title: LinkFlap
@@ -3580,7 +3675,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: 'up{job!~"node-host|incus|blackbox-http|nginxlog|cs2-api"} == 0'
+              expr: 'up{job!~"node-host|incus|blackbox-http|nginxlog|cs2-api|cs2-win"} == 0'
               instant: true
               refId: A
           - refId: C

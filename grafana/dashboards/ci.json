@@ -1741,6 +1741,369 @@
           }
         ]
       }
+    },
+    {
+      "type": "row",
+      "title": "Сколько идут задания",
+      "id": 37,
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 73
+      },
+      "description": "Длительность законченных заданий от старта на раннере до конца, по пулам, workflow и заданиям, и кто из раннеров чем занят. Данные — тот же сборщик ci-queue-collect на хосте: прогон, пропавший из идущих, он дозапрашивает один раз. Прогон, начавшийся и закончившийся между двумя опросами (30 с), сюда не попадает."
+    },
+    {
+      "type": "timeseries",
+      "title": "Длительность заданий, p50 и p95",
+      "id": 38,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 74
+      },
+      "description": "Медиана и 95-й процентиль длительности законченных заданий за час по пулам. Рост p95 при прежнем числе заданий — тесты стали тяжелее или раннерам тесно (см. квоты ниже).",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by (le, pool) (rate(ci_job_duration_seconds_bucket[1h])))",
+          "legendFormat": "p50 {{pool}}"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le, pool) (rate(ci_job_duration_seconds_bucket[1h])))",
+          "legendFormat": "p95 {{pool}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "noValue": "нет данных от сборщика",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Законченные задания в час по исходу",
+      "id": 39,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 74
+      },
+      "description": "Сколько заданий закончилось за час: успех, провал, отмена. Всплеск отмен — обычно новый пуш поверх идущего прогона.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (conclusion) (increase(ci_jobs_completed_total[1h]))",
+          "legendFormat": "{{conclusion}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "нет данных от сборщика",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "table",
+      "title": "Задания за сутки: сколько и сколько в среднем",
+      "id": 40,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 82
+      },
+      "description": "Каждое задание каждого workflow за последние сутки: число законченных и средняя длительность. Сверху — самые долгие в среднем.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sort_desc(sum by (repo, workflow, job, pool) (increase(ci_job_seconds_total[24h])) / sum by (repo, workflow, job, pool) (increase(ci_jobs_completed_total[24h])) > 0)",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (repo, workflow, job, pool) (increase(ci_jobs_completed_total[24h])) > 0",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "repo": "репозиторий",
+              "workflow": "workflow",
+              "job": "задание",
+              "pool": "пул",
+              "Value #A": "в среднем",
+              "Value #B": "заданий"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "в среднем",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "нет данных от сборщика"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "в среднем"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "заданий"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Занятость раннеров",
+      "id": 41,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 92
+      },
+      "description": "Доля времени, которую каждый раннер был занят заданиями (по законченным заданиям, за час). У всех у 100 % при очереди — раннеров мало; у одного ноль — он не берёт задания.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (runner) (rate(ci_runner_busy_seconds_total[1h]))",
+          "legendFormat": "{{runner}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "noValue": "нет данных от сборщика",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "max": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Кэш GitHub Actions",
+      "id": 42,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 92
+      },
+      "description": "Размер кэша GitHub Actions по репозиториям (опрос раз в 10 минут). Потолок GitHub — 10 ГБ на репозиторий, дальше старые записи вытесняются. Долю попаданий в кэш GitHub не отдаёт; местный кэш раннеров (/srv/ci-cache) — в дашборде «Железо», «Кто занимает пул tank».",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (repo) (ci_actions_cache_bytes) > 0",
+          "legendFormat": "{{repo}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "noValue": "нет данных от сборщика",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Раннеры и ci-db: простой из-за квоты процессора",
+      "id": 43,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 100
+      },
+      "description": "Сколько секунд в секунду раннер или ci-db стоял, упёршись в квоту (сборщик cgroup-cpu-collect на хосте). Квоты на 22.09.2026: большой — 4 ядра, лёгкий — 3, ci-db — 2.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (name) (rate(incus_cgroup_cpu_throttled_seconds_total{name=~\"ci-.*\"}[5m])) > 0",
+          "legendFormat": "{{name}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "упора в квоту не было",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      }
     }
   ]
 }
