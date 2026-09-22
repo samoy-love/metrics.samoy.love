@@ -4699,7 +4699,7 @@
             "fillOpacity": 10,
             "lineWidth": 2
           },
-          "noValue": "обращений не было"
+          "noValue": "обращений не было (без ключа FACEIT не включается)"
         },
         "overrides": []
       },
@@ -4733,7 +4733,7 @@
             "fillOpacity": 10,
             "lineWidth": 2
           },
-          "noValue": "событий не было"
+          "noValue": "событий не было (без адреса бота не включается)"
         },
         "overrides": []
       },
