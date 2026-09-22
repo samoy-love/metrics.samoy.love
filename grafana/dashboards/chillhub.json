@@ -735,7 +735,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "заходов за час не было"
         },
         "overrides": []
       },
@@ -1191,7 +1192,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "запросов не было"
         },
         "overrides": []
       },
@@ -1297,7 +1299,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "запросов за час не было"
         },
         "overrides": []
       },
@@ -1817,7 +1820,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "запросов не было"
         },
         "overrides": []
       },
@@ -2181,7 +2185,8 @@
               }
             ]
           },
-          "decimals": 0
+          "decimals": 0,
+          "noValue": "отказов не было"
         },
         "overrides": []
       },
@@ -2246,7 +2251,8 @@
               }
             ]
           },
-          "decimals": 0
+          "decimals": 0,
+          "noValue": "событий не было"
         },
         "overrides": []
       },
@@ -2543,12 +2549,19 @@
     {
       "type": "stat",
       "title": "Экономия трафика за 7 дней",
-      "description": "1 − скачано / весила бы полная загрузка, по установкам и обновлениям за неделю. Смысл лаунчера — качать только изменившееся. Установка с нуля экономии не даёт по определению, поэтому неделя из одних установок законно близка к нулю; плохо — падение при идущих обновлениях (см. «Доля обновлений целиком»).",
+      "description": "1 − скачано / весила бы полная загрузка, по установкам и обновлениям за неделю. Смысл лаунчера — качать только изменившееся. Установка с нуля экономии не даёт по определению, поэтому неделя из одних установок законно близка к нулю; плохо — падение при идущих обновлениях (см. «Доля обновлений целиком»). Вторая цифра — то же по числу файлов: сколько файлов сборки клиентам не пришлось качать.",
       "targets": [
         {
           "refId": "A",
           "expr": "100 * (1 - sum(increase(chillhub_downloaded_bytes_total[7d])) / clamp_min(sum(increase(chillhub_build_full_bytes_total[7d])), 1))",
-          "instant": true
+          "instant": true,
+          "legendFormat": "по байтам"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "по файлам",
+          "instant": true,
+          "expr": "100 * (1 - sum(increase(chillhub_downloaded_files_total[7d])) / clamp_min(sum(increase(chillhub_build_files_total[7d])), 1))"
         }
       ],
       "options": {
@@ -2561,7 +2574,7 @@
         },
         "colorMode": "background",
         "graphMode": "none",
-        "textMode": "value"
+        "textMode": "value_and_name"
       },
       "fieldConfig": {
         "defaults": {
@@ -2811,7 +2824,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "noValue": "операций не было"
         },
         "overrides": []
       },
@@ -2876,7 +2890,8 @@
               }
             ]
           },
-          "decimals": 0
+          "decimals": 0,
+          "noValue": "отказов не было"
         },
         "overrides": []
       },
@@ -3028,7 +3043,8 @@
               }
             ]
           },
-          "decimals": 1
+          "decimals": 1,
+          "noValue": "установок не было"
         },
         "overrides": []
       },
@@ -3096,7 +3112,8 @@
               }
             ]
           },
-          "decimals": 1
+          "decimals": 1,
+          "noValue": "обновлений не было"
         },
         "overrides": []
       },
