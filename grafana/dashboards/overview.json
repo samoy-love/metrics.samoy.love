@@ -1900,7 +1900,7 @@
     {
       "type": "timeseries",
       "title": "Посещаемость: сейчас против недели назад",
-      "description": "100% — трафик к «/» такой же, как в эти же 6 часов неделю назад; правило TrafficCollapse срабатывает ниже 20%. Сравнение с прошлой неделей, а не с абсолютным числом: у личных проектов нет «нормального» количества визитов, только недельный ритм. С 19.09.2026 blackbox ходит к сайтам через nginx хоста, и его пробы (2 в минуту на каждый сайт) попадают в журнал вместе с проверками агента статуса (ещё около 1 в минуту): в числах по «/» роботы стоят вровень с людьми, а то и выше. До 26.09.2026 линии стоят около 300% только из-за этого.",
+      "description": "100% — трафик к «/» такой же, как в эти же 6 часов неделю назад; правило TrafficCollapse срабатывает ниже 20%. Сравнение с прошлой неделей, а не с абсолютным числом: у личных проектов нет «нормального» количества визитов, только недельный ритм. С 19.09.2026 blackbox ходит к сайтам через nginx хоста, и его пробы (2 в минуту на каждый сайт) попадают в журнал вместе с проверками агента статуса (ещё около 1 в минуту): в числах по «/» роботы стоят вровень с людьми, а то и выше. До 26.09.2026 линии стоят около 300% только из-за этого. Шкала обрезана на 300 %: у сайта, которого неделю назад почти не было, отношение уходит в тысячи процентов и сплющивало остальные линии; тревога TrafficCollapse смотрит на падение, а не на рост.",
       "targets": [
         {
           "refId": "A",
@@ -1949,7 +1949,8 @@
               }
             ]
           },
-          "decimals": 0
+          "decimals": 0,
+          "max": 300
         },
         "overrides": []
       },
@@ -2036,12 +2037,17 @@
     {
       "type": "timeseries",
       "title": "Ошибки разбора журнала nginx",
-      "description": "Строки журнала, не разобранные экспортёром: формат в deploy-kit и строка разбора экспортёра разошлись молча, метрики посещаемости замерли на месте, хотя сайт жив. Формула правила AccessLogParseFailing. Счётчик у экспортёра один на весь журнал, без разбивки по сайтам.",
+      "description": "Строки журнала, не разобранные экспортёром: формат в deploy-kit и строка разбора экспортёра разошлись молча, метрики посещаемости замерли на месте, хотя сайт жив. Формула правила AccessLogParseFailing. Счётчик у экспортёра один на весь журнал, без разбивки по сайтам. Вторая линия — журнал событий сайтов (/e/…), у него свой разборщик.",
       "targets": [
         {
           "refId": "A",
           "expr": "increase(samoylove_site_parse_errors_total[30m])",
           "legendFormat": "строк не разобрано"
+        },
+        {
+          "refId": "B",
+          "expr": "increase(samoylove_event_parse_errors_total[30m])",
+          "legendFormat": "журнал событий"
         }
       ],
       "options": {
@@ -2105,16 +2111,16 @@
         "y": 49
       },
       "panels": [],
-      "description": "node_exporter внутри контейнера web, где живут nginx, сайты и этот стек мониторинга (job=\"node\"). Второй экспортёр на самом хосте (job=\"node-host\") отдаёт те же имена метрик — без фильтра по job каждая панель ниже показывала бы машину дважды. Железо, ZFS и контейнеры Incus — в дашборде «Железо»."
+      "description": "Ресурсы контейнера web, где живут nginx, сайты и этот стек мониторинга, по данным Incus (job=\"incus\"). node_exporter внутри web (job=\"node\") читает /proc хоста, поэтому процессор, память, нагрузка и сеть у него — всего сервера или собственного docker-контейнера экспортёра, а не web. От него здесь остались только диск и аптайм. Сервер целиком — в дашборде «Железо»."
     },
     {
       "type": "stat",
-      "title": "CPU",
-      "description": "Загрузка всех ядер. Устойчиво выше 80% означает, что соседи начинают мешать друг другу.",
+      "title": "CPU, ядра",
+      "description": "Сколько ядер хоста сейчас занимает контейнер web. Потолка по процессору у web нет; обычно это десятые доли ядра, устойчиво больше одного — что-то в сайтах или в стеке мониторинга крутится вхолостую.",
       "targets": [
         {
           "refId": "A",
-          "expr": "100 - avg(rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}[5m])) * 100",
+          "expr": "sum(rate(incus_cpu_seconds_total{name=\"web\"}[5m]))",
           "instant": true
         }
       ],
@@ -2132,8 +2138,8 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
-          "decimals": 1,
+          "unit": "short",
+          "decimals": 2,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -2143,11 +2149,11 @@
               },
               {
                 "color": "yellow",
-                "value": 70
+                "value": 1
               },
               {
                 "color": "red",
-                "value": 85
+                "value": 2
               }
             ]
           }
@@ -2169,11 +2175,11 @@
     {
       "type": "stat",
       "title": "Память",
-      "description": "Занято от общего объёма. Кеш не считается занятым: ядро отдаёт его по первому требованию.",
+      "description": "Занято от лимита памяти контейнера web. Кеш не считается занятым: ядро отдаёт его по первому требованию. У самого лимита упирается прежде всего рендер скриншотов Grafana — убийства по памяти видны на панели «Процессы и убийства по памяти».",
       "targets": [
         {
           "refId": "A",
-          "expr": "(1 - node_memory_MemAvailable_bytes{job=\"node\"} / node_memory_MemTotal_bytes{job=\"node\"}) * 100",
+          "expr": "100 * (incus_memory_MemTotal_bytes{name=\"web\"} - incus_memory_MemAvailable_bytes{name=\"web\"}) / incus_memory_MemTotal_bytes{name=\"web\"}",
           "instant": true
         }
       ],
@@ -2344,12 +2350,12 @@
     },
     {
       "type": "timeseries",
-      "title": "CPU по режимам",
-      "description": "Куда уходит процессор. Высокий iowait означает диск, steal — соседей по гипервизору.",
+      "title": "CPU по режимам, ядра",
+      "description": "Сколько ядер контейнер web тратит в пространстве пользователя и в ядре. Рост «ядро» без роста трафика — обычно сеть или диск.",
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum by (mode) (rate(node_cpu_seconds_total{job=\"node\",mode!=\"idle\"}[5m])) / scalar(count(count by (cpu) (node_cpu_seconds_total{job=\"node\"})))",
+          "expr": "sum by (mode) (rate(incus_cpu_seconds_total{name=\"web\"}[5m]))",
           "legendFormat": "{{mode}}"
         }
       ],
@@ -2366,7 +2372,7 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
+          "unit": "short",
           "custom": {
             "drawStyle": "line",
             "lineWidth": 1,
@@ -2385,7 +2391,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "decimals": 2
         },
         "overrides": []
       },
@@ -2404,22 +2411,22 @@
     {
       "type": "timeseries",
       "title": "Память",
-      "description": "Всего, занято и под кешем. Занятое, упирающееся в общий объём, — предвестник OOM.",
+      "description": "Лимит контейнера web, занятое и кеш. Занятое, упирающееся в лимит, — предвестник убийства по памяти внутри web.",
       "targets": [
         {
           "refId": "A",
-          "expr": "node_memory_MemTotal_bytes{job=\"node\"}",
-          "legendFormat": "всего"
+          "expr": "incus_memory_MemTotal_bytes{name=\"web\"}",
+          "legendFormat": "лимит"
         },
         {
           "refId": "B",
-          "expr": "node_memory_MemTotal_bytes{job=\"node\"} - node_memory_MemAvailable_bytes{job=\"node\"}",
+          "expr": "incus_memory_MemTotal_bytes{name=\"web\"} - incus_memory_MemAvailable_bytes{name=\"web\"}",
           "legendFormat": "занято"
         },
         {
           "refId": "C",
-          "expr": "node_memory_Cached_bytes{job=\"node\"} + node_memory_Buffers_bytes{job=\"node\"}",
-          "legendFormat": "кеш и буферы"
+          "expr": "incus_memory_Cached_bytes{name=\"web\"}",
+          "legendFormat": "кеш"
         }
       ],
       "options": {
@@ -2473,17 +2480,17 @@
     {
       "type": "timeseries",
       "title": "Сеть",
-      "description": "Входящий и исходящий трафик внешнего интерфейса контейнера web, в битах в секунду. Канал хоста целиком и шейпер — в дашборде «Железо».",
+      "description": "Входящий и исходящий трафик внешнего интерфейса контейнера web (eth0), в битах в секунду. Канал хоста целиком и шейпер — в дашборде «Железо».",
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(node_network_receive_bytes_total{job=\"node\",device!~\"lo|veth.*|docker.*|br-.*\"}[5m]) * 8",
-          "legendFormat": "входящий: {{device}}"
+          "expr": "sum(rate(incus_network_receive_bytes_total{name=\"web\",device=\"eth0\"}[5m])) * 8",
+          "legendFormat": "входящий"
         },
         {
           "refId": "B",
-          "expr": "rate(node_network_transmit_bytes_total{job=\"node\",device!~\"lo|veth.*|docker.*|br-.*\"}[5m]) * 8",
-          "legendFormat": "исходящий: {{device}}"
+          "expr": "sum(rate(incus_network_transmit_bytes_total{name=\"web\",device=\"eth0\"}[5m])) * 8",
+          "legendFormat": "исходящий"
         }
       ],
       "options": {
@@ -2600,23 +2607,18 @@
     },
     {
       "type": "timeseries",
-      "title": "Load average",
-      "description": "Средняя очередь на исполнение. Ориентир — число ядер (16): выше означает, что задачи ждут.",
+      "title": "Процессы и убийства по памяти",
+      "description": "Число процессов в контейнере web и сколько из них ядро убило за нехватку памяти за последний час (правая ось). Load average здесь больше не показывается: внутри контейнера он хостовый и про web ничего не говорит — нагрузка хоста в дашборде «Железо».",
       "targets": [
         {
           "refId": "A",
-          "expr": "node_load1{job=\"node\"}",
-          "legendFormat": "1 мин"
+          "expr": "incus_procs_total{name=\"web\"}",
+          "legendFormat": "процессов"
         },
         {
           "refId": "B",
-          "expr": "node_load5{job=\"node\"}",
-          "legendFormat": "5 мин"
-        },
-        {
-          "refId": "C",
-          "expr": "node_load15{job=\"node\"}",
-          "legendFormat": "15 мин"
+          "expr": "increase(incus_memory_OOM_kills_total{name=\"web\"}[1h])",
+          "legendFormat": "убито по памяти за час"
         }
       ],
       "options": {
@@ -2651,10 +2653,33 @@
                 "value": null
               }
             ]
-          },
-          "decimals": 2
+          }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "убито по памяти за час"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
       },
       "id": 24,
       "gridPos": {
@@ -2747,17 +2772,27 @@
     {
       "type": "timeseries",
       "title": "Сетевые ошибки",
-      "description": "Ошибки приёма и передачи внешних интерфейсов: node — контейнер web, node-host — хост со всеми его интерфейсами, включая мосты и tap виртуалок. Те же интерфейсы, что у правила NetworkErrorsHigh; здесь суммой по экспортёру, правило смотрит на каждый интерфейс отдельно. Любая ненулевая скорость дольше 10 минут — повод посмотреть на кабель, драйвер или шейпер; какой интерфейс — в дашборде «Железо».",
+      "description": "Ошибки приёма и передачи: хост — все его внешние интерфейсы, включая мосты и tap виртуалок (те же, что у правила NetworkErrorsHigh; здесь суммой, правило смотрит на каждый интерфейс), web — eth0 контейнера по данным Incus. Любая ненулевая скорость дольше 10 минут — повод посмотреть на кабель, драйвер или шейпер; какой интерфейс — в дашборде «Железо».",
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (job) (rate(node_network_receive_errs_total{device!~\"lo|veth.*|docker.*|br-.*\"}[5m]))",
-          "legendFormat": "приём: {{job}}"
+          "expr": "sum(rate(node_network_receive_errs_total{job=\"node-host\",device!~\"lo|veth.*|docker.*|br-.*\"}[5m]))",
+          "legendFormat": "приём: хост"
         },
         {
           "refId": "B",
-          "expr": "sum by (job) (rate(node_network_transmit_errs_total{device!~\"lo|veth.*|docker.*|br-.*\"}[5m]))",
-          "legendFormat": "передача: {{job}}"
+          "expr": "sum(rate(node_network_transmit_errs_total{job=\"node-host\",device!~\"lo|veth.*|docker.*|br-.*\"}[5m]))",
+          "legendFormat": "передача: хост"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(incus_network_receive_errs_total{name=\"web\",device=\"eth0\"}[5m]))",
+          "legendFormat": "приём: web"
+        },
+        {
+          "refId": "D",
+          "expr": "sum(rate(incus_network_transmit_errs_total{name=\"web\",device=\"eth0\"}[5m]))",
+          "legendFormat": "передача: web"
         }
       ],
       "options": {
@@ -3560,7 +3595,7 @@
       "id": 56,
       "gridPos": {
         "h": 4,
-        "w": 6,
+        "w": 4,
         "x": 0,
         "y": 102
       },
@@ -3630,8 +3665,8 @@
       "id": 57,
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 6,
+        "w": 4,
+        "x": 4,
         "y": 102
       },
       "datasource": {
@@ -3695,13 +3730,153 @@
     },
     {
       "type": "stat",
+      "title": "CI: ждут лёгкие",
+      "description": "Задания, ждущие лёгкий раннер (метка light: линтеры, тесты на Node, снимки страниц, покрытие). Три раннера ci-light, задание обычно стартует за секунды.",
+      "id": 60,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 102
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(ci_jobs_queued{pool=\"home-light\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "нет данных",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 4
+              },
+              {
+                "color": "orange",
+                "value": 8
+              },
+              {
+                "color": "red",
+                "value": 15
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "links": [
+        {
+          "title": "Дашборд: CI",
+          "url": "/d/samoylove-ci"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "CI: самое долгое ожидание, лёгкие",
+      "description": "Возраст самого старого задания, ждущего лёгкий раннер. Больше 5 минут — тревога CIQueueStuckLight.",
+      "id": 61,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 102
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(ci_job_queue_oldest_seconds{pool=\"home-light\"})",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "noValue": "нет данных",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 180
+              },
+              {
+                "color": "orange",
+                "value": 600
+              },
+              {
+                "color": "red",
+                "value": 1200
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "links": [
+        {
+          "title": "Дашборд: CI",
+          "url": "/d/samoylove-ci"
+        }
+      ]
+    },
+    {
+      "type": "stat",
       "title": "CI: ждут Windows",
       "description": "Задания, ждущие win-builder. Машина спит и просыпается по требованию: одно задание на минуту-две — её загрузка.",
       "id": 58,
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 12,
+        "w": 4,
+        "x": 16,
         "y": 102
       },
       "datasource": {
@@ -3770,8 +3945,8 @@
       "id": 59,
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 18,
+        "w": 4,
+        "x": 20,
         "y": 102
       },
       "datasource": {
