@@ -2093,7 +2093,7 @@
         "defaults": {
           "unit": "short",
           "min": 0,
-          "noValue": "упора в квоту не было",
+          "noValue": "простоя нет или сборщик не отвечает",
           "custom": {
             "lineWidth": 2,
             "fillOpacity": 8,
