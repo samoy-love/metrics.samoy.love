@@ -128,7 +128,7 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: warning }
-        annotations: { summary: "Less than 10% of memory available", __dashboardUid__: "samoylove-overview", __panelId__: "17" }
+        annotations: { summary: "Less than 15% of host memory available", __dashboardUid__: "samoylove-hardware", __panelId__: "16" }
 
       - uid: infra-cpu-saturated
         title: CpuSaturated
@@ -138,7 +138,9 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+              # Только хост: node_exporter внутри web читает /proc хоста, и без фильтра
+              # одна и та же загрузка приходила двумя тревогами.
+              expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{job="node-host",mode="idle"}[5m])) * 100) > 90
               instant: true
               refId: A
           - refId: C
@@ -157,7 +159,7 @@ groups:
         execErrState: Error
         for: 30m
         labels: { severity: warning }
-        annotations: { summary: "CPU above 90% for half an hour", __dashboardUid__: "samoylove-overview", __panelId__: "16" }
+        annotations: { summary: "Host CPU above 90% for half an hour", __dashboardUid__: "samoylove-hardware", __panelId__: "15" }
 
       - uid: infra-node-rebooted
         title: NodeRebooted
@@ -170,7 +172,9 @@ groups:
               # for отсутствует не по забывчивости: сама метрика гасит себя —
               # условие ложно уже через 5 минут после старта, держать
               # отдельную задержку незачем.
-              expr: time() - node_boot_time_seconds < 300
+              # Только хост: время загрузки у web то же самое (общее ядро), и
+              # перезагрузка приходила двумя одинаковыми тревогами.
+              expr: time() - node_boot_time_seconds{job="node-host"} < 300
               instant: true
               refId: A
           - refId: C
@@ -189,7 +193,7 @@ groups:
         execErrState: Error
         for: 0s
         labels: { severity: warning }
-        annotations: { summary: "Server rebooted less than 5 minutes ago", __dashboardUid__: "samoylove-overview", __panelId__: "19" }
+        annotations: { summary: "Server rebooted less than 5 minutes ago", __dashboardUid__: "samoylove-hardware", __panelId__: "62" }
 
       - uid: infra-network-errors-high
         title: NetworkErrorsHigh
@@ -599,7 +603,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 1800, to: 0 }
             model:
-              expr: 'increase(incus_memory_OOM_kills_total{name!~"ci-runner.*"}[15m]) > 0'
+              expr: 'increase(incus_memory_OOM_kills_total{name!~"ci-(runner|light).*"}[15m]) > 0'
               instant: true
               refId: A
           - refId: C
@@ -618,7 +622,7 @@ groups:
         execErrState: Error
         for: 0m
         labels: { severity: warning }
-        annotations: { summary: "A process was killed by the out-of-memory killer inside an instance", description: "Процесс убит за нехватку памяти в инстансе (метка name): он умер молча, и то, что он делал, не доехало. Разбор 19.09.2026: все 17 убийств в web — это Chromium рендерера скриншотов с лимитом 512 МБ, шесть в cs2-render — старый потолок игры, поднятый с тех пор. Считается increase, а не changes: у одноразовых раннеров счётчик обнуляется на каждом задании, поэтому они исключены по имени. Нарочные потолки внутри cs2 (работник, разбор демки под limitmem) метрика Incus отличить не умеет — для этого нужен сбор по cgroup." }
+        annotations: { summary: "A process was killed by the out-of-memory killer inside an instance", description: "Процесс убит за нехватку памяти в инстансе (метка name): он умер молча, и то, что он делал, не доехало. Разбор 19.09.2026: все 17 убийств в web — это Chromium рендерера скриншотов с лимитом 512 МБ, шесть в cs2-render — старый потолок игры, поднятый с тех пор. Считается increase, а не changes: у одноразовых раннеров счётчик обнуляется на каждом задании, поэтому они исключены по имени — и большие ci-runner, и лёгкие ci-light. Нарочные потолки внутри cs2 (работник, разбор демки под limitmem) метрика Incus отличить не умеет — для этого нужен сбор по cgroup." }
 
       - uid: hw-swap-in-use
         title: SwapInUse
@@ -947,7 +951,10 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 3600, to: 0 }
             model:
-              expr: 'increase(node_network_carrier_changes_total{job="node-host",device="eno1"}[1h]) > 0'
+              # Первый час после загрузки не считается: линк поднимается при старте,
+              # счётчик начинает с двух перепадов, и 22.09.2026 после перезагрузки
+              # тревога горела час без всякой беды с кабелем.
+              expr: 'increase(node_network_carrier_changes_total{job="node-host",device="eno1"}[1h]) > 0 and on() (time() - node_boot_time_seconds{job="node-host"}) > 3600'
               instant: true
               refId: A
           - refId: C
@@ -2472,7 +2479,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: 'increase(cs2_gc_requests_total{result="не_разобран"}[1h]) > 0'
+              expr: 'sum(increase(cs2_gc_requests_total{result="не_разобран"}[1h])) > 0'
               instant: true
               refId: A
           - refId: C
@@ -2927,7 +2934,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: 'increase(cs2_steam_requests_total{result="ключ_отклонён"}[1h]) > 3'
+              expr: 'sum(increase(cs2_steam_requests_total{result="ключ_отклонён"}[1h])) > 3'
               instant: true
               refId: A
           - refId: C
@@ -3631,7 +3638,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 1800, to: 0 }
             model:
-              expr: 'sum by (rule_group) (increase(grafana_alerting_rule_evaluation_failures_total[30m])) > 0'
+              expr: 'sum(increase(grafana_alerting_rule_evaluation_failures_total[30m])) > 0'
               instant: true
               refId: A
           - refId: C
