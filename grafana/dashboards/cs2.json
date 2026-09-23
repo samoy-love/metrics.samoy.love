@@ -662,7 +662,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (le) (increase(cs2_http_request_duration_seconds_bucket{route!~\"статика|служебные\"}[$__rate_interval]))",
+          "expr": "sum by (le) (increase(cs2_http_request_duration_seconds_bucket{route!~\"статика|служебные|медиа\"}[$__rate_interval]))",
           "legendFormat": "{{le}}",
           "format": "heatmap"
         }
@@ -734,17 +734,17 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(cs2_http_request_duration_seconds_bucket{route!~\"статика|служебные\"}[15m])))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(cs2_http_request_duration_seconds_bucket{route!~\"статика|служебные|медиа\"}[15m])))",
           "legendFormat": "p50"
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(cs2_http_request_duration_seconds_bucket{route!~\"статика|служебные\"}[15m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(cs2_http_request_duration_seconds_bucket{route!~\"статика|служебные|медиа\"}[15m])))",
           "legendFormat": "p95"
         },
         {
           "refId": "C",
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(cs2_http_request_duration_seconds_bucket{route!~\"статика|служебные\"}[15m])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(cs2_http_request_duration_seconds_bucket{route!~\"статика|служебные|медиа\"}[15m])))",
           "legendFormat": "p99"
         }
       ],
@@ -888,12 +888,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(cs2_http_requests_total{route!~\"статика|служебные\"}[1h])) * 3600",
+          "expr": "sum(rate(cs2_http_requests_total{route!~\"статика|служебные|медиа\"}[1h])) * 3600",
           "legendFormat": "сейчас"
         },
         {
           "refId": "B",
-          "expr": "sum(rate(cs2_http_requests_total{route!~\"статика|служебные\"}[1h] offset 1w)) * 3600",
+          "expr": "sum(rate(cs2_http_requests_total{route!~\"статика|служебные|медиа\"}[1h] offset 1w)) * 3600",
           "legendFormat": "неделю назад"
         }
       ],
@@ -972,6 +972,59 @@
       }
     },
     {
+      "type": "timeseries",
+      "title": "5xx от nginx",
+      "description": "Пятисотки по журналу nginx за час, по коду. Здесь видно то, чего не видит сам сервис: 502 и 504, которые nginx отдал, пока cs2-api лежал, перезапускался при выкатке или не успел ответить. Панель «Доля пятисоток» выше считает только ответы самого сервиса.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (status) (increase(samoylove_site_http_response_count_total{host=\"cs.samoy.love\",status=~\"5..\"}[1h]))",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 12,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "id": 114,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      }
+    },
+    {
       "type": "row",
       "title": "Цепочка: матчи приходят сами",
       "collapsed": false,
@@ -979,7 +1032,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 34
+        "y": 41
       },
       "panels": []
     },
@@ -1046,7 +1099,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 35
+        "y": 42
       },
       "datasource": {
         "type": "prometheus",
@@ -1097,7 +1150,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 35
+        "y": 42
       },
       "datasource": {
         "type": "prometheus",
@@ -1148,7 +1201,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 35
+        "y": 42
       },
       "datasource": {
         "type": "prometheus",
@@ -1203,7 +1256,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 35
+        "y": 42
       },
       "datasource": {
         "type": "prometheus",
@@ -1254,7 +1307,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 35
+        "y": 42
       },
       "datasource": {
         "type": "prometheus",
@@ -1309,7 +1362,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 35
+        "y": 42
       },
       "datasource": {
         "type": "prometheus",
@@ -1384,7 +1437,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 39
+        "y": 46
       },
       "datasource": {
         "type": "prometheus",
@@ -1445,7 +1498,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 39
+        "y": 46
       },
       "datasource": {
         "type": "prometheus",
@@ -1506,7 +1559,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 46
+        "y": 53
       },
       "datasource": {
         "type": "prometheus",
@@ -1566,7 +1619,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 46
+        "y": 53
       },
       "datasource": {
         "type": "prometheus",
@@ -1632,7 +1685,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 46
+        "y": 53
       },
       "datasource": {
         "type": "prometheus",
@@ -1647,7 +1700,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 53
+        "y": 60
       },
       "panels": []
     },
@@ -1699,7 +1752,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 54
+        "y": 61
       },
       "datasource": {
         "type": "prometheus",
@@ -1758,7 +1811,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 54
+        "y": 61
       },
       "datasource": {
         "type": "prometheus",
@@ -1818,7 +1871,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 54
+        "y": 61
       },
       "datasource": {
         "type": "prometheus",
@@ -1873,7 +1926,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 54
+        "y": 61
       },
       "datasource": {
         "type": "prometheus",
@@ -1924,7 +1977,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 54
+        "y": 61
       },
       "datasource": {
         "type": "prometheus",
@@ -1976,7 +2029,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 54
+        "y": 61
       },
       "datasource": {
         "type": "prometheus",
@@ -2041,7 +2094,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 58
+        "y": 65
       },
       "datasource": {
         "type": "prometheus",
@@ -2101,7 +2154,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 58
+        "y": 65
       },
       "datasource": {
         "type": "prometheus",
@@ -2194,7 +2247,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 65
+        "y": 72
       }
     },
     {
@@ -2260,7 +2313,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 65
+        "y": 72
       }
     },
     {
@@ -2271,7 +2324,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 72
+        "y": 79
       },
       "panels": []
     },
@@ -2341,7 +2394,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 73
+        "y": 80
       },
       "datasource": {
         "type": "prometheus",
@@ -2410,7 +2463,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 73
+        "y": 80
       },
       "datasource": {
         "type": "prometheus",
@@ -2480,7 +2533,7 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 73
+        "y": 80
       },
       "datasource": {
         "type": "prometheus",
@@ -2532,7 +2585,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 73
+        "y": 80
       },
       "datasource": {
         "type": "prometheus",
@@ -2583,7 +2636,7 @@
         "h": 3,
         "w": 4,
         "x": 16,
-        "y": 77
+        "y": 84
       },
       "datasource": {
         "type": "prometheus",
@@ -2634,7 +2687,7 @@
         "h": 3,
         "w": 4,
         "x": 20,
-        "y": 77
+        "y": 84
       },
       "datasource": {
         "type": "prometheus",
@@ -2725,7 +2778,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 80
+        "y": 87
       }
     },
     {
@@ -2784,7 +2837,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 80
+        "y": 87
       }
     },
     {
@@ -2846,7 +2899,7 @@
         "h": 7,
         "w": 16,
         "x": 8,
-        "y": 80
+        "y": 87
       }
     },
     {
@@ -2857,7 +2910,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 87
+        "y": 94
       },
       "panels": []
     },
@@ -2914,7 +2967,7 @@
         "h": 7,
         "w": 6,
         "x": 0,
-        "y": 88
+        "y": 95
       },
       "datasource": {
         "type": "prometheus",
@@ -2974,7 +3027,7 @@
         "h": 7,
         "w": 9,
         "x": 6,
-        "y": 88
+        "y": 95
       },
       "datasource": {
         "type": "prometheus",
@@ -3034,7 +3087,7 @@
         "h": 7,
         "w": 9,
         "x": 15,
-        "y": 88
+        "y": 95
       },
       "datasource": {
         "type": "prometheus",
@@ -3101,7 +3154,7 @@
         "h": 8,
         "w": 10,
         "x": 0,
-        "y": 95
+        "y": 102
       },
       "datasource": {
         "type": "prometheus",
@@ -3156,7 +3209,7 @@
         "h": 4,
         "w": 4,
         "x": 10,
-        "y": 95
+        "y": 102
       },
       "datasource": {
         "type": "prometheus",
@@ -3207,7 +3260,7 @@
         "h": 4,
         "w": 4,
         "x": 14,
-        "y": 95
+        "y": 102
       },
       "datasource": {
         "type": "prometheus",
@@ -3258,7 +3311,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 95
+        "y": 102
       },
       "datasource": {
         "type": "prometheus",
@@ -3323,7 +3376,7 @@
         "h": 4,
         "w": 14,
         "x": 10,
-        "y": 99
+        "y": 106
       },
       "datasource": {
         "type": "prometheus",
@@ -3405,7 +3458,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 103
+        "y": 110
       }
     },
     {
@@ -3466,7 +3519,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 103
+        "y": 110
       }
     },
     {
@@ -3538,7 +3591,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 103
+        "y": 110
       }
     },
     {
@@ -3549,7 +3602,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 110
+        "y": 117
       },
       "panels": []
     },
@@ -3598,7 +3651,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 111
+        "y": 118
       },
       "datasource": {
         "type": "prometheus",
@@ -3696,7 +3749,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 111
+        "y": 118
       },
       "datasource": {
         "type": "prometheus",
@@ -3757,7 +3810,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 111
+        "y": 118
       },
       "datasource": {
         "type": "prometheus",
@@ -3772,7 +3825,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 118
+        "y": 125
       },
       "panels": []
     },
@@ -3820,7 +3873,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 119
+        "y": 126
       },
       "datasource": {
         "type": "prometheus",
@@ -3880,7 +3933,7 @@
         "h": 4,
         "w": 5,
         "x": 4,
-        "y": 119
+        "y": 126
       },
       "datasource": {
         "type": "prometheus",
@@ -3945,7 +3998,7 @@
         "h": 8,
         "w": 15,
         "x": 9,
-        "y": 119
+        "y": 126
       },
       "datasource": {
         "type": "prometheus",
@@ -4004,7 +4057,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 123
+        "y": 130
       },
       "datasource": {
         "type": "prometheus",
@@ -4064,7 +4117,7 @@
         "h": 4,
         "w": 5,
         "x": 4,
-        "y": 123
+        "y": 130
       },
       "datasource": {
         "type": "prometheus",
@@ -4127,7 +4180,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 127
+        "y": 134
       }
     },
     {
@@ -4178,7 +4231,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 127
+        "y": 134
       }
     },
     {
@@ -4229,7 +4282,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 127
+        "y": 134
       }
     },
     {
@@ -4280,7 +4333,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 127
+        "y": 134
       }
     },
     {
@@ -4293,7 +4346,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 131
+        "y": 138
       }
     },
     {
@@ -4344,7 +4397,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 132
+        "y": 139
       },
       "datasource": {
         "type": "prometheus",
@@ -4399,7 +4452,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 132
+        "y": 139
       },
       "datasource": {
         "type": "prometheus",
@@ -4450,7 +4503,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 132
+        "y": 139
       },
       "datasource": {
         "type": "prometheus",
@@ -4501,7 +4554,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 132
+        "y": 139
       },
       "datasource": {
         "type": "prometheus",
@@ -4534,7 +4587,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 136
+        "y": 143
       },
       "datasource": {
         "type": "prometheus",
@@ -4568,7 +4621,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 136
+        "y": 143
       },
       "datasource": {
         "type": "prometheus",
@@ -4602,7 +4655,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 144
+        "y": 151
       },
       "datasource": {
         "type": "prometheus",
@@ -4635,7 +4688,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 152
+        "y": 159
       },
       "datasource": {
         "type": "prometheus",
@@ -4674,7 +4727,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 152
+        "y": 159
       },
       "datasource": {
         "type": "prometheus",
@@ -4708,7 +4761,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 160
+        "y": 167
       },
       "datasource": {
         "type": "prometheus",
@@ -4742,7 +4795,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 160
+        "y": 167
       },
       "datasource": {
         "type": "prometheus",
@@ -4757,7 +4810,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 168
+        "y": 175
       },
       "panels": []
     },
@@ -4813,7 +4866,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 169
+        "y": 176
       },
       "datasource": {
         "type": "prometheus",
@@ -4864,7 +4917,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 169
+        "y": 176
       },
       "datasource": {
         "type": "prometheus",
@@ -4919,7 +4972,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 169
+        "y": 176
       },
       "datasource": {
         "type": "prometheus",
@@ -4978,7 +5031,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 169
+        "y": 176
       },
       "datasource": {
         "type": "prometheus",
@@ -5011,7 +5064,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 173
+        "y": 180
       },
       "datasource": {
         "type": "prometheus",
@@ -5044,7 +5097,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 173
+        "y": 180
       },
       "datasource": {
         "type": "prometheus",
@@ -5095,7 +5148,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 181
+        "y": 188
       },
       "datasource": {
         "type": "prometheus",
@@ -5153,7 +5206,7 @@
         "h": 4,
         "w": 8,
         "x": 4,
-        "y": 181
+        "y": 188
       },
       "datasource": {
         "type": "prometheus",
@@ -5212,7 +5265,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 181
+        "y": 188
       },
       "datasource": {
         "type": "prometheus",
@@ -5250,11 +5303,265 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 181
+        "y": 188
       },
       "datasource": {
         "type": "prometheus",
         "uid": "samoylove-prometheus"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Рендер с первого раза",
+      "description": "Доля заданий рендера за неделю, готовых без единой неудачной попытки, по движку (ролики не в счёт). Цель — единица. Ниже 0,9 сутки подряд — тревога; какая причина повторов выросла, видно в cs2_render_retries_week.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_render_first_try_ratio",
+          "legendFormat": "{{engine}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0.9
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 910,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 192
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Движок съёмки",
+      "description": "Исправен ли движок по последней пробе и вышла ли HLAE новее установленной. «Сломан» у hlae — камеры повтора не работают, обычно после обновления CS2: заказы уходят на Linux, ролики с камерами ждут. Сломан и есть новая версия — пора ставить её на cs2-win и гонять стенд.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_render_engine_ok",
+          "instant": true,
+          "legendFormat": "{{engine}}"
+        },
+        {
+          "refId": "B",
+          "expr": "cs2_render_engine_update",
+          "instant": true,
+          "legendFormat": "{{engine}}: новая версия"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "сломан",
+                  "index": 0
+                },
+                "1": {
+                  "text": "исправен",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "нет",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "есть",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "blue",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": 911,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 192
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Место на машинах рендера",
+      "description": "Свободное место машины рендера: меньшее из каталога клипов и её рабочих каталогов (на Windows это разные диски, Z: и C:). Ниже 10 ГиБ — тревога, ниже 8 ГиБ сборщик стирает клипы сверх сроков, ниже 2 ГиБ машина не берёт заданий вовсе.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_render_clips_free_bytes",
+          "legendFormat": "{{engine}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 2147483648
+              },
+              {
+                "color": "green",
+                "value": 10737418240
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 912,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 192
       }
     },
     {
@@ -5267,7 +5574,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 185
+        "y": 200
       },
       "description": "cs2-win — Windows-машина рендера движком HLAE (GTX 1080 Ti); у виртуалки Incus не считает убийства по памяти, поэтому в плитке убийств её нет."
     },
@@ -5356,7 +5663,7 @@
         "h": 8,
         "w": 10,
         "x": 0,
-        "y": 186
+        "y": 201
       }
     },
     {
@@ -5418,7 +5725,7 @@
         "h": 8,
         "w": 10,
         "x": 10,
-        "y": 186
+        "y": 201
       }
     },
     {
@@ -5474,7 +5781,7 @@
         "h": 8,
         "w": 4,
         "x": 20,
-        "y": 186
+        "y": 201
       }
     },
     {
@@ -5487,7 +5794,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 202
+        "y": 217
       },
       "description": "Сколько людей в витрине недели и на какой она ступени. По прошлой неделе выбирается ступень: лига — с 30 авторов и 100 голосующих, обратно в клуб — после двух недель подряд меньше 15 авторов или 50 голосующих."
     },
@@ -5503,7 +5810,7 @@
         "h": 8,
         "w": 4,
         "x": 0,
-        "y": 203
+        "y": 218
       },
       "description": "Ступень витрины сейчас: клуб — один общий зачёт, лига — полки по дивизионам. Меняется только в понедельник.",
       "targets": [
@@ -5570,7 +5877,7 @@
         "h": 8,
         "w": 20,
         "x": 4,
-        "y": 203
+        "y": 218
       },
       "description": "Авторы (прислали клип) и голосующие этой и прошлой недели. Пороги лиги — 30 авторов и 100 голосующих за прошлую неделю; обратно в клуб — меньше 15 или 50 две недели подряд.",
       "targets": [
@@ -5629,7 +5936,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 194
+        "y": 209
       },
       "description": "Загрузка GTX 1080 Ti и её кодировщика на Windows-машине рендера движком HLAE. Подробности (температура, питание, память Windows) — в дашборде «Железо», ряд cs2-win.",
       "targets": [
@@ -5702,7 +6009,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 211
+        "y": 226
       },
       "description": "Вход в /admin по паролю владельца. После пяти неверных паролей за 15 минут вход закрывается, и попытки считаются как blocked."
     },
@@ -5718,7 +6025,7 @@
         "h": 8,
         "w": 4,
         "x": 0,
-        "y": 212
+        "y": 227
       },
       "description": "Неверные пароли и попытки при закрытом входе за последние 15 минут. Больше нуля без входа владельца — кто-то подбирает пароль; от пяти неверных или любой blocked приходит тревога «CS2: кто-то подбирает пароль админки».",
       "targets": [
@@ -5778,7 +6085,7 @@
         "h": 8,
         "w": 20,
         "x": 4,
-        "y": 212
+        "y": 227
       },
       "description": "Сколько попыток входа в админку было за час: ok — вошёл владелец, wrong — неверный пароль, blocked — попытка, когда вход уже закрыт после пяти неверных за 15 минут. Нули — нормальное состояние.",
       "targets": [
@@ -5871,7 +6178,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 220
+        "y": 235
       },
       "description": "Сколько людей в витрине недели и на какой она ступени. По прошлой неделе выбирается ступень: лига — с 30 авторов и 100 голосующих, обратно в клуб — после двух недель подряд меньше 15 авторов или 50 голосующих."
     },
@@ -5887,7 +6194,7 @@
         "h": 8,
         "w": 4,
         "x": 0,
-        "y": 221
+        "y": 236
       },
       "description": "Сколько людей хоть раз заказали пробный ролик с камерами повтора и сохранили свой стиль в конструкторе. Тестовые учётки не считаются. Пока заказы открыты только владельцу, здесь ноль.",
       "targets": [
@@ -5966,7 +6273,7 @@
         "h": 8,
         "w": 20,
         "x": 4,
-        "y": 221
+        "y": 236
       },
       "description": "Люди, которые хоть раз заказали пробный ролик с камерами повтора (movie_trial) и сохранили свой стиль (clip_style). Растёт, когда игроки находят эти функции по подсказкам на «Сегодня» и в конструкторе.",
       "targets": [

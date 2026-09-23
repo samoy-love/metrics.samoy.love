@@ -3251,10 +3251,7 @@ groups:
         annotations: { summary: "Занято больше 85% квоты хранилища демок", description: "Скачиватель уже останавливает круги, когда остаётся меньше десяти гигабайт: новые матчи перестают забираться, а окно у Valve — тридцать дней. Загрузка руками тоже начнёт отказывать. Место кончается тихо и сразу у всех, включая временные файлы разбора.", __dashboardUid__: "samoylove-cs2", __panelId__: "701" }
       # --- Рендер клипов (план cs2 29Д). Очередь лежит в той же базе, что и
       # всё остальное, и метрики по ней считает cs2-api, а не сам работник в
-      # контейнере cs2-render: у того своей мишени сборщика нет. Третья
-      # тревога из плана — «датасет клипов у квоты» — ждёт самого датасета
-      # (29Г) и его метрики; заводить правило по метрике, которой нет, значит
-      # получить вечное NoData вместо тревоги.
+      # контейнере cs2-render: у того своей мишени сборщика нет.
       - uid: cs2-render-failed
         title: "CS2: клип не отрендерился"
         condition: C
@@ -3348,6 +3345,133 @@ groups:
         for: 15m
         labels: { severity: warning }
         annotations: { summary: "Под клипы осталось меньше 4 ГБ: работник рендера встанет на двух", description: "Клипы стираются сами через месяц без обращений, так что это либо всплеск заказов, либо сироты — каталоги без записи в реестре (панель «Клипы: занято» покажет расхождение). Ниже двух гигабайт заказы перестают браться, и у людей клип «готовится» бесконечно. Решать владельцу: расширить квоту ZFS датасета tank/cs2-clips или укоротить срок жизни CS2_RENDER_CLIP_TTL.", __dashboardUid__: "samoylove-cs2", __panelId__: "908" }
+      # --- Здоровье машин рендера (ревью мощности 23.09.2026). Метрики по
+      # машинам несут метку engine (linux, hlae), и выражения её не сводят:
+      # тревога приходит отдельно по каждой машине, потому что чинятся они
+      # порознь — контейнер cs2-render и Windows-машина cs2-win.
+      - uid: cs2-render-first-try-low
+        title: "CS2: рендер часто не получается с первого раза"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              # Доля считается сервисом по неделе завершённых заданий, так что
+              # сама по себе уже сглажена; сутки ниже порога — не случайность
+              # одного вечера, а причина, которая держится.
+              expr: 'cs2_render_first_try_ratio < 0.9'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 24h
+        labels: { severity: warning }
+        annotations: { summary: "Меньше 90% заданий рендера за неделю прошли с первой попытки (машина — метка engine)", description: "Клипы в итоге доходят, но каждый повтор — лишние минуты, пока игрок ждёт. Какая причина выросла, видно в cs2_render_retries_week по той же машине: перемотка, камера, падение игры, HLAE, диск. Частый повод — обновление CS2 или выкатка посреди задания.", __dashboardUid__: "samoylove-cs2", __panelId__: "910" }
+      - uid: cs2-render-engine-broken
+        title: "CS2: движок съёмки сломан"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_render_engine_ok == 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        # Два часа, а не час: проба после обновления CS2 успевает отработать
+        # и перезапуск игры, и повторную проверку — будит только то, что само
+        # не поднялось.
+        for: 2h
+        labels: { severity: warning }
+        annotations: { summary: "Проба движка съёмки не проходит дольше двух часов (движок — метка engine)", description: "У hlae это значит, что камеры повтора не работают: обычные заказы уходят на Linux, а ролики с камерами ждут. Почти всегда причина — обновление CS2, под которое HLAE ещё не вышла или не поставлена. Если одновременно горит «вышла новая версия HLAE» — ставить её на cs2-win и гонять стенд. Журнал — C:\\cs2\\logs\\render.log на cs2-win.", __dashboardUid__: "samoylove-cs2", __panelId__: "911" }
+      - uid: cs2-render-machine-space-low
+        title: "CS2: на машине рендера кончается место"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              # Меньшее из каталога клипов и рабочих каталогов машины; на
+              # Windows это разные диски. Десять гибибайт — раньше, чем в
+              # восьми сборщик начнёт стирать клипы сверх сроков.
+              expr: 'cs2_render_clips_free_bytes < 10 * 1024^3'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "На машине рендера меньше 10 ГиБ свободного места (машина — метка engine)", description: "Ниже 8 ГиБ в каталоге клипов сборщик начнёт стирать клипы раньше срока, ниже 2 ГиБ где угодно машина перестанет брать задания, и клипов не получит никто. На cs2-win смотреть оба диска: Z: (клипы) и C: (дорожки, кэш демок). Это не квота датасета tank/cs2-clips — про неё отдельная тревога «место под клипы кончается».", __dashboardUid__: "samoylove-cs2", __panelId__: "912" }
+      - uid: cs2-render-hlae-update
+        title: "CS2: вышла новая версия HLAE"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_render_engine_update == 1'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        # info идёт общим маршрутом: напоминание раз в сутки, пока версия
+        # не поставлена.
+        labels: { severity: info }
+        annotations: { summary: "Вышла HLAE новее той, что стоит на машине рендера", description: "Само по себе это не поломка: пока движок исправен, обновление можно отложить. Срочно — только вместе с тревогой «движок съёмки сломан»: тогда новая версия, скорее всего, и есть починка после обновления CS2. Ставить на cs2-win и прогонять стенд.", __dashboardUid__: "samoylove-cs2", __panelId__: "911" }
 
       - uid: cs2-chain-no-leader
         title: "CS2: цепочку никто не ведёт"
