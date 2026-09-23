@@ -5860,6 +5860,183 @@
           }
         ]
       }
+    },
+    {
+      "type": "row",
+      "title": "Пробный ролик и свой стиль",
+      "id": 1300,
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 220
+      },
+      "description": "Сколько людей в витрине недели и на какой она ступени. По прошлой неделе выбирается ступень: лига — с 30 авторов и 100 голосующих, обратно в клуб — после двух недель подряд меньше 15 авторов или 50 голосующих."
+    },
+    {
+      "type": "stat",
+      "title": "Попробовали",
+      "id": 1301,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 0,
+        "y": 221
+      },
+      "description": "Сколько людей хоть раз заказали пробный ролик с камерами повтора и сохранили свой стиль в конструкторе. Тестовые учётки не считаются. Пока заказы открыты только владельцу, здесь ноль.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (feature) (cs2_tried_people)",
+          "legendFormat": "{{feature}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "horizontal"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "нет данных от сервиса",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "movie_trial"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "пробный ролик"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "clip_style"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "свой стиль"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Пробный ролик и свой стиль: сколько людей попробовали",
+      "id": 1302,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 20,
+        "x": 4,
+        "y": 221
+      },
+      "description": "Люди, которые хоть раз заказали пробный ролик с камерами повтора (movie_trial) и сохранили свой стиль (clip_style). Растёт, когда игроки находят эти функции по подсказкам на «Сегодня» и в конструкторе.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (feature) (cs2_tried_people)",
+          "legendFormat": "{{feature}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "noValue": "нет данных от сервиса",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "movie_trial"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "пробный ролик"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "clip_style"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "свой стиль"
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }
