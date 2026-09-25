@@ -6344,6 +6344,118 @@
           }
         ]
       }
+    },
+    {
+      "type": "row",
+      "title": "Размер баз",
+      "id": 1400,
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 244
+      },
+      "description": "Сколько места занимают базы сервиса. Демки и клипы сюда не входят, они лежат файлами."
+    },
+    {
+      "type": "timeseries",
+      "title": "Размер баз: Postgres",
+      "id": 1401,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 245
+      },
+      "description": "Вся база Postgres сервиса: учётные записи, коды, очереди, сводки матчей. Резкий рост без роста числа людей — повод посмотреть, какая таблица пухнет.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(cs2_postgres_size_bytes)",
+          "legendFormat": "Postgres"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "noValue": "нет данных от сервиса",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Размер баз: ClickHouse",
+      "id": 1402,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 245
+      },
+      "description": "Место базы ClickHouse на диске: события всех разобранных матчей. Растёт вместе с архивом; ступеньки вниз — слияния кусков.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(cs2_clickhouse_size_bytes)",
+          "legendFormat": "ClickHouse"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "noValue": "нет данных от сервиса",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      }
     }
   ]
 }
