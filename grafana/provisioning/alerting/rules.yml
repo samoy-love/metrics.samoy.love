@@ -3650,6 +3650,423 @@ groups:
         labels: { severity: warning }
         annotations: { summary: "Кто-то подбирает пароль админки cs2", description: "За 15 минут пять и больше неверных паролей к /admin или попытка при уже закрытом входе. Если это не ты — кто-то перебирает пароль владельца: вход сам закрыт на 15 минут, но стоит посмотреть журнал cs2-api и журнал nginx и сменить пароль.", __dashboardUid__: "samoylove-cs2", __panelId__: "1202" }
 
+      # --- Сохранность данных, базы и машины рендера ----------------------
+      # Метрики появились в cs2 25.09.2026. До выкатки сервиса их рядов нет,
+      # поэтому у всех noDataState OK: молчание здесь значит «ещё не пришло»,
+      # а не «сломалось». Исключение одно — отметка дампа, см. её правило.
+      - uid: cs2-parse-postponed
+        title: "CS2: ClickHouse не принимает разбор"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_parse_postponed > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: critical }
+        annotations: { summary: "Разборы откладываются больше часа: ClickHouse не принимает запись", description: "Свежие матчи не появляются ни на сайте, ни в боте. Задания при этом не пропадают: каждое ждёт и пробует снова. Смотреть ClickHouse в контейнере cs2: жив ли, есть ли место, нет ли TOO_MANY_PARTS в журнале cs2-chain." }
+
+      - uid: cs2-parse-failed-seen
+        title: "CS2: упавшие разборы спрятали матчи"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_parse_failed_seen > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 6h
+        labels: { severity: warning }
+        annotations: { summary: "Есть упавшие разборы уже виденных матчей", description: "Человек этот матч уже видел, а теперь он пропал со страниц: перезапись стёрла старые строки и не записала новые. Сам матч не вернётся, пока разбор не пройдёт. Причину искать в parse_jobs.error у упавших заданий." }
+
+      - uid: cs2-parse-deleting-stuck
+        title: "CS2: удаление матча застряло"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_parse_deleting_stuck > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 2h
+        labels: { severity: warning }
+        annotations: { summary: "Удаление матча оборвалось и не доделано", description: "Данные, которые человек просил стереть, всё ещё лежат. Подметальщик не справился за час: смотреть журнал cs2-chain (recheck) и доделывать руками." }
+
+      - uid: cs2-reconcile-mismatch
+        title: "CS2: базы и диск разошлись"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              # parse_missing сюда не входит: такие матчи сверка сама ставит на разбор
+              # заново, и для них есть отдельное правило с порогом.
+              expr: 'cs2_reconcile_mismatches{kind=~"clickhouse_orphan|file_orphan|row_no_file"} > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: warning }
+        annotations: { summary: "Ночная сверка нашла расхождение баз и диска (вид — метка kind)", description: "Сверка только считает, удалять данные без человека ей нельзя. clickhouse_orphan — строки матча без задания, file_orphan — файл демки без записи, row_no_file — запись без файла, то есть демку уже не перечитать. Разбирать руками, начиная с row_no_file." }
+
+      - uid: cs2-reconcile-parse-missing
+        title: "CS2: много матчей без строк в ClickHouse"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_reconcile_mismatches{kind="parse_missing"} > 10'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: warning }
+        annotations: { summary: "Больше десяти матчей помечены разобранными, а строк у них нет", description: "Сверка сама ставит их на разбор заново, но пока разбор не пройдёт, у людей пустые страницы матчей. Один-два — случайность, десяток — ClickHouse терял запись. Проверить, что повторные разборы проходят, и искать, куда делись строки." }
+
+      - uid: cs2-pg-dump-old
+        title: "CS2: дамп Postgres давно не снимался"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_pg_dump_age_seconds > 129600'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 30m
+        labels: { severity: warning }
+        annotations: { summary: "Последний удачный дамп Postgres старше полутора суток", description: "Дамп снимается каждый день, значит, минимум один не удался. Если сейчас потерять базу, пропадут учётные записи, коды и очередь с последнего дампа. Смотреть cs2-pgdump в контейнере cs2: таймер, журнал, место под дампы." }
+
+      - uid: cs2-pg-dump-absent
+        title: "CS2: отметки дампа Postgres нет"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              # Здесь отсутствие ряда и есть беда: отметки нет, пока дамп ни разу не
+              # удался. Двое суток — чтобы свежая выкатка дождалась первого ночного
+              # дампа и не будила зря.
+              expr: 'absent(cs2_pg_dump_age_seconds)'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 48h
+        labels: { severity: warning }
+        annotations: { summary: "Сервис не видит ни одного удачного дампа Postgres", description: "Похоже, резервной копии базы нет вовсе. Проверить, что таймер cs2-pgdump включён в контейнере cs2 и что скрипт пишет отметку в service_marks. Если лежит сам сайт, рядом горит «сайт не отвечает» — начинать с него." }
+
+      - uid: cs2-pg-connections
+        title: "CS2: соединения Postgres на исходе"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_postgres_connections{state="used"} / ignoring(state) cs2_postgres_connections{state="max"} > 0.8'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "Занято больше 80% соединений Postgres", description: "Когда кончатся все, запросы сайта и цепочки начнут падать с ошибкой: страницы не откроются, разбор встанет. Смотреть pg_stat_activity: кто держит соединения и не утекают ли они." }
+
+      - uid: cs2-clickhouse-parts
+        title: "CS2: куски ClickHouse копятся"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_clickhouse_parts{scope="max_partition"} > 200'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "В одной партиции ClickHouse больше 200 кусков", description: "На трёхсотом куске ClickHouse отказывает в любой вставке, и разбор встаёт. Обычно это значит, что слияния не успевают за мелкими вставками. Смотреть system.parts и system.merges." }
+
+      - uid: cs2-erasure-overdue
+        title: "CS2: просьба стереть данные ждёт дольше суток"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_erasure_pending_overdue > 0'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1h
+        labels: { severity: warning }
+        annotations: { summary: "Есть просьба стереть данные, которая ждёт дольше суток", description: "Человеку обещали удалить его данные, а удаление не идёт. Скорее всего, стирание оборвалось посередине. Смотреть таблицу erasure_requests и журналы cs2-api и cs2-chain, доводить руками." }
+
+      - uid: cs2-render-heartbeat
+        title: "CS2: машина рендера молчит"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_render_heartbeat_age_seconds > 600'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "Машина рендера {{ $labels.engine }} молчит больше 10 минут", description: "Её задания без камер уже уходят другим машинам, а ролики с камерами повтора ждут. Смотреть, жив ли работник: на cs2-render это служба в контейнере, на cs2-win — задача планировщика cs2-render и C:\\cs2\\logs\\render.log." }
+
+      - uid: cs2-render-mode-mismatch
+        title: "CS2: режим машины рендера не совпадает с сервисом"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'cs2_render_mode_mismatch == 1'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Режим машины рендера {{ $labels.engine }} не совпадает с режимом сервиса", description: "Лабораторная машина при публичном сервисе кладёт в ролики ассеты без лицензии. Поправить CS2_MODE в настройках машины и перезапустить работника." }
+
+      - uid: cs2-container-unit-failed
+        title: "CS2: в контейнере упала служба"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              # Данные — сборщик incus-units-collect на хосте (репозиторий home-server),
+              # textfile node-host, раз в минуту: node_exporter внутри cs2 и cs2-render нет.
+              expr: 'incus_container_unit_failed == 1'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "В контейнере {{ $labels.container }} упала служба {{ $labels.unit }}", description: "Что именно перестало работать, зависит от службы: таймер дампа — нет резервной копии, пересчёт — старые числа на страницах, работник рендера — клипы не пишутся. Смотреть journalctl -u {{ $labels.unit }} в контейнере {{ $labels.container }}; после починки systemctl reset-failed." }
+
+      - uid: cs2-container-units-unknown
+        title: "CS2: не видно служб контейнера"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: '(time() - incus_container_units_collect_timestamp_seconds > 300) or (incus_container_units_collect_ok == 0)'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels: { severity: warning }
+        annotations: { summary: "Список служб контейнера не снимается дольше 15 минут", description: "Пока так, тревога про упавшие службы молчит, даже если они упали. Либо контейнер остановлен или завис (метка container), либо встал сам сборщик: systemctl status incus-units-collect.timer на хосте." }
+
   # --- CI: очередь на своих раннерах -----------------------------------------
   # Данные — сборщик ci-queue-collect на хосте (репозиторий home-server,
   # scripts/ci-queue-collect.py), textfile node-host, опрос GitHub раз в 30 с.
