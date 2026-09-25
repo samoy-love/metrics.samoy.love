@@ -3052,7 +3052,7 @@
     {
       "type": "timeseries",
       "title": "Состояние юнитов",
-      "description": "1 — служба активна. Сюда попадают incus, ZFS, три таблицы изоляции, шейпер, сторож Windows-машины, fail2ban, ssh и циклы раннеров. Провал в 0 у любой линии означает, что служба упала. node-textfile-collect не выведен: он запускается таймером раз в пять минут и между запусками штатно неактивен.",
+      "description": "1 — служба активна. Сюда попадают incus, ZFS, три таблицы изоляции, шейпер, сторож Windows-машины, fail2ban, ssh и циклы раннеров. Провал в 0 у любой линии означает, что служба упала. node-textfile-collect не выведен: он запускается таймером раз в пять минут и между запусками штатно неактивен. Службы слотов раннеров (ci-runner-cycle@) не показаны: с 25.09.2026 их поднимает и гасит ci-autoscaler, и 0 у них — норма. Их состояние — на панели CI, «Слоты раннеров».",
       "id": 37,
       "gridPos": {
         "h": 8,
@@ -3063,7 +3063,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "node_systemd_unit_state{instance=\"srv-host\",state=\"active\",name!=\"node-textfile-collect.service\"}",
+          "expr": "node_systemd_unit_state{instance=\"srv-host\",state=\"active\",name!~\"node-textfile-collect\\\\.service|ci-runner-cycle@.+\"}",
           "legendFormat": "{{name}}"
         }
       ],
