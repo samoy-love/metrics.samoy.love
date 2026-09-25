@@ -64,7 +64,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(ci_jobs_queued{pool=\"home-linux\"})"
+          "expr": "sum(ci_jobs_queued{pool=~\"home-linux|set-heavy\"})"
         }
       ],
       "options": {
@@ -122,7 +122,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(ci_job_queue_oldest_seconds{pool=\"home-linux\"})"
+          "expr": "max(ci_job_queue_oldest_seconds{pool=~\"home-linux|set-heavy\"})"
         }
       ],
       "options": {
@@ -407,7 +407,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(ci_jobs_running{pool=\"home-linux\"})"
+          "expr": "sum(ci_jobs_running{pool=~\"home-linux|set-heavy\"})"
         }
       ],
       "options": {
@@ -545,7 +545,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum by (le) (increase(ci_job_queue_wait_seconds_bucket{pool=\"home-linux\"}[24h])))"
+          "expr": "histogram_quantile(0.95, sum by (le) (increase(ci_job_queue_wait_seconds_bucket{pool=~\"home-linux|set-heavy\"}[24h])))"
         }
       ],
       "options": {
@@ -779,7 +779,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max by (pool) (ci_job_queue_oldest_seconds{pool=~\"home-.*\"})",
+          "expr": "max by (pool) (ci_job_queue_oldest_seconds{pool=~\"home-.*|set-.*\"})",
           "legendFormat": "{{pool}}"
         }
       ],
@@ -845,7 +845,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "clamp_max(sum(ci_jobs_running{pool=~\"home-linux|home-light\"}) / clamp_min(sum(ci_runners{os=\"linux\",status=\"online\"}), 1), 1)",
+          "expr": "clamp_max(sum(ci_jobs_running{pool=~\"home-linux|home-light|set-heavy|set-light\"}) / clamp_min(sum(ci_runners{os=\"linux\",status=\"online\"}), 1), 1)",
           "legendFormat": "занято"
         }
       ],
@@ -891,12 +891,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(ci_jobs_running{pool=\"home-linux\"})",
+          "expr": "sum(ci_jobs_running{pool=~\"home-linux|set-heavy\"})",
           "legendFormat": "идут"
         },
         {
           "refId": "B",
-          "expr": "sum(ci_jobs_queued{pool=\"home-linux\"})",
+          "expr": "sum(ci_jobs_queued{pool=~\"home-linux|set-heavy\"})",
           "legendFormat": "ждут"
         },
         {
@@ -966,12 +966,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by (le, pool) (rate(ci_job_queue_wait_seconds_bucket{pool=~\"home-.*\"}[1h])))",
+          "expr": "histogram_quantile(0.5, sum by (le, pool) (rate(ci_job_queue_wait_seconds_bucket{pool=~\"home-.*|set-.*\"}[1h])))",
           "legendFormat": "{{pool}} p50"
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by (le, pool) (rate(ci_job_queue_wait_seconds_bucket{pool=~\"home-.*\"}[1h])))",
+          "expr": "histogram_quantile(0.95, sum by (le, pool) (rate(ci_job_queue_wait_seconds_bucket{pool=~\"home-.*|set-.*\"}[1h])))",
           "legendFormat": "{{pool}} p95"
         }
       ],
@@ -1063,7 +1063,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "1 - sum by (pool) (rate(ci_job_queue_wait_seconds_bucket{pool=~\"home-.*\",le=~\"300(.0)?\"}[1h])) / sum by (pool) (rate(ci_job_queue_wait_seconds_count{pool=~\"home-.*\"}[1h]))",
+          "expr": "1 - sum by (pool) (rate(ci_job_queue_wait_seconds_bucket{pool=~\"home-.*|set-.*\",le=~\"300(.0)?\"}[1h])) / sum by (pool) (rate(ci_job_queue_wait_seconds_count{pool=~\"home-.*|set-.*\"}[1h]))",
           "legendFormat": "{{pool}}"
         }
       ],
@@ -1372,7 +1372,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(ci_jobs_queued{pool=\"home-light\"})"
+          "expr": "sum(ci_jobs_queued{pool=~\"home-light|set-light\"})"
         }
       ],
       "options": {
@@ -1430,7 +1430,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(ci_job_queue_oldest_seconds{pool=\"home-light\"})"
+          "expr": "max(ci_job_queue_oldest_seconds{pool=~\"home-light|set-light\"})"
         }
       ],
       "options": {
@@ -1488,7 +1488,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(ci_jobs_running{pool=\"home-light\"})"
+          "expr": "sum(ci_jobs_running{pool=~\"home-light|set-light\"})"
         }
       ],
       "options": {
@@ -2530,12 +2530,12 @@
         },
         {
           "refId": "B",
-          "expr": "sum(ci_jobs_queued{pool=\"home-linux\"})",
+          "expr": "sum(ci_jobs_queued{pool=~\"home-linux|set-heavy\"})",
           "legendFormat": "очередь: heavy"
         },
         {
           "refId": "C",
-          "expr": "sum(ci_jobs_queued{pool=\"home-light\"})",
+          "expr": "sum(ci_jobs_queued{pool=~\"home-light|set-light\"})",
           "legendFormat": "очередь: light"
         }
       ],
@@ -2801,6 +2801,307 @@
           "refId": "A",
           "expr": "sum by (action, result) (increase(ci_autoscaler_actions_total[10m])) > 0",
           "legendFormat": "{{action}} {{result}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Наборы Runner Scale Set",
+      "id": 57,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 137
+      },
+      "panels": [],
+      "description": "Слушатель ci-scaleset держит наборы home-heavy и home-light: GitHub сам сообщает, сколько заданий назначено набору, и контроллер поднимает раннеры по этому числу сразу, без опроса."
+    },
+    {
+      "type": "stat",
+      "title": "Слушатель наборов",
+      "id": 58,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "description": "1 — сессии сообщений всех наборов открыты. 0 — хотя бы одна потеряна: слушатель переподключается сам (после падения сессия занята до минуты). Пока он молчит, контроллер берёт спрос у сборщика очереди, раз в 30 с.",
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 0,
+        "y": 138
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "min(ci_scaleset_session_up)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "нет сессии",
+                  "index": 0
+                },
+                "1": {
+                  "text": "на связи",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Наборы: назначено, идёт, раннеров",
+      "description": "Назначено — задания, которые GitHub отдал набору, включая идущие. Идёт — выполняются. Раннеров — зарегистрированы в наборе сейчас. Разница «назначено − идёт» — очередь, по ней контроллер поднимает раннеры.",
+      "id": 59,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 4,
+        "y": 138
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (set) (ci_scaleset_jobs_assigned)",
+          "legendFormat": "назначено: {{set}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (set) (ci_scaleset_jobs_running)",
+          "legendFormat": "идёт: {{set}}"
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (set) (ci_scaleset_runners_registered)",
+          "legendFormat": "раннеров: {{set}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Ожидание раннера в наборе, p50 и p95",
+      "description": "От назначения задания набору до того, как его взял раннер. Сюда входит загрузка нового раннера (около 15 с), если свободного не было.",
+      "id": 60,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 14,
+        "y": 138
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by (le, set) (rate(ci_scaleset_job_wait_seconds_bucket[1h])))",
+          "legendFormat": "p50 {{set}}"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le, set) (rate(ci_scaleset_job_wait_seconds_bucket[1h])))",
+          "legendFormat": "p95 {{set}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Задания наборов в час по исходу",
+      "description": "Сколько заданий набора закончилось за час, по исходу (succeeded, failed, canceled).",
+      "id": 61,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 146
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (set, result) (increase(ci_scaleset_jobs_completed_total[1h]))",
+          "legendFormat": "{{set}} {{result}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Переподключения слушателя",
+      "description": "Сколько раз за час слушатель терял сессию набора и переподключался. Единицы — норма (сессия истекает, сеть мигает); постоянный рост — GitHub отвергает сессию или токен.",
+      "id": 62,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 146
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (set) (increase(ci_scaleset_errors_total[1h]))",
+          "legendFormat": "{{set}}"
         }
       ],
       "fieldConfig": {
