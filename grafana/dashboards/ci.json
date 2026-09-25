@@ -1,7 +1,7 @@
 {
   "uid": "samoylove-ci",
   "title": "CI — раннеры и очередь",
-  "description": "Очередь заданий GitHub Actions на своих раннерах: семь одноразовых Linux-контейнеров (четыре больших ci-runner и три лёгких ci-light) и Windows-машина win-builder по требованию. Данные — сборщик ci-queue-collect на хосте (репозиторий home-server) через textfile node-host и метрики Incus.",
+  "description": "Очередь заданий GitHub Actions по пулам раннеров: свои одноразовые Linux-раннеры (большие и лёгкие, их число меняет ci-autoscaler) и Windows-машина win-builder по требованию. Данные — сборщик ci-queue-collect и контроллер ci-autoscaler (репозиторий home-server) через textfile node-host и метрики Incus.",
   "tags": [
     "samoy.love",
     "CI",
@@ -285,7 +285,7 @@
     {
       "type": "stat",
       "title": "Linux-раннеры онлайн",
-      "description": "Регистрации собственных Linux-раннеров со статусом online: четыре больших (метка home) и три лёгких (light), итого семь; раннеры ci-runner-5…8 сняты 22.09.2026. Раннер одноразовый и между заданиями ненадолго пропадает, поэтому провал на один-два — норма, долгий — раннер не вернулся после отката снимка. Шести больших было больше, чем выдерживали память и диск хоста: 21.09.2026 хост четыре раза за четыре часа упирался в глобальный OOM.",
+      "description": "Зарегистрированные в организации Linux-раннеры со статусом online: большие (метка home) и лёгкие (light). С 25.09.2026 их число меняет ci-autoscaler: под очередь до бюджета памяти, в тишине — по одному свободному каждого класса. Ноль при живом контроллере значит, что раннеры не регистрируются.",
       "id": 7,
       "gridPos": {
         "h": 4,
@@ -323,16 +323,8 @@
                 "value": null
               },
               {
-                "color": "orange",
-                "value": 3
-              },
-              {
-                "color": "yellow",
-                "value": 5
-              },
-              {
                 "color": "green",
-                "value": 7
+                "value": 1
               }
             ]
           }
@@ -718,7 +710,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 42
       },
       "panels": [],
       "description": "Копится ли очередь и хватает ли раннеров."
@@ -732,7 +724,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 14
+        "y": 43
       },
       "targets": [
         {
@@ -782,7 +774,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 14
+        "y": 43
       },
       "targets": [
         {
@@ -848,7 +840,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 22
+        "y": 51
       },
       "targets": [
         {
@@ -888,13 +880,13 @@
     {
       "type": "timeseries",
       "title": "Идут и ждут — большие",
-      "description": "Идущие и ждущие задания Linux на одном графике. Ждущих много, а идущих меньше четырёх — раннеры не берут работу (проверить ci-runner-cycle@* на хосте); ждущих много при четырёх идущих — раннеров просто не хватает.",
+      "description": "Идущие и ждущие задания Linux на фоне числа раннеров. Раннеров теперь столько, сколько поднял ci-autoscaler: если очередь стоит, а поднятых не прибавляется, — смотри «Почему не поднимает новых» выше.",
       "id": 19,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 22
+        "y": 51
       },
       "targets": [
         {
@@ -910,7 +902,12 @@
         {
           "refId": "C",
           "expr": "sum(ci_runners{os=\"linux\",status=\"online\"})",
-          "legendFormat": "раннеры онлайн"
+          "legendFormat": "раннеров онлайн"
+        },
+        {
+          "refId": "D",
+          "expr": "sum(ci_autoscaler_slots{state!=\"off\"}) or vector(0)",
+          "legendFormat": "поднято контроллером"
         }
       ],
       "fieldConfig": {
@@ -950,7 +947,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 30
+        "y": 59
       },
       "panels": [],
       "description": "Время от создания задания до старта на раннере — то, что человек видит как «CI тупит». Гистограмма ci_job_queue_wait_seconds."
@@ -964,7 +961,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 31
+        "y": 60
       },
       "targets": [
         {
@@ -1015,7 +1012,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 31
+        "y": 60
       },
       "targets": [
         {
@@ -1061,7 +1058,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 39
+        "y": 68
       },
       "targets": [
         {
@@ -1123,7 +1120,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 39
+        "y": 68
       },
       "targets": [
         {
@@ -1172,7 +1169,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 47
+        "y": 76
       },
       "panels": [],
       "description": "Сколько раннеры берут у хоста. Метрики Incus по инстансам ci-runner*, ci-light*, ci-db (базы для тестов) и win-builder; снятые раннеры доживают на графике до конца окна."
@@ -1186,7 +1183,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 48
+        "y": 77
       },
       "targets": [
         {
@@ -1232,7 +1229,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 48
+        "y": 77
       },
       "targets": [
         {
@@ -1278,7 +1275,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 56
+        "y": 85
       },
       "targets": [
         {
@@ -1324,7 +1321,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 56
+        "y": 85
       },
       "targets": [
         {
@@ -1533,7 +1530,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 64
+        "y": 93
       },
       "description": "Контейнер ci-db с 22.09.2026 держит одну пару серверов Postgres и ClickHouse на все шарды тестов cs2 (samoy-love/cs2#617): задания больше не поднимают базы в своём Docker. Если ci-db лёг или упёрся в память, падают все тесты на базах разом."
     },
@@ -1549,7 +1546,7 @@
         "h": 8,
         "w": 4,
         "x": 0,
-        "y": 65
+        "y": 94
       },
       "description": "Сколько ci-db работает с последнего запуска. Пусто — Incus о нём не знает: контейнер остановлен или удалён.",
       "targets": [
@@ -1600,7 +1597,7 @@
         "h": 8,
         "w": 10,
         "x": 4,
-        "y": 65
+        "y": 94
       },
       "description": "Занятая память и лимит контейнера. Занятое у лимита — следующая пачка тестов получит убийство по памяти внутри баз (правая ось — сколько процессов убито за час).",
       "targets": [
@@ -1685,7 +1682,7 @@
         "h": 8,
         "w": 10,
         "x": 14,
-        "y": 65
+        "y": 94
       },
       "description": "Ядра, которые занимают базы (квота — два), и чтение с физических дисков (правая ось). Процессор у квоты во время прогонов — тесты ждут базы.",
       "targets": [
@@ -1752,7 +1749,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 73
+        "y": 102
       },
       "description": "Длительность законченных заданий от старта на раннере до конца, по пулам, workflow и заданиям, и кто из раннеров чем занят. Данные — тот же сборщик ci-queue-collect на хосте: прогон, пропавший из идущих, он дозапрашивает один раз. Прогон, начавшийся и закончившийся между двумя опросами (30 с), сюда не попадает."
     },
@@ -1768,7 +1765,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 74
+        "y": 103
       },
       "description": "Медиана и 95-й процентиль длительности законченных заданий за час по пулам. Рост p95 при прежнем числе заданий — тесты стали тяжелее или раннерам тесно (см. квоты ниже).",
       "targets": [
@@ -1821,7 +1818,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 74
+        "y": 103
       },
       "description": "Сколько заданий закончилось за час: успех, провал, отмена. Всплеск отмен — обычно новый пуш поверх идущего прогона.",
       "targets": [
@@ -1870,7 +1867,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 82
+        "y": 111
       },
       "description": "Каждое задание каждого workflow за последние сутки: число законченных и средняя длительность. Сверху — самые долгие в среднем.",
       "targets": [
@@ -1971,7 +1968,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 92
+        "y": 121
       },
       "description": "Доля времени, которую каждый раннер был занят заданиями (по законченным заданиям, за час). У всех у 100 % при очереди — раннеров мало; у одного ноль — он не берёт задания.",
       "targets": [
@@ -2020,7 +2017,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 92
+        "y": 121
       },
       "description": "Размер кэша GitHub Actions по репозиториям (опрос раз в 10 минут). Потолок GitHub — 10 ГБ на репозиторий, дальше старые записи вытесняются. Долю попаданий в кэш GitHub не отдаёт; местный кэш раннеров (/srv/ci-cache) — в дашборде «Железо», «Кто занимает пул tank».",
       "targets": [
@@ -2068,7 +2065,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 100
+        "y": 129
       },
       "description": "Сколько секунд в секунду раннер или ci-db стоял, упёршись в квоту (сборщик cgroup-cpu-collect на хосте). Квоты на 22.09.2026: большой — 4 ядра, лёгкий — 3, ci-db — 2.",
       "targets": [
@@ -2103,6 +2100,736 @@
           "decimals": 2
         },
         "overrides": []
+      }
+    },
+    {
+      "type": "row",
+      "title": "Автомасштабирование раннеров",
+      "id": 44,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "panels": [],
+      "description": "Контроллер ci-autoscaler на хосте поднимает раннеры под очередь и гасит лишние, не выходя за бюджет памяти кластера и за то, что может дать хост. Устройство и решения — docs/ci-autoscaler.md в репозитории home-server."
+    },
+    {
+      "type": "stat",
+      "title": "Контроллер раннеров",
+      "description": "Сколько секунд назад ci-autoscaler закончил такт (такт — 5 с). Больше минуты — контроллер стоит: раннеры это переживут (циклы, не видящие его пульса, работают по-старому), но новые не поднимутся и лишние не погаснут. На хосте: systemctl status ci-autoscaler.",
+      "id": 45,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - max(ci_autoscaler_timestamp_seconds)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 120
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Раннеров поднято",
+      "description": "Слоты, на которых сейчас есть раннер: загружается, свободен или занят. Число меняется само: под очередь растёт, в тишине сжимается до min_idle (по одному свободному каждого класса).",
+      "id": 46,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(ci_autoscaler_slots{state!=\"off\"}) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Заняты заданиями",
+      "description": "Раннеры, на которых прямо сейчас идёт задание.",
+      "id": 47,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(ci_autoscaler_slots{state=\"busy\"}) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Память CI: потолки из бюджета",
+      "description": "Сумма memory.max поднятых раннеров против бюджета кластера (ci_mem_max минус память работающих инстансов из yield_to, то есть win-builder). Это жёсткий предел: ядро не даст CI занять больше. 100 % — новые раннеры не поднимаются, пока кто-то не освободится.",
+      "id": 48,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(ci_autoscaler_committed_bytes) / max(ci_autoscaler_budget_bytes)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.85
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Хосту свободно сверх резерва",
+      "description": "MemAvailable плюс ARC ZFS сверх c_min, минус резерв хоста. Из этой памяти поднимаются новые раннеры (каждому нужен его ожидаемый пик). Ниже нуля больше чем на запас — контроллер снимает простаивающих.",
+      "id": 49,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(ci_autoscaler_host_free_bytes)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0
+              },
+              {
+                "color": "green",
+                "value": 2147483648
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Классов упёрлось",
+      "description": "Сколько классов раннеров (большие, лёгкие) хотят подняться, но не могут. Причина — на графике «Почему не поднимает новых».",
+      "id": 50,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(ci_autoscaler_blocked) or vector(0)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 2
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Раннеры по состоянию",
+      "description": "Сколько слотов в каждом состоянии. Загружается — откат на эталон и регистрация, около 15 с. Свободен — зарегистрирован и ждёт задание. Занят — выполняет задание.",
+      "id": 51,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (state) (ci_autoscaler_slots{state!=\"off\"})",
+          "legendFormat": "{{state}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 40,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Раннеры по классу и очередь",
+      "description": "Поднятые раннеры каждого класса рядом с очередью на него. Класс слоту назначается на каждом цикле: под очередь лёгких занятый большой после задания может подняться лёгким, и наоборот.",
+      "id": 52,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (class) (ci_autoscaler_slots{state!=\"off\",class!=\"\"})",
+          "legendFormat": "поднято: {{class}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(ci_jobs_queued{pool=\"home-linux\"})",
+          "legendFormat": "очередь: heavy"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(ci_jobs_queued{pool=\"home-light\"})",
+          "legendFormat": "очередь: light"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Память кластера раннеров",
+      "description": "Бюджет — предел суммы потолков CI. Потолки — сумма memory.max поднятых раннеров. Расход — сколько они реально занимают (без страничного кэша). Свободно у хоста — сверх резерва, с ARC сверх c_min. Резерв роста — сколько ещё вырастут не взявшие задание раннеры до своего ожидаемого пика.",
+      "id": 53,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 26
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(ci_autoscaler_budget_bytes)",
+          "legendFormat": "бюджет"
+        },
+        {
+          "refId": "B",
+          "expr": "max(ci_autoscaler_committed_bytes)",
+          "legendFormat": "потолки"
+        },
+        {
+          "refId": "C",
+          "expr": "max(ci_autoscaler_ci_usage_bytes)",
+          "legendFormat": "расход"
+        },
+        {
+          "refId": "D",
+          "expr": "max(ci_autoscaler_host_free_bytes)",
+          "legendFormat": "свободно у хоста"
+        },
+        {
+          "refId": "E",
+          "expr": "max(ci_autoscaler_reserved_bytes)",
+          "legendFormat": "резерв роста"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": null,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Почему не поднимает новых",
+      "description": "1 — класс хочет подняться, но упёрся. budget — сумма потолков раннеров дошла до бюджета кластера (ci_mem_max): больше поднять можно, только увеличив бюджет. host — хосту не хватает памяти: занято прод, рендер или Windows-машины. pressure — давление на память у прода или служб хоста. cpu — давление на процессор. booting — ждёт очереди загрузок (не больше трёх разом). no_slots — все слоты уже подняты.",
+      "id": 54,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 26
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (class, reason) (ci_autoscaler_blocked) > 0",
+          "legendFormat": "{{class}}: {{reason}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "drawStyle": "bars"
+          },
+          "decimals": 0,
+          "noValue": "Упоров нет"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "state-timeline",
+      "title": "Слоты раннеров",
+      "id": 55,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "description": "Что делал каждый слот. Слот — контейнер-копия эталона раннера; класса у него нет, его назначает контроллер на каждом цикле. Не создан — слот есть в конфигурации, контейнер контроллер создаст при первой нужде (около 3 с).",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 34
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "{{slot}}",
+          "expr": "max by (slot) ((ci_autoscaler_slot{state=\"none\"} * -1) or (ci_autoscaler_slot{state=\"off\"} * 0) or (ci_autoscaler_slot{state=\"booting\"} * 1) or (ci_autoscaler_slot{state=\"idle\"} * 2) or (ci_autoscaler_slot{state=\"busy\"} * 3))"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 0
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "не создан",
+                  "color": "transparent",
+                  "index": 0
+                },
+                "0": {
+                  "text": "остановлен",
+                  "color": "#6e7079",
+                  "index": 1
+                },
+                "1": {
+                  "text": "загружается",
+                  "color": "yellow",
+                  "index": 2
+                },
+                "2": {
+                  "text": "свободен",
+                  "color": "green",
+                  "index": 3
+                },
+                "3": {
+                  "text": "занят",
+                  "color": "blue",
+                  "index": 4
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showValue": "never",
+        "mergeValues": true,
+        "rowHeight": 0.8,
+        "alignValue": "left",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Действия контроллера",
+      "description": "Сколько раз за 10 минут контроллер поднял раннер (start), запарковал простаивающий (park), снял класс у занятого (drain — он запаркуется после задания), назначил занятому другой класс на следующий цикл (want), перезапустил зависшую загрузку (reboot). fail — действие не удалось; park raced — раннер успел взять задание, и его не тронули.",
+      "id": 56,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 34
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (action, result) (increase(ci_autoscaler_actions_total[10m])) > 0",
+          "legendFormat": "{{action}} {{result}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       }
     }
   ]

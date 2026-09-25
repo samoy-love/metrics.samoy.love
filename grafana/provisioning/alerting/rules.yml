@@ -495,7 +495,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: node_systemd_unit_state{instance="srv-host",state="active",name=~"(incus|web-isolation|ci-isolation|win-isolation|wan-shaper|fail2ban)\\.service"} == 0
+              expr: node_systemd_unit_state{instance="srv-host",state="active",name=~"(incus|web-isolation|ci-isolation|win-isolation|wan-shaper|fail2ban|ci-autoscaler)\\.service"} == 0
               instant: true
               refId: A
           - refId: C
@@ -3692,7 +3692,7 @@ groups:
         execErrState: Error
         for: 5m
         labels: { severity: warning }
-        annotations: { summary: "A job has been waiting for a home Linux runner for over 10 minutes", description: "Очередь на собственные Linux-раннеры копится: самое старое задание ждёт больше 10 минут. Если на панели «Идут и ждут» идущих четыре — раннеров не хватает (много параллельных PR и выкаток). Если идущих меньше — раннеры не берут работу: на хосте systemctl status ci-runner-cycle@ci-runner* и журнал раннера.", __dashboardUid__: "samoylove-ci", __panelId__: "17" }
+        annotations: { summary: "A job has been waiting for a home Linux runner for over 10 minutes", description: "Очередь на собственные Linux-раннеры копится: самое старое задание ждёт больше 10 минут. Число раннеров меняет ci-autoscaler: если на панели «Почему не поднимает новых» упор в память — очередь стоит из-за бюджета или хоста (см. CIAutoscalerMemoryBound). Если упора нет, а раннеры есть, — они не берут работу: на хосте ci-autoscaler status и journalctl -u 'ci-runner-cycle@*'.", __dashboardUid__: "samoylove-ci", __panelId__: "17" }
 
       - uid: ci-queue-stuck-light
         title: CIQueueStuckLight
@@ -3721,7 +3721,7 @@ groups:
         execErrState: Error
         for: 5m
         labels: { severity: warning }
-        annotations: { summary: "A job has been waiting for a light runner for over 5 minutes", description: "Очередь на лёгкие раннеры (метка light, их три): линтеры, тесты на Node, снимки страниц и покрытие. Работы в таком задании секунды, поэтому пять минут ожидания значат, что лёгких не хватает или они не берут работу. Порог ниже, чем у больших, по той же причине.", __dashboardUid__: "samoylove-ci", __panelId__: "17" }
+        annotations: { summary: "A job has been waiting for a light runner for over 5 minutes", description: "Очередь на лёгкие раннеры (метка light; сколько их, решает ci-autoscaler): линтеры, тесты на Node, снимки страниц и покрытие. Работы в таком задании секунды, поэтому пять минут ожидания значат, что лёгких не хватает или они не берут работу. Порог ниже, чем у больших, по той же причине.", __dashboardUid__: "samoylove-ci", __panelId__: "17" }
 
       - uid: ci-queue-stuck-windows
         title: CIQueueStuckWindows
@@ -3760,9 +3760,12 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 1800, to: 0 }
             model:
-              # max за 5 минут: одноразовый раннер на 10–13 с уходит в offline при
-              # каждом откате, и без сглаживания тревога висела в Pending сотни раз.
-              expr: max_over_time(((sum(ci_runners{os="linux",status="online"}) or vector(0)))[5m:30s]) < 5
+              # С 25.09.2026 раннеров столько, сколько поднял ci-autoscaler, и
+              # постоянного порога нет: ночью законно два. Сравнивается то, что
+              # контроллер считает поднятым и зарегистрированным (свободен или
+              # занят), с тем, что видит GitHub. min за 5 минут: одноразовый
+              # раннер на секунды уходит в offline при каждом откате.
+              expr: 'min_over_time(((sum(ci_autoscaler_slots{state=~"idle|busy"}) or vector(0)) - (sum(ci_runners{os="linux",status="online"}) or vector(0)))[5m:30s]) >= 2'
               instant: true
               refId: A
           - refId: C
@@ -3781,7 +3784,101 @@ groups:
         execErrState: Error
         for: 15m
         labels: { severity: warning }
-        annotations: { summary: "Fewer than 5 of 7 self-hosted Linux runners are online for 15 minutes", description: "Одноразовый раннер между заданиями пропадает на секунды, но не на 15 минут: он не вернулся после отката снапшота. Флот с 22.09.2026 — четыре больших (метка home) и три лёгких (light), порог 5 терпит двух в пересоздании. Шесть больших вместе с базами в Docker при всплеске CI загоняли хост в нехватку памяти, и прод cs2 вставал на минуты. Очередь пока может быть пуста, но следующая пачка PR пойдёт медленнее. На хосте: systemctl status 'ci-runner-cycle@*'.", __dashboardUid__: "samoylove-ci", __panelId__: "7" }
+        annotations: { summary: "Self-hosted Linux runners are up but not registered with GitHub for 15 minutes", description: "Контроллер ci-autoscaler считает минимум двух раннеров поднятыми (процесс раннера жив), а GitHub не видит их в онлайне уже 15 минут. Значит, раннеры не могут до него достучаться или регистрация не проходит, и задания стоят. На хосте: ci-autoscaler status, journalctl -u 'ci-runner-cycle@*'.", __dashboardUid__: "samoylove-ci", __panelId__: "7" }
+
+      - uid: ci-autoscaler-down
+        title: CIAutoscalerDown
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              # Такт контроллера — 5 с. Две минуты тишины — служба стоит или
+              # висит. absent — метрика пропала совсем (служба не запускалась
+              # после перезагрузки или файл метрик удалён).
+              expr: '((time() - max(ci_autoscaler_timestamp_seconds)) > 120) or (absent(ci_autoscaler_timestamp_seconds) * 1e6)'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 3m
+        labels: { severity: warning }
+        annotations: { summary: "The CI runner autoscaler has not completed a cycle for over 2 minutes", description: "ci-autoscaler не закончил такт больше двух минут. Раннеры это переживут: цикл, не видящий свежего пульса контроллера, работает по-старому, класс по имени. Но под очередь новые не поднимутся, лишние не погаснут, а запаркованные слоты так и останутся стоять. На хосте: systemctl status ci-autoscaler, journalctl -u ci-autoscaler.", __dashboardUid__: "samoylove-ci", __panelId__: "45" }
+
+      - uid: ci-autoscaler-memory-bound
+        title: CIAutoscalerMemoryBound
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1800, to: 0 }
+            model:
+              # Упор в память сам по себе норма пика: контроллер для того и
+              # держит бюджет. Тревога — когда из-за него задание ждёт больше
+              # 15 минут: тогда либо бюджет мал для нынешней нагрузки, либо
+              # хост занят чем-то другим надолго.
+              expr: '(max(ci_autoscaler_blocked{reason=~"budget|host"}) == 1) and on() (max(ci_job_queue_oldest_seconds{pool=~"home-linux|home-light"}) > 900)'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "CI jobs wait over 15 minutes because runners are capped by memory", description: "Задание ждёт раннер больше 15 минут, и контроллер не поднимает новых из-за памяти. Причина budget — сумма потолков раннеров дошла до ci_mem_max в /etc/ci-autoscaler.toml на хосте: поднять бюджет, если хосту хватает. Причина host — память занята не CI (рендер, Windows-машины, прод): смотреть панель «Память инстансов» на панели железа.", __dashboardUid__: "samoylove-ci", __panelId__: "54" }
+
+      - uid: ci-autoscaler-actions-failing
+        title: CIAutoscalerActionsFailing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 1800, to: 0 }
+            model:
+              expr: 'sum(increase(ci_autoscaler_actions_total{result="fail"}[15m])) >= 3'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        labels: { severity: warning }
+        annotations: { summary: "The CI runner autoscaler keeps failing to act", description: "За 15 минут три и больше действий ci-autoscaler не удались: не создаётся слот, не снимается регистрация через API GitHub, не стартует служба слота или адрес слота не входит в изоляцию (такой слот контроллер не запускает намеренно). Причина — в журнале: journalctl -u ci-autoscaler | grep '!'.", __dashboardUid__: "samoylove-ci", __panelId__: "56" }
 
       - uid: ci-queue-collector-stale
         title: CIQueueCollectorStale
