@@ -3607,7 +3607,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(ci_jobs_queued{pool=\"home-linux\"})",
+          "expr": "sum(ci_jobs_queued{pool=~\"home-linux|set-heavy\"})",
           "instant": true
         }
       ],
@@ -3677,7 +3677,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(ci_job_queue_oldest_seconds{pool=\"home-linux\"})",
+          "expr": "max(ci_job_queue_oldest_seconds{pool=~\"home-linux|set-heavy\"})",
           "instant": true
         }
       ],
@@ -3747,7 +3747,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(ci_jobs_queued{pool=\"home-light\"})",
+          "expr": "sum(ci_jobs_queued{pool=~\"home-light|set-light\"})",
           "instant": true
         }
       ],
@@ -3817,7 +3817,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(ci_job_queue_oldest_seconds{pool=\"home-light\"})",
+          "expr": "max(ci_job_queue_oldest_seconds{pool=~\"home-light|set-light\"})",
           "instant": true
         }
       ],

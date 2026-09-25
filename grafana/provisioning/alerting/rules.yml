@@ -495,7 +495,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: node_systemd_unit_state{instance="srv-host",state="active",name=~"(incus|web-isolation|ci-isolation|win-isolation|wan-shaper|fail2ban|ci-autoscaler)\\.service"} == 0
+              expr: node_systemd_unit_state{instance="srv-host",state="active",name=~"(incus|web-isolation|ci-isolation|win-isolation|wan-shaper|fail2ban|ci-autoscaler|ci-scaleset)\\.service"} == 0
               instant: true
               refId: A
           - refId: C
@@ -3673,7 +3673,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: max(ci_job_queue_oldest_seconds{pool="home-linux"}) > 600
+              expr: 'max(ci_job_queue_oldest_seconds{pool=~"home-linux|set-heavy"}) > 600'
               instant: true
               refId: A
           - refId: C
@@ -3702,7 +3702,7 @@ groups:
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: 'max(ci_job_queue_oldest_seconds{pool="home-light"}) > 300'
+              expr: 'max(ci_job_queue_oldest_seconds{pool=~"home-light|set-light"}) > 300'
               instant: true
               refId: A
           - refId: C
@@ -3830,7 +3830,7 @@ groups:
               # держит бюджет. Тревога — когда из-за него задание ждёт больше
               # 15 минут: тогда либо бюджет мал для нынешней нагрузки, либо
               # хост занят чем-то другим надолго.
-              expr: '(max(ci_autoscaler_blocked{reason=~"budget|host"}) == 1) and on() (max(ci_job_queue_oldest_seconds{pool=~"home-linux|home-light"}) > 900)'
+              expr: '(max(ci_autoscaler_blocked{reason=~"budget|host"}) == 1) and on() (max(ci_job_queue_oldest_seconds{pool=~"home-linux|home-light|set-heavy|set-light"}) > 900)'
               instant: true
               refId: A
           - refId: C
@@ -3879,6 +3879,37 @@ groups:
         for: 0m
         labels: { severity: warning }
         annotations: { summary: "The CI runner autoscaler keeps failing to act", description: "За 15 минут три и больше действий ci-autoscaler не удались: не создаётся слот, не снимается регистрация через API GitHub, не стартует служба слота или адрес слота не входит в изоляцию (такой слот контроллер не запускает намеренно). Причина — в журнале: journalctl -u ci-autoscaler | grep '!'.", __dashboardUid__: "samoylove-ci", __panelId__: "56" }
+
+      - uid: ci-scaleset-listener-down
+        title: CIScaleSetListenerDown
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              # Сессия набора закрыта, слушатель давно не получал ответа
+              # (долгий опрос отвечает не реже ~50 с) или метрик нет вовсе.
+              expr: '(min(ci_scaleset_session_up) == 0) or ((time() - min(ci_scaleset_last_update_timestamp_seconds)) > 180) or (absent(ci_scaleset_session_up) * 1e6)'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "The runner scale set listener has lost its GitHub session for 5 minutes", description: "Слушатель ci-scaleset не держит сессию набора Runner Scale Set или давно не получал ответа. Задания с runs-on home-heavy или home-light при этом назначаются набору только после переподключения, а контроллер берёт спрос у сборщика очереди (раз в 30 с). После падения сессия занята до минуты — это штатно; дольше — journalctl -u ci-scaleset на хосте.", __dashboardUid__: "samoylove-ci", __panelId__: "58" }
 
       - uid: ci-queue-collector-stale
         title: CIQueueCollectorStale
