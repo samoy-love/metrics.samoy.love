@@ -3472,6 +3472,38 @@ groups:
         # не поставлена.
         labels: { severity: info }
         annotations: { summary: "Вышла HLAE новее той, что стоит на машине рендера", description: "Само по себе это не поломка: пока движок исправен, обновление можно отложить. Срочно — только вместе с тревогой «движок съёмки сломан»: тогда новая версия, скорее всего, и есть починка после обновления CS2. Ставить на cs2-win и прогонять стенд.", __dashboardUid__: "samoylove-cs2", __panelId__: "911" }
+      - uid: cs2-render-game-update-stuck
+        title: "CS2: обновление игры на машине рендера не встало"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: samoylove-prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              # На cs2-win HLAE запускает cs2.exe мимо Steam, и скачанное
+              # обновление не встанет никогда — полчаса хватает, чтобы не
+              # будить на время самой закачки. На Linux Steam ставит сам:
+              # три часа — это уже вставший клиент Steam.
+              expr: 'cs2_render_game_update_seconds{engine="hlae"} > 1800 or cs2_render_game_update_seconds{engine="linux"} > 10800'
+              instant: true
+              refId: A
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [-1000000000] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "Steam ждёт поставить обновление CS2 на машине рендера (машина — метка engine)", description: "Пока оно не встало, новые демки не читаются старой игрой, а новая HLAE, собранная под новую игру, её не поднимает. На cs2-win: мягко остановить работника (C:\\cs2\\stop-render.ps1), запустить CS2 через Steam разовой задачей в сеансе render (steam://run/730), дождаться, когда buildid в appmanifest_730.acf сравняется с TargetBuildID, погасить игру и запустить задачу cs2-render — проба при старте проверит движок. Если HLAE под новую игру ещё нет, проба упадёт, и заказы уйдут на Linux. На Linux — смотреть клиент Steam в cs2-render. Карточка машины в админке cs2 пишет, какая сборка ждёт.", __dashboardUid__: "samoylove-cs2", __panelId__: "911" }
 
       - uid: cs2-chain-no-leader
         title: "CS2: цепочку никто не ведёт"
