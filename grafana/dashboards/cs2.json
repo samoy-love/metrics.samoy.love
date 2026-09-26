@@ -5379,7 +5379,7 @@
     {
       "type": "stat",
       "title": "Движок съёмки",
-      "description": "Исправен ли движок по последней пробе и вышла ли HLAE новее установленной. «Сломан» у hlae — камеры повтора не работают, обычно после обновления CS2: заказы уходят на Linux, ролики с камерами ждут. Сломан и есть новая версия — пора ставить её на cs2-win и гонять стенд.",
+      "description": "Исправен ли движок по последней пробе, вышла ли HLAE новее установленной и сколько Steam ждёт поставить обновление CS2 на машине. «Сломан» у hlae — камеры повтора не работают, обычно после обновления CS2: заказы уходят на Linux, ролики с камерами ждут. Сломан и есть новая версия — пора ставить её на cs2-win и гонять стенд. Обновление CS2 на cs2-win само не встанет: HLAE запускает игру мимо Steam, его ставят запуском CS2 через Steam (РЕНДЕР-WINDOWS, раздел 19).",
       "targets": [
         {
           "refId": "A",
@@ -5392,6 +5392,12 @@
           "expr": "cs2_render_engine_update",
           "instant": true,
           "legendFormat": "{{engine}}: новая версия"
+        },
+        {
+          "refId": "C",
+          "expr": "cs2_render_game_update_seconds",
+          "instant": true,
+          "legendFormat": "{{engine}}: ждёт обновление CS2"
         }
       ],
       "options": {
@@ -5476,6 +5482,48 @@
                     {
                       "color": "blue",
                       "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "нет",
+                        "index": 0
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1800
                     }
                   ]
                 }
