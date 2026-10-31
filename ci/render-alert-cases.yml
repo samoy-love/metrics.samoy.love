@@ -728,3 +728,68 @@ tests:
       exp_samples:
       - labels: status_check_up{check="snakes-health"}
         value: 0
+
+  - name: Windows available RAM 600 with commit above physical
+    interval: 1m
+    input_series:
+    - series: windows_memory_committed_bytes{job="cs2-win",instance="win"}
+      values: 1500+0x90
+    - series: windows_memory_physical_total_bytes{job="cs2-win",instance="win"}
+      values: 1000+0x90
+    - series: windows_memory_available_bytes{job="cs2-win",instance="win"}
+      values: 600+0x90
+    - series: windows_memory_swap_page_operations_total{job="cs2-win",instance="win"}
+      values: 0+120000x90
+    promql_expr_test:
+    - rule_uid: hw-win-commit-over-physical
+      eval_time: 60m
+      exp_samples: []
+    alert_rule_test:
+    - alertname: hw-win-commit-over-physical
+      eval_time: 60m
+      exp_alerts: []
+  - name: Windows available RAM 100 with commit above physical
+    interval: 1m
+    input_series:
+    - series: windows_memory_committed_bytes{job="cs2-win",instance="win"}
+      values: 1500+0x90
+    - series: windows_memory_physical_total_bytes{job="cs2-win",instance="win"}
+      values: 1000+0x90
+    - series: windows_memory_available_bytes{job="cs2-win",instance="win"}
+      values: 100+0x90
+    - series: windows_memory_swap_page_operations_total{job="cs2-win",instance="win"}
+      values: 0+120000x90
+    promql_expr_test:
+    - rule_uid: hw-win-commit-over-physical
+      eval_time: 60m
+      exp_samples: []
+    alert_rule_test:
+    - alertname: hw-win-commit-over-physical
+      eval_time: 60m
+      exp_alerts: []
+  - name: Windows available RAM 90 with commit above physical
+    interval: 1m
+    input_series:
+    - series: windows_memory_committed_bytes{job="cs2-win",instance="win"}
+      values: 1500+0x90
+    - series: windows_memory_physical_total_bytes{job="cs2-win",instance="win"}
+      values: 1000+0x90
+    - series: windows_memory_available_bytes{job="cs2-win",instance="win"}
+      values: 90+0x90
+    - series: windows_memory_swap_page_operations_total{job="cs2-win",instance="win"}
+      values: 0+120000x90
+    promql_expr_test:
+    - rule_uid: hw-win-commit-over-physical
+      eval_time: 60m
+      exp_samples:
+      - labels: '{job="cs2-win",instance="win"}'
+        value: 1.5
+    alert_rule_test:
+    - alertname: hw-win-commit-over-physical
+      eval_time: 60m
+      exp_alerts:
+      - exp_labels:
+          job: cs2-win
+          instance: win
+          area: server
+          severity: warning

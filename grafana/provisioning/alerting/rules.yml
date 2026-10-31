@@ -1214,25 +1214,15 @@ groups:
         labels: { severity: warning, area: server }
         annotations: { summary: "Самому свежему снимку sanoid датасета {{ $labels.dataset }} больше 28 часов", description: "Снимки делаются раз в сутки, значит, последний прогон sanoid этот датасет не снял, и точки отката за сегодня нет. На хосте: systemctl status sanoid.timer sanoid.service, journalctl -u sanoid, zfs list -t snapshot -o name,creation -s creation <датасет>. Если метки dataset нет, сборщик не смог прочитать sanoid.conf или список снимков: journalctl -u node-textfile-collect.", value: '{{ if $values.A }}{{ humanizeDuration $values.A.Value }}{{ else }}нет данных{{ end }}', threshold: "старше 28 ч, держится 30 мин", runbook_url: "https://github.com/samoy-love/metrics.samoy.love/blob/main/docs/runbook.md#hw-snapshots-stale", __dashboardUid__: "samoylove-hardware", __panelId__: "85" }
 
-      # Копия незаменимого на ноутбук владельца (30.09.2026). Её делает
-      # Windows-машина владельца скриптом home-server
-      # scripts/backup-irreplaceable.sh, а в конце удачного прогона пишет на хост
-      # backup_laptop.prom с отметкой времени. Прогон ночной, 36 ч — одна
-      # пропущенная ночь с запасом.
-      #
-      # Пока скрипт ни разу не отработал с записью отметки, метрики нет вовсе,
-      # и её отсутствие до 02.10.2026 12:00 UTC (1790942400) — норма, а не
-      # авария: иначе тревога горела бы с первой минуты. После этой даты
-      # отсутствие метрики значит, что копия не отмечалась ни разу.
       - uid: hw-win-commit-over-physical
-        title: "Сервер: cs2-win живёт в файле подкачки"
+        title: "Сервер: Windows не хватает оперативной памяти"
         condition: C
         data:
           - refId: A
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 3600, to: 0 }
             model:
-              expr: '((windows_memory_committed_bytes{job="cs2-win"} / windows_memory_physical_total_bytes{job="cs2-win"}) > 1) and on(instance) (rate(windows_memory_swap_page_operations_total{job="cs2-win"}[30m]) > 1000)'
+              expr: "((windows_memory_committed_bytes{job=\"cs2-win\"} / windows_memory_physical_total_bytes{job=\"cs2-win\"}) > 1) and on(instance) (rate(windows_memory_swap_page_operations_total{job=\"cs2-win\"}[30m]) > 1000) and on(instance) (windows_memory_available_bytes{job=\"cs2-win\"} / windows_memory_physical_total_bytes{job=\"cs2-win\"} < 0.10)"
               instant: true
               refId: A
           - refId: C
@@ -1251,7 +1241,7 @@ groups:
         execErrState: Error
         for: 30m
         labels: { severity: warning, area: server }
-        annotations: { summary: "Windows на cs2-win выделила больше памяти, чем есть, и гоняет подкачку", description: "Выделенная память Windows больше физической, и подкачка идёт быстрее 1000 операций в секунду полчаса подряд. Каждая такая операция — запись на NVMe хоста: 30.09.2026 подкачка cs2-win давала около 290 ГБ записи в сутки. На панели видно, какой процесс раздулся: чаще всего клиент Steam (с cs2#866 он перезапускается сам) или зависшая игра. На машине: ssh render@cs2-win, Get-Process | Sort-Object WS -Descending.", value: '{{ if $values.A }}{{ humanizePercentage $values.A.Value }} физической{{ else }}нет данных{{ end }}', threshold: "выделено больше физической и больше 1000 опер/с, держится 30 мин", runbook_url: "https://github.com/samoy-love/metrics.samoy.love/blob/main/docs/runbook.md#hw-win-commit-over-physical", __dashboardUid__: "samoylove-hardware", __panelId__: "74" }
+        annotations: { summary: "Windows расходует подкачку при нехватке доступной физической памяти", description: "Непрерывно полчаса доступно менее 10% RAM, объём committed превышает физическую память и счётчик страничного ввода-вывода растёт быстрее 1000 страниц/с. Committed — обязательство выделить память, а не занятая RAM; Pages/sec включает чтение и запись, в том числе отображённых файлов, поэтому без нехватки доступной памяти тревоги нет. Проверить процессы Windows и их рабочие наборы. Память машины автоматически не увеличивать.", value: '{{ if $values.A }}{{ humanizePercentage $values.A.Value }} физической{{ else }}нет данных{{ end }}', threshold: "Доступно менее 10% RAM, committed выше физической и более 1000 страниц/с, держится 30 мин", runbook_url: "https://github.com/samoy-love/metrics.samoy.love/blob/main/docs/runbook.md#hw-win-commit-over-physical", __dashboardUid__: "samoylove-hardware", __panelId__: "74" }
 
       # Обновления безопасности хоста (30.09.2026). Метрики пишет таймер пакета
       # prometheus-node-exporter-collectors (apt.prom). unattended-upgrades
