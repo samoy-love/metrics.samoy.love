@@ -1137,7 +1137,7 @@
     },
     {
       "type": "stat",
-      "title": "Копия на ноутбуке",
+      "title": "Последняя внешняя копия (архив)",
       "id": 2105,
       "datasource": {
         "type": "prometheus",
@@ -1149,7 +1149,7 @@
         "w": 4,
         "h": 4
       },
-      "description": "Возраст внешней копии незаменимых данных. Серверный дамп и снимки на том же пуле её не заменяют. Нет данных — открыть панель отметки копии; старше 36 часов — проверить журнал копирования.",
+      "description": "Внешняя копия отключена по решению владельца 01.11.2026: назначения нет. Историческая отметка не означает работающую резервную копию. Серверные снимки и дампы наблюдаются отдельно.",
       "targets": [
         {
           "refId": "A",
@@ -1165,7 +1165,7 @@
           "fields": "",
           "values": false
         },
-        "colorMode": "background",
+        "colorMode": "value",
         "graphMode": "none",
         "textMode": "auto",
         "justifyMode": "center"
@@ -1179,91 +1179,33 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "gray",
                 "value": null
-              },
-              {
-                "color": "orange",
-                "value": 129600
               }
             ]
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "gray"
           }
         },
         "overrides": []
       }
     },
     {
-      "type": "stat",
-      "title": "Отметка внешней копии",
+      "type": "text",
+      "title": "Внешняя копия",
       "id": 2106,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "samoylove-prometheus"
-      },
       "gridPos": {
         "x": 20,
         "y": 10,
         "w": 4,
         "h": 4
       },
-      "description": "Есть ли положительная отметка успешного копирования на ноутбук. Не подтверждает свежесть: возраст показан рядом. При недоступном экспортёре — нет данных, при отсутствии отметки — неизвестно.",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "(max(backup_laptop_last_success_timestamp_seconds) > bool 0 or vector(0)) and on() (max(up{job=\"node-host\"}) == 1)",
-          "instant": true
-        }
-      ],
+      "description": "Внешняя копия отключена по решению владельца 01.11.2026: назначения нет. Историческая отметка не означает работающую резервную копию. Серверные снимки и дампы наблюдаются отдельно.",
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "none",
-        "textMode": "auto",
-        "justifyMode": "center"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "none",
-          "decimals": 0,
-          "noValue": "нет данных",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "orange",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "нет отметки",
-                  "color": "orange",
-                  "index": 0
-                },
-                "1": {
-                  "text": "есть",
-                  "color": "green",
-                  "index": 1
-                }
-              }
-            }
-          ]
-        },
-        "overrides": []
+        "mode": "markdown",
+        "content": "**Не настроена**\n\nВладелец отключил внешнее копирование."
       }
     },
     {

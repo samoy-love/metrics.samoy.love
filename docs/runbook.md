@@ -8,10 +8,10 @@
 **для сведения** — не требует действий.
 
 - [CI](#ci-area) — 11
-- [Сервер](#server-area) — 42
+- [Сервер](#server-area) — 40
 - [Пристрелка](#cs2-area) — 66
 - [Сайты и проекты](#sites-area) — 39
-- [Мониторинг](#monitoring-area) — 17
+- [Мониторинг](#monitoring-area) — 18
 
 <a id="ci-area"></a>
 
@@ -641,26 +641,6 @@ rate(node_pressure_io_stalled_seconds_total{job="node-host"}[5m]) > 0.15
 
 </details>
 
-<a id="hw-laptop-backup-old"></a>
-
-### Сервер: копия на ноутбук старше 36 часов
-
-**предупреждение** · порог: старше 36 ч, держится 30 мин · панель: [Сервер — хост, диски, контейнеры, машины рендера → Копия на ноутбук](https://metrics.samoy.love/d/samoylove-hardware?viewPanel=86)
-
-**Что случилось.** Последняя удачная копия на ноутбук старше 36 часов
-
-**Что это значит и что делать.** Внешняя копия незаменимых данных на ноутбуке старше 36 часов. Свежий дамп Postgres на сервере и снимки на том же пуле её не заменяют. Сверить дату последнего успеха, журнал last-run.log и расписание scripts/backup-irreplaceable.sh на машине, которая забирает копию. Причину пропуска нельзя определить по одной старой отметке. Отсутствующую или нулевую отметку проверяет отдельная тревога.
-
-<details><summary>Условие</summary>
-
-```promql
-(time() - max(backup_laptop_last_success_timestamp_seconds > 0)) > 36*3600
-```
-
-Держится: 30m · группа `infra-hardware` · uid `hw-laptop-backup-old`
-
-</details>
-
 <a id="hw-hw-metrics-missing"></a>
 
 ### Сервер: метрики железа не собираются
@@ -758,26 +738,6 @@ increase(smart_nvme_written_bytes_total[1d]) > 1.1e12
 ```
 
 Держится: 15m · группа `infra-reliability` · uid `hw-win-system-disk-low`
-
-</details>
-
-<a id="hw-laptop-backup-missing"></a>
-
-### Сервер: нет отметки внешней резервной копии
-
-**предупреждение** · порог: отметки нет 30 мин при доступном экспортёре · панель: [Сервер — хост, диски, контейнеры, машины рендера → Копия на ноутбук](https://metrics.samoy.love/d/samoylove-hardware?viewPanel=86)
-
-**Что случилось.** Неизвестно, когда внешняя резервная копия завершилась успешно
-
-**Что это значит и что делать.** Экспортёр хоста доступен, но положительной отметки backup_laptop_last_success_timestamp_seconds нет. Это неизвестное состояние внешней копии, а не её возраст. Проверить файл backup_laptop.prom и журнал копирования на ноутбуке. При недоступном экспортёре действует тревога сбора метрик, без второго сообщения о копии.
-
-<details><summary>Условие</summary>
-
-```promql
-((max(backup_laptop_last_success_timestamp_seconds) <= 0) or absent(backup_laptop_last_success_timestamp_seconds)) and on() (max(up{job="node-host"}) == 1)
-```
-
-Держится: 30m · группа `infra-hardware` · uid `hw-laptop-backup-missing`
 
 </details>
 
@@ -1178,7 +1138,7 @@ cs2_render_mode_mismatch == 1 and on() cs2_service_mode{mode="public"} == 1
 <details><summary>Условие</summary>
 
 ```promql
-cs2_gc_ready == 0
+(cs2_gc_ready == 0) unless on() (deploy_maintenance_until_seconds{app="cs2-gc"} > time())
 ```
 
 Держится: 30m · группа `product-cs2` · uid `cs2-gc-down`
@@ -1238,7 +1198,7 @@ min_over_time(cs2_parse_queue_depth[15m]) > 0 and on(instance) sum by (instance)
 <details><summary>Условие</summary>
 
 ```promql
-up{job="cs2-api"} == 0
+(up{job="cs2-api"} == 0) unless on() (deploy_maintenance_until_seconds{app="cs2-api"} > time())
 ```
 
 Держится: 5m · группа `product-cs2` · uid `cs2-api-down`
@@ -1258,7 +1218,7 @@ up{job="cs2-api"} == 0
 <details><summary>Условие</summary>
 
 ```promql
-cs2_ready == 0
+(cs2_ready == 0) unless on() (deploy_maintenance_until_seconds{app="cs2-api"} > time())
 ```
 
 Держится: 10m · группа `product-cs2` · uid `cs2-not-ready`
@@ -1278,7 +1238,7 @@ cs2_ready == 0
 <details><summary>Условие</summary>
 
 ```promql
-sum(rate(cs2_http_requests_total{code=~"5.."}[15m])) / clamp_min(sum(rate(cs2_http_requests_total[15m])), 0.0001) > 0.05
+(sum(rate(cs2_http_requests_total{code=~"5.."}[15m])) / clamp_min(sum(rate(cs2_http_requests_total[15m])), 0.0001) > 0.05) and (sum(increase(cs2_http_requests_total{code=~"5.."}[5m])) > 0)
 ```
 
 Держится: 10m · группа `product-cs2` · uid `cs2-http-errors`
@@ -1365,6 +1325,26 @@ sum(rate(cs2_avatar_requests_total{result="отказ"}[1h])) / clamp_min(sum(ra
 
 </details>
 
+<a id="cs2-render-updater-failed"></a>
+
+### Пристрелка: автообновление рендера устойчиво не работает
+
+**предупреждение** · порог: 2h · панель: [Надёжность — неделя, память, диски, мониторинг → Сборщики Docker: состояние](https://metrics.samoy.love/d/samoylove-reliability?viewPanel=46)
+
+**Что случилось.** Пристрелка: автообновление рендера устойчиво не работает
+
+**Что это значит и что делать.** Проверки обновлений не проходят два часа подряд. Короткий отказ GitHub или Steam не означает отказ уже работающего рендера. Проверить журнал обновления, лимит GitHub и доступ к Steam; длительный сбой остаётся тревогой.
+
+<details><summary>Условие</summary>
+
+```promql
+incus_container_unit_failed{unit="cs2-render-update.service"} == 1
+```
+
+Держится: 2h · группа `infra-reliability` · uid `cs2-render-updater-failed`
+
+</details>
+
 <a id="cs2-outdated"></a>
 
 ### Пристрелка: архив разобран старым составом данных
@@ -1438,7 +1418,7 @@ cs2_reconcile_mismatches{kind=~"clickhouse_orphan|file_orphan|row_no_file"} > 0
 <details><summary>Условие</summary>
 
 ```promql
-incus_container_unit_failed == 1
+(incus_container_unit_failed{unit!="cs2-render-update.service"} == 1) unless on(unit) (deploy_maintenance_until_seconds{unit!=""} > time())
 ```
 
 Держится: 5m · группа `product-cs2` · uid `cs2-container-unit-failed`
@@ -1462,26 +1442,6 @@ cs2_pg_dump_age_seconds > 93600
 ```
 
 Держится: 30m · группа `product-cs2` · uid `cs2-pg-dump-old`
-
-</details>
-
-<a id="cs2-render-engine-broken"></a>
-
-### Пристрелка: движок съёмки сломан
-
-**предупреждение** · порог: держится 2 ч · панель: [Пристрелка — cs.samoy.love → Движок съёмки](https://metrics.samoy.love/d/samoylove-cs2?viewPanel=911)
-
-**Что случилось.** Проба движка съёмки не проходит дольше двух часов (движок — метка engine)
-
-**Что это значит и что делать.** У hlae это значит, что камеры повтора не работают: обычные заказы уходят на Linux, а ролики с камерами ждут. Почти всегда причина — обновление CS2, под которое HLAE ещё не вышла или не поставлена. Если одновременно горит «вышла новая версия HLAE» — ставить её на cs2-win и гонять стенд. Журнал — C:\cs2\logs\render.log на cs2-win.
-
-<details><summary>Условие</summary>
-
-```promql
-cs2_render_engine_ok == 0
-```
-
-Держится: 2h · группа `product-cs2` · uid `cs2-render-engine-broken`
 
 </details>
 
@@ -1758,7 +1718,7 @@ cs2_clickhouse_parts{scope="max_partition"} > 200
 <details><summary>Условие</summary>
 
 ```promql
-cs2_render_heartbeat_age_seconds > 600
+(cs2_render_heartbeat_age_seconds > 600) unless on(engine) label_replace((deploy_maintenance_until_seconds{engine!=""} > time()), "engine", "$1", "engine", "(.+)")
 ```
 
 Держится: 10m · группа `product-cs2` · uid `cs2-render-heartbeat`
@@ -2149,16 +2109,16 @@ increase(incus_memory_OOM_kills_total{name="cs2-render"}[1h]) >= 3
 
 ### Пристрелка: рендер часто не получается с первого раза
 
-**предупреждение** · порог: меньше 90%, держится 1 сут · панель: [Пристрелка — cs.samoy.love → Рендер с первого раза](https://metrics.samoy.love/d/samoylove-cs2?viewPanel=910)
+**предупреждение** · порог: Меньше 90% за неделю при 10 завершениях за последние сутки, держится 1 сут · панель: [Пристрелка — cs.samoy.love → Рендер с первого раза](https://metrics.samoy.love/d/samoylove-cs2?viewPanel=910)
 
 **Что случилось.** Меньше 90% заданий рендера за неделю прошли с первой попытки (машина — метка engine)
 
-**Что это значит и что делать.** Клипы в итоге доходят, но каждый повтор — лишние минуты, пока игрок ждёт. Какая причина выросла, видно в cs2_render_retries_by_requester_week по той же машине и классу заказов (панель «Рендер с первого раза: причины повторов»): перемотка, камера, падение игры, HLAE, диск, потолок времени (timeout). Частый повод — обновление CS2 или выкатка посреди задания.
+**Что это значит и что делать.** Доля за неделю остаётся на графике при любом объёме. Тревога требует не менее 10 завершённых клипов того же класса заказов и движка за последние сутки: маленькая или уже неактивная выборка не будит. Три окончательных отказа за час по-прежнему проверяются отдельным правилом независимо от объёма. Причины повторов — на панели 910.
 
 <details><summary>Условие</summary>
 
 ```promql
-cs2_render_first_try_by_requester_ratio{engine=~"linux|hlae",requester=~"user|system"} < 0.9
+(cs2_render_first_try_by_requester_ratio{engine=~"linux|hlae",requester=~"user|system"} < 0.9) and on(engine,requester) (sum by(engine,requester) (cs2_render_finished_window{product="clip",result=~"done|failed",window="24h"}) >= 10) and on() (cs2_chain_scrape_up == 1)
 ```
 
 Держится: 24h · группа `product-cs2` · uid `cs2-render-first-try-low`
@@ -2476,7 +2436,7 @@ sum(rate(chillhub_http_requests_total{code=~"5.."}[15m])) / clamp_min(sum(rate(c
 <details><summary>Условие</summary>
 
 ```promql
-sum by (host) (rate(samoylove_site_http_response_count_total{status=~"5.."}[15m])) / sum by (host) (rate(samoylove_site_http_response_count_total[15m])) > 0.05 and sum by (host) (increase(samoylove_site_http_response_count_total[15m])) > 20
+(sum by (host) (rate(samoylove_site_http_response_count_total{status=~"5.."}[15m])) / sum by (host) (rate(samoylove_site_http_response_count_total[15m])) > 0.05 and sum by (host) (increase(samoylove_site_http_response_count_total[15m])) > 20) and (sum by(host) (increase(samoylove_site_http_response_count_total{status=~"5.."}[5m])) > 0)
 ```
 
 Держится: 10m · группа `product-sites` · uid `product-site-error-rate-high`
@@ -2496,7 +2456,7 @@ sum by (host) (rate(samoylove_site_http_response_count_total{status=~"5.."}[15m]
 <details><summary>Условие</summary>
 
 ```promql
-status_check_up == 0
+(status_check_up == 0) unless on(check) (deploy_maintenance_check_until_seconds > time())
 ```
 
 Держится: 5m · группа `infra-sites` · uid `infra-status-check-down`
@@ -2516,7 +2476,7 @@ status_check_up == 0
 <details><summary>Условие</summary>
 
 ```promql
-probe_success == 0
+(probe_success == 0) unless on(instance) label_replace((deploy_maintenance_until_seconds{site!=""} > time()), "instance", "$1", "site", "(.+)")
 ```
 
 Держится: 5m · группа `infra-sites` · uid `infra-site-down`
@@ -2536,7 +2496,7 @@ probe_success == 0
 <details><summary>Условие</summary>
 
 ```promql
-node_systemd_unit_state{job!="node-containers",name=~"(snakes|chillhub-api|chillhub-admin|nginx|docker)\\.service",state="active"} == 0
+(node_systemd_unit_state{job!="node-containers",name=~"(snakes|chillhub-api|chillhub-admin|nginx|docker)\\.service",state="active"} == 0) unless on(name) label_replace((deploy_maintenance_until_seconds{unit!=""} > time()), "name", "$1", "unit", "(.+)")
 ```
 
 Держится: 5m · группа `infra-services` · uid `infra-service-down`
@@ -2576,7 +2536,7 @@ statusbot_deploy_events_pending_age_seconds > 300
 <details><summary>Условие</summary>
 
 ```promql
-node_systemd_unit_state{job!="node-containers",state="failed"} == 1
+(node_systemd_unit_state{job!="node-containers",state="failed"} == 1) unless on(name) label_replace((deploy_maintenance_until_seconds{unit!=""} > time()), "name", "$1", "unit", "(.+)")
 ```
 
 Держится: 5m · группа `infra-services` · uid `infra-unit-failed`
@@ -2887,19 +2847,19 @@ max(chillhub_maintenance_enabled) == 1
 
 ### Лаунчер: телеметрию режет ограничитель
 
-**предупреждение** · порог: больше 20, держится 30 мин · панель: [ChillHub — лаунчер → Ответы приёма телеметрии по кодам за час](https://metrics.samoy.love/d/samoylove-chillhub?viewPanel=56)
+**предупреждение** · порог: Больше 5 отказов за 5 мин и 10% запросов, непрерывно 15 мин · панель: [ChillHub — лаунчер → Ответы приёма телеметрии по кодам за час](https://metrics.samoy.love/d/samoylove-chillhub?viewPanel=56)
 
 **Что случилось.** Приём телеметрии отвечает 429
 
-**Что это значит и что делать.** Ограничитель частоты отбрасывает телеметрию лаунчеров (429). «Лаунчер: телеметрия отвергается» этого не видит: 429 не попадает в chillhub_telemetry_rejected_total.
+**Что это значит и что делать.** Ограничитель устойчиво отбрасывает телеметрию лаунчеров. Проверить частоту отправки и долю 429. Одиночный всплеск уходит из пятиминутного окна до срабатывания; ограничитель не отключать.
 
 <details><summary>Условие</summary>
 
 ```promql
-sum(increase(chillhub_http_requests_total{route="/metrics/report",code="429"}[1h])) > 20
+(sum(increase(chillhub_http_requests_total{route="/metrics/report",code="429"}[5m])) > 5) and on() (sum(rate(chillhub_http_requests_total{route="/metrics/report",code="429"}[5m])) / clamp_min(sum(rate(chillhub_http_requests_total{route="/metrics/report"}[5m])), 0.001) > 0.1)
 ```
 
-Держится: 30m · группа `product-chillhub` · uid `product-chillhub-telemetry-rate-limited`
+Держится: 15m · группа `product-chillhub` · uid `product-chillhub-telemetry-rate-limited`
 
 </details>
 
@@ -3070,7 +3030,7 @@ sum(increase(samoylove_event_http_response_count_total{status!="204"}[1h])) > 0
 <details><summary>Условие</summary>
 
 ```promql
-probe_duration_seconds > 3 and on(instance) probe_success == 1
+(probe_duration_seconds > 3 and on(instance) probe_success == 1) unless on(instance) label_replace((deploy_maintenance_until_seconds{site!=""} > time()), "instance", "$1", "site", "(.+)")
 ```
 
 Держится: 15m · группа `infra-sites` · uid `infra-probe-latency-high`
@@ -3194,7 +3154,7 @@ sum(rate(prometheus_tsdb_head_samples_appended_total[5m])) == 0
 <details><summary>Условие</summary>
 
 ```promql
-monitoring_container_running == 0
+(monitoring_container_running == 0) unless on() (deploy_maintenance_until_seconds{app="metrics"} > time())
 ```
 
 Держится: 3m · группа `infra-reliability` · uid `mon-container-stopped`
@@ -3298,6 +3258,26 @@ prometheus_config_last_reload_successful == 0
 ```
 
 Держится: 0s · группа `infra-reliability` · uid `mon-notification-failed`
+
+</details>
+
+<a id="mon-deploy-window-invalid"></a>
+
+### Мониторинг: отметка выкатки некорректна
+
+**предупреждение** · порог: 5m · панель: [Надёжность — неделя, память, диски, мониторинг → Сборщики Docker: состояние](https://metrics.samoy.love/d/samoylove-reliability?viewPanel=46)
+
+**Что случилось.** Мониторинг: отметка выкатки некорректна
+
+**Что это значит и что делать.** Повреждена отметка ограниченного окна выкатки. Подавление отключается для этой цели; проверить каталог maintenance в журнале deploy-kit. Окно не может превышать 10 минут.
+
+<details><summary>Условие</summary>
+
+```promql
+deploy_maintenance_collect_ok == 0
+```
+
+Держится: 5m · группа `infra-reliability` · uid `mon-deploy-window-invalid`
 
 </details>
 
@@ -3454,7 +3434,7 @@ prometheus_tsdb_storage_blocks_bytes / prometheus_tsdb_retention_limit_bytes > 0
 <details><summary>Условие</summary>
 
 ```promql
-up{job!~"node-host|incus|blackbox-http|nginxlog|cs2-api|cs2-win"} == 0
+(up{job!~"node-host|incus|blackbox-http|nginxlog|cs2-api|cs2-win"} == 0) unless on(job) label_replace((deploy_maintenance_until_seconds{target!=""} > time()), "job", "$1", "target", "(.+)")
 ```
 
 Держится: 5m · группа `infra-monitoring` · uid `mon-scrape-target-down`
@@ -3474,7 +3454,7 @@ up{job!~"node-host|incus|blackbox-http|nginxlog|cs2-api|cs2-win"} == 0
 <details><summary>Условие</summary>
 
 ```promql
-absent(up{job="node-host"}) or absent(up{job="incus"}) or absent(up{job="cs2-api"})
+absent(up{job="node-host"}) or absent(up{job="incus"}) or absent(up{job="cs2-api"}) or absent(up{job="cs2-win"}) or absent(up{job="cs2-postgres"}) or absent(up{job="cs2-clickhouse"}) or absent(up{job="node"}) or absent(up{job="node-containers"}) or absent(up{job="grafana"}) or absent(up{job="prometheus"}) or absent(up{job="nginxlog"}) or absent(up{job="blackbox-http"}) or absent(up{job="snakes"}) or absent(up{job="chillhub-api"}) or absent(up{job="chillhub-admin"})
 ```
 
 Держится: 15m · группа `infra-monitoring` · uid `mon-scrape-target-missing`

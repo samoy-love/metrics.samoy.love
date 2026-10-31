@@ -85,80 +85,6 @@ tests:
         exp_alerts:
           - exp_labels: {severity: warning, area: cs2}
 
-  - name: Missing backup mark has its own alert and no fictional age
-    interval: 1m
-    input_series:
-      - series: 'up{job="node-host"}'
-        values: '1+0x35'
-    promql_expr_test:
-      - rule_uid: hw-laptop-backup-old
-        eval_time: 31m
-        exp_samples: []
-      - rule_uid: hw-laptop-backup-missing
-        eval_time: 31m
-        exp_samples:
-          - labels: '{}'
-            value: 1
-    alert_rule_test:
-      - eval_time: 29m
-        alertname: hw-laptop-backup-missing
-        exp_alerts: []
-      - eval_time: 30m
-        alertname: hw-laptop-backup-missing
-        exp_alerts:
-          - exp_labels: {severity: warning, area: server}
-
-  - name: Zero backup timestamp is unknown rather than old
-    interval: 1m
-    input_series:
-      - series: 'up{job="node-host"}'
-        values: '1+0x35'
-      - series: backup_laptop_last_success_timestamp_seconds
-        values: '0+0x35'
-    promql_expr_test:
-      - rule_uid: hw-laptop-backup-old
-        eval_time: 31m
-        exp_samples: []
-      - rule_uid: hw-laptop-backup-missing
-        eval_time: 31m
-        exp_samples:
-          - labels: '{}'
-            value: 0
-
-  - name: Exporter outage must not invent a missing backup
-    interval: 1m
-    input_series:
-      - series: 'up{job="node-host"}'
-        values: '0+0x35'
-    promql_expr_test:
-      - rule_uid: hw-laptop-backup-missing
-        eval_time: 31m
-        exp_samples: []
-
-  - name: Old external backup alerts even with a fresh server dump
-    interval: 1m
-    input_series:
-      - series: backup_laptop_last_success_timestamp_seconds
-        values: '3600+0x2400'
-      - series: cs2_pg_dump_age_seconds
-        values: '300+0x2400'
-      - series: 'up{job="node-host"}'
-        values: '1+0x2400'
-    promql_expr_test:
-      - rule_uid: hw-laptop-backup-old
-        eval_time: 40h
-        exp_samples:
-          - labels: '{}'
-            value: 140400
-      - rule_uid: hw-laptop-backup-missing
-        eval_time: 40h
-        exp_samples: []
-    alert_rule_test:
-      - eval_time: 40h
-        alertname: hw-laptop-backup-old
-        exp_alerts:
-          - exp_labels: {severity: warning, area: server}
-
   - name: Diagnostic failures must not page for user or system orders
     interval: 1m
     input_series:
@@ -316,29 +242,45 @@ tests:
   - name: Low first try ratio for a real requester must persist for a day
     interval: 1m
     input_series:
-      - series: 'cs2_render_first_try_by_requester_ratio{engine="hlae",requester="user"}'
-        values: '0.8+0x1440'
-      - series: 'cs2_render_first_try_by_requester_ratio{engine="linux",requester="system"}'
-        values: '0.7+0x1440'
-      - series: 'cs2_render_first_try_by_requester_ratio{engine="linux",requester="user"}'
-        values: '0.9+0x1440'
+    - series: cs2_render_first_try_by_requester_ratio{engine="hlae",requester="user"}
+      values: 0.8+0x1440
+    - series: cs2_render_first_try_by_requester_ratio{engine="linux",requester="system"}
+      values: 0.7+0x1440
+    - series: cs2_render_first_try_by_requester_ratio{engine="linux",requester="user"}
+      values: 0.9+0x1440
+    - series: cs2_render_finished_window{engine="hlae",requester="user",product="clip",result="done",window="24h"}
+      values: 10+0x1440
+    - series: cs2_render_finished_window{engine="linux",requester="system",product="clip",result="done",window="24h"}
+      values: 10+0x1440
+    - series: cs2_render_finished_window{engine="linux",requester="user",product="clip",result="done",window="24h"}
+      values: 10+0x1440
+    - series: cs2_chain_scrape_up
+      values: 1+0x1440
     promql_expr_test:
-      - rule_uid: cs2-render-first-try-low
-        eval_time: 24h
-        exp_samples:
-          - labels: 'cs2_render_first_try_by_requester_ratio{engine="hlae",requester="user"}'
-            value: 0.8
-          - labels: 'cs2_render_first_try_by_requester_ratio{engine="linux",requester="system"}'
-            value: 0.7
+    - rule_uid: cs2-render-first-try-low
+      eval_time: 24h
+      exp_samples:
+      - labels: cs2_render_first_try_by_requester_ratio{engine="hlae",requester="user"}
+        value: 0.8
+      - labels: cs2_render_first_try_by_requester_ratio{engine="linux",requester="system"}
+        value: 0.7
     alert_rule_test:
-      - eval_time: 23h59m
-        alertname: cs2-render-first-try-low
-        exp_alerts: []
-      - eval_time: 24h
-        alertname: cs2-render-first-try-low
-        exp_alerts:
-          - exp_labels: {engine: hlae, requester: user, severity: warning, area: cs2}
-          - exp_labels: {engine: linux, requester: system, severity: warning, area: cs2}
+    - eval_time: 23h59m
+      alertname: cs2-render-first-try-low
+      exp_alerts: []
+    - eval_time: 24h
+      alertname: cs2-render-first-try-low
+      exp_alerts:
+      - exp_labels:
+          engine: hlae
+          requester: user
+          severity: warning
+          area: cs2
+      - exp_labels:
+          engine: linux
+          requester: system
+          severity: warning
+          area: cs2
 
   - name: Isolated cgroup pressure with plenty of host memory does not alert
     interval: 1m
@@ -573,3 +515,216 @@ tests:
         value: 1
       - labels: '{job="node",instance="gap"}'
         value: 0.5
+
+  - name: Deployment mutes only its site and expires after ten minutes
+    interval: 1m
+    input_series:
+    - series: probe_success{instance="https://cs.samoy.love/"}
+      values: 0+0x20
+    - series: probe_success{instance="https://snakes.samoy.love/"}
+      values: 0+0x20
+    - series: deploy_maintenance_until_seconds{app="cs2-api",site="https://cs.samoy.love/"}
+      values: 600+0x20
+    promql_expr_test:
+    - rule_uid: infra-site-down
+      eval_time: 2m
+      exp_samples:
+      - labels: probe_success{instance="https://snakes.samoy.love/"}
+        value: 0
+    - rule_uid: infra-site-down
+      eval_time: 11m
+      exp_samples:
+      - labels: probe_success{instance="https://cs.samoy.love/"}
+        value: 0
+      - labels: probe_success{instance="https://snakes.samoy.love/"}
+        value: 0
+    alert_rule_test:
+    - alertname: infra-site-down
+      eval_time: 15m
+      exp_alerts:
+      - exp_labels:
+          instance: https://cs.samoy.love/
+          area: sites
+          severity: critical
+      - exp_labels:
+          instance: https://snakes.samoy.love/
+          area: sites
+          severity: critical
+  - name: Absent deployment marker never hides API downtime
+    interval: 1m
+    input_series:
+    - series: up{job="cs2-api",instance="cs2-api"}
+      values: 0+0x20
+    promql_expr_test:
+    - rule_uid: cs2-api-down
+      eval_time: 6m
+      exp_samples:
+      - labels: up{job="cs2-api",instance="cs2-api"}
+        value: 0
+  - name: Updater transient is separate from runtime failure
+    interval: 1m
+    input_series:
+    - series: incus_container_unit_failed{unit="cs2-render-update.service",container="cs2-render"}
+      values: 1+0x20 0+0x120
+    - series: incus_container_unit_failed{unit="cs2-render.service",container="cs2-render"}
+      values: 1+0x140
+    promql_expr_test:
+    - rule_uid: cs2-container-unit-failed
+      eval_time: 10m
+      exp_samples:
+      - labels: incus_container_unit_failed{unit="cs2-render.service",container="cs2-render"}
+        value: 1
+    - rule_uid: cs2-render-updater-failed
+      eval_time: 10m
+      exp_samples:
+      - labels: incus_container_unit_failed{unit="cs2-render-update.service",container="cs2-render"}
+        value: 1
+    alert_rule_test:
+    - alertname: cs2-render-updater-failed
+      eval_time: 130m
+      exp_alerts: []
+  - name: Persistent updater failure is still actionable
+    interval: 1m
+    input_series:
+    - series: incus_container_unit_failed{unit="cs2-render-update.service",container="cs2-render"}
+      values: 1+0x130
+    alert_rule_test:
+    - alertname: cs2-render-updater-failed
+      eval_time: 120m
+      exp_alerts:
+      - exp_labels:
+          unit: cs2-render-update.service
+          container: cs2-render
+          area: cs2
+          severity: warning
+  - name: Invalid maintenance window is reported
+    interval: 1m
+    input_series:
+    - series: deploy_maintenance_collect_ok
+      values: 0+0x10
+    promql_expr_test:
+    - rule_uid: mon-deploy-window-invalid
+      eval_time: 6m
+      exp_samples:
+      - labels: deploy_maintenance_collect_ok
+        value: 0
+  - name: Isolated limiter burst expires before alert hold
+    interval: 1m
+    input_series:
+    - series: chillhub_http_requests_total{route="/metrics/report",code="429"}
+      values: 0 100+0x30
+    - series: chillhub_http_requests_total{route="/metrics/report",code="200"}
+      values: 0+1x31
+    promql_expr_test:
+    - rule_uid: product-chillhub-telemetry-rate-limited
+      eval_time: 10m
+      exp_samples: []
+    alert_rule_test:
+    - alertname: product-chillhub-telemetry-rate-limited
+      eval_time: 20m
+      exp_alerts: []
+  - name: Sustained limiter rejection still alerts
+    interval: 1m
+    input_series:
+    - series: chillhub_http_requests_total{route="/metrics/report",code="429"}
+      values: 0+10x30
+    - series: chillhub_http_requests_total{route="/metrics/report",code="200"}
+      values: 0+10x30
+    alert_rule_test:
+    - alertname: product-chillhub-telemetry-rate-limited
+      eval_time: 20m
+      exp_alerts:
+      - exp_labels:
+          area: sites
+          severity: warning
+  - name: Old or small render cohorts remain graphs not pages
+    interval: 1m
+    input_series:
+    - series: cs2_render_first_try_by_requester_ratio{engine="hlae",requester="user"}
+      values: 0.5+0x1440
+    - series: cs2_render_finished_window{engine="hlae",requester="user",product="clip",result="done",window="24h"}
+      values: 9+0x1440
+    - series: cs2_chain_scrape_up
+      values: 1+0x1440
+    promql_expr_test:
+    - rule_uid: cs2-render-first-try-low
+      eval_time: 24h
+      exp_samples: []
+
+  - name: Deployment error burst cannot page after recovery
+    interval: 1m
+    input_series:
+    - series: samoylove_site_http_response_count_total{host="cs.samoy.love",status="502"}
+      values: 0 40+0x30
+    - series: samoylove_site_http_response_count_total{host="cs.samoy.love",status="200"}
+      values: 0+1x31
+    - series: cs2_http_requests_total{code="500"}
+      values: 0 40+0x30
+    - series: cs2_http_requests_total{code="200"}
+      values: 0+1x31
+    promql_expr_test:
+    - rule_uid: product-site-error-rate-high
+      eval_time: 12m
+      exp_samples: []
+    - rule_uid: cs2-http-errors
+      eval_time: 12m
+      exp_samples: []
+    alert_rule_test:
+    - alertname: product-site-error-rate-high
+      eval_time: 12m
+      exp_alerts: []
+    - alertname: cs2-http-errors
+      eval_time: 12m
+      exp_alerts: []
+  - name: Missing database target cannot disappear silently
+    interval: 1m
+    input_series:
+    - series: up{job="node-host"}
+      values: 1+0x20
+    - series: up{job="incus"}
+      values: 1+0x20
+    - series: up{job="cs2-api"}
+      values: 1+0x20
+    - series: up{job="cs2-win"}
+      values: 1+0x20
+    - series: up{job="cs2-clickhouse"}
+      values: 1+0x20
+    - series: up{job="node"}
+      values: 1+0x20
+    - series: up{job="node-containers"}
+      values: 1+0x20
+    - series: up{job="grafana"}
+      values: 1+0x20
+    - series: up{job="prometheus"}
+      values: 1+0x20
+    - series: up{job="nginxlog"}
+      values: 1+0x20
+    - series: up{job="blackbox-http"}
+      values: 1+0x20
+    - series: up{job="snakes"}
+      values: 1+0x20
+    - series: up{job="chillhub-api"}
+      values: 1+0x20
+    - series: up{job="chillhub-admin"}
+      values: 1+0x20
+    promql_expr_test:
+    - rule_uid: mon-scrape-target-missing
+      eval_time: 16m
+      exp_samples:
+      - labels: '{job="cs2-postgres"}'
+        value: 1
+  - name: Status agent follows only the deployed check
+    interval: 1m
+    input_series:
+    - series: status_check_up{check="cs2-health"}
+      values: 0+0x20
+    - series: status_check_up{check="snakes-health"}
+      values: 0+0x20
+    - series: deploy_maintenance_check_until_seconds{app="cs2-api",check="cs2-health"}
+      values: 600+0x20
+    promql_expr_test:
+    - rule_uid: infra-status-check-down
+      eval_time: 2m
+      exp_samples:
+      - labels: status_check_up{check="snakes-health"}
+        value: 0

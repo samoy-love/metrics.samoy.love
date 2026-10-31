@@ -11,6 +11,28 @@ spec.loader.exec_module(collector)
 
 
 class CollectorTests(unittest.TestCase):
+    def test_maintenance_is_bounded_and_scoped(self):
+        import json
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root)
+            marker = path / '.maintenance-cs2-api.json'
+            marker.write_text(json.dumps(dict(app='cs2-api', written=100, until=700)))
+            text = '\n'.join(collector.maintenance_lines(200, path))
+            self.assertIn('site="https://cs.samoy.love/",target="cs2-api"', text)
+            self.assertIn('engine=""} 700', text)
+            self.assertNotIn('engine="linux"} 700', text)
+            self.assertNotIn('} 700', '\n'.join(collector.maintenance_lines(700, path)))
+            for data in (dict(app='snakes', written=100, until=700),
+                         dict(app='cs2-api', written=100, until=701),
+                         dict(app='cs2-api', written=1000, until=1100),
+                         dict(app='cs2-api', written='100', until=700)):
+                marker.write_text(json.dumps(data))
+                text = '\n'.join(collector.maintenance_lines(200, path))
+                self.assertIn('deploy_maintenance_collect_ok 0', text)
+                self.assertNotIn('} 700', text)
+            marker.write_text('{')
+            self.assertIn('deploy_maintenance_collect_ok 0', collector.maintenance_lines(200, path))
+
     def test_cache_is_not_confused_with_working_set(self):
         with tempfile.TemporaryDirectory() as root:
             path = Path(root)
