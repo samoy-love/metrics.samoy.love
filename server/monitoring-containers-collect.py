@@ -19,6 +19,61 @@ NAMES = tuple('samoylove-' + n for n in (
 OUT = Path(os.environ.get('MONITORING_CONTAINERS_OUT',
                          '/var/lib/node_exporter/textfile/monitoring_containers.prom'))
 CGROUP = Path('/sys/fs/cgroup')
+MAINTENANCE = Path('/var/lib/deploy-kit/events')
+# Only availability checks use these labels. Resource and data-loss alarms
+# continue to work during deployment. Unknown apps cannot mute known targets.
+DEPLOY_TARGETS = {
+    'cs2-api': ('https://cs.samoy.love/', 'cs2-api', 'cs2-api.service', ''),
+    'cs2-chain': ('', '', 'cs2-chain.service', ''),
+    'cs2-worker': ('', '', 'cs2-worker.target', ''),
+    'cs2-gc': ('', '', 'cs2-gc.service', ''),
+    'cs2-render': ('', '', 'cs2-render.service', 'linux'),
+    'cs2-render-win': ('', '', '', 'hlae'),
+    'snakes': ('https://snakes.samoy.love/', 'snakes', 'snakes.service', ''),
+    'chillhub-api': ('https://launcher.samoy.love/', 'chillhub-api', 'chillhub-api.service', ''),
+    'chillhub-admin': ('', 'chillhub-admin', 'chillhub-admin.service', ''),
+    'metrics': ('', '', 'samoylove-metrics.service', ''),
+    'samoylove': ('https://samoy.love/', '', '', ''),
+    'metro': ('https://metro.samoy.love/', '', '', ''),
+    'die': ('https://die.samoy.love/', '', '', ''),
+    'status-site': ('https://status.samoy.love/', '', '', ''),
+    'chillhub-site': ('https://launcher.samoy.love/', '', '', ''),
+}
+STATUS_CHECKS = {
+    'cs2-api': ('cs2-health',), 'snakes': ('snakes', 'snakes-health'),
+    'metrics': ('metrics-health',), 'samoylove': ('samoylove',),
+    'metro': ('metro', 'metro-sw'), 'die': ('die', 'die-sw', 'die-version'),
+    'status-site': ('status-page', 'status-miniapp'),
+    'chillhub-site': ('launcher',), 'chillhub-admin': ('launcher-admin',),
+    'chillhub-api': ('launcher-build',),
+}
+
+
+def maintenance_lines(now, directory=MAINTENANCE):
+    lines = ['# TYPE deploy_maintenance_until_seconds gauge',
+             '# TYPE deploy_maintenance_check_until_seconds gauge',
+             '# TYPE deploy_maintenance_collect_ok gauge']
+    ok = 1
+    for app, (site, target, unit, engine) in DEPLOY_TARGETS.items():
+        until = 0
+        try:
+            data = json.loads((directory / ('.maintenance-' + app + '.json')).read_text())
+            written, expiry = data['written'], data['until']
+            if (data['app'] != app or type(written) is not int or type(expiry) is not int
+                    or not 0 <= expiry - written <= 600 or written > now + 30):
+                raise ValueError('invalid maintenance window')
+            until = expiry if expiry > now else 0
+        except FileNotFoundError:
+            pass
+        except (OSError, ValueError, KeyError, TypeError):
+            ok = 0
+        tags = dict(app=app, site=site, target=target, unit=unit, engine=engine)
+        labels = ','.join(k + '=' + label(v) for k, v in tags.items())
+        lines.append(f'deploy_maintenance_until_seconds{{{labels}}} {until}')
+        for check in STATUS_CHECKS.get(app, ()):
+            lines.append(f'deploy_maintenance_check_until_seconds{{app={label(app)},check={label(check)}}} {until}')
+    lines.append(f'deploy_maintenance_collect_ok {ok}')
+    return lines
 
 
 def label(value):
@@ -108,7 +163,8 @@ def collect(now):
 
 
 def main():
-    lines = collect(time.time())
+    now = time.time()
+    lines = collect(now) + maintenance_lines(now)
     tmp = OUT.with_suffix('.tmp')
     with tmp.open('w', encoding='utf-8') as fh:
         fh.write('\n'.join(lines) + '\n')

@@ -391,8 +391,8 @@
     },
     {
       "id": 6,
-      "title": "Внешняя копия: возраст",
-      "description": "Снимки ZFS и дамп на сервере не заменяют внешнюю копию. Нет отметки — неизвестно, а не ноль часов.",
+      "title": "Последняя внешняя копия (архив)",
+      "description": "Внешняя копия отключена по решению владельца 01.11.2026: назначения нет. Историческая отметка не означает работающую резервную копию. Серверные снимки и дампы наблюдаются отдельно.",
       "type": "stat",
       "gridPos": {
         "x": 16,
@@ -435,22 +435,15 @@
           "decimals": 1,
           "noValue": "Нет данных",
           "color": {
-            "mode": "thresholds"
+            "mode": "fixed",
+            "fixedColor": "gray"
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "gray",
                 "value": null
-              },
-              {
-                "color": "orange",
-                "value": 129600
-              },
-              {
-                "color": "red",
-                "value": 604800
               }
             ]
           },
@@ -2100,6 +2093,45 @@
           }
         },
         "overrides": []
+      }
+    },
+    {
+      "id": 47,
+      "type": "timeseries",
+      "title": "Окна выкатки: осталось секунд",
+      "description": "Подавление доступности относится только к отмеченной цели. Максимум 10 минут; успешная выкатка оставляет 2 минуты на восстановление. Ошибки диска, памяти и потеря данных не подавляются.",
+      "gridPos": {
+        "x": 0,
+        "y": 75,
+        "w": 24,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "clamp_min(deploy_maintenance_until_seconds - time(), 0)",
+          "legendFormat": "{{app}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       }
     }
   ]
