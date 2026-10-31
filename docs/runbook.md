@@ -523,18 +523,18 @@ node_hwmon_temp_celsius{sensor="temp1"} * on(chip) group_left(chip_name) node_hw
 
 <a id="hw-win-commit-over-physical"></a>
 
-### Сервер: cs2-win живёт в файле подкачки
+### Сервер: Windows не хватает оперативной памяти
 
-**предупреждение** · порог: выделено больше физической и больше 1000 опер/с, держится 30 мин · панель: [Сервер — хост, диски, контейнеры, машины рендера → Windows: память](https://metrics.samoy.love/d/samoylove-hardware?viewPanel=74)
+**предупреждение** · порог: Доступно менее 10% RAM, committed выше физической и более 1000 страниц/с, держится 30 мин · панель: [Сервер — хост, диски, контейнеры, машины рендера → Windows: память](https://metrics.samoy.love/d/samoylove-hardware?viewPanel=74)
 
-**Что случилось.** Windows на cs2-win выделила больше памяти, чем есть, и гоняет подкачку
+**Что случилось.** Windows расходует подкачку при нехватке доступной физической памяти
 
-**Что это значит и что делать.** Выделенная память Windows больше физической, и подкачка идёт быстрее 1000 операций в секунду полчаса подряд. Каждая такая операция — запись на NVMe хоста: 30.09.2026 подкачка cs2-win давала около 290 ГБ записи в сутки. На панели видно, какой процесс раздулся: чаще всего клиент Steam (с cs2#866 он перезапускается сам) или зависшая игра. На машине: ssh render@cs2-win, Get-Process | Sort-Object WS -Descending.
+**Что это значит и что делать.** Непрерывно полчаса доступно менее 10% RAM, объём committed превышает физическую память и счётчик страничного ввода-вывода растёт быстрее 1000 страниц/с. Committed — обязательство выделить память, а не занятая RAM; Pages/sec включает чтение и запись, в том числе отображённых файлов, поэтому без нехватки доступной памяти тревоги нет. Проверить процессы Windows и их рабочие наборы. Память машины автоматически не увеличивать.
 
 <details><summary>Условие</summary>
 
 ```promql
-((windows_memory_committed_bytes{job="cs2-win"} / windows_memory_physical_total_bytes{job="cs2-win"}) > 1) and on(instance) (rate(windows_memory_swap_page_operations_total{job="cs2-win"}[30m]) > 1000)
+((windows_memory_committed_bytes{job="cs2-win"} / windows_memory_physical_total_bytes{job="cs2-win"}) > 1) and on(instance) (rate(windows_memory_swap_page_operations_total{job="cs2-win"}[30m]) > 1000) and on(instance) (windows_memory_available_bytes{job="cs2-win"} / windows_memory_physical_total_bytes{job="cs2-win"} < 0.10)
 ```
 
 Держится: 30m · группа `infra-hardware` · uid `hw-win-commit-over-physical`
