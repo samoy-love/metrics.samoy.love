@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 UIDS = frozenset(('infra-status-check-down', 'product-site-error-rate-high', 'cs2-http-errors', 'mon-scrape-target-missing', 'infra-site-down','cs2-api-down','cs2-container-unit-failed','cs2-render-updater-failed','mon-deploy-window-invalid','product-chillhub-telemetry-rate-limited', "cs2-render-failed", "cs2-render-disk-unknown",
                   "cs2-render-disk-low", "cs2-render-first-try-low",
                   "cs2-worker-silent", "cs2-chain-waiting", "cs2-profiles-stale",
-                  
+
                   'hw-memory-pressure', 'hw-root-space-warning', 'hw-win-system-disk-low', 'mon-container-memory-high', 'mon-container-oom', 'mon-container-stopped', 'mon-container-collector-stale', 'mon-notification-failed', 'mon-textfile-parse-error', 'mon-scrape-near-timeout'))
 
 
