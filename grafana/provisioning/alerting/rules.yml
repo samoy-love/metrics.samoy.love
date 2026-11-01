@@ -2930,14 +2930,14 @@ groups:
         labels: { severity: warning, area: cs2 }
         annotations: { summary: "Больше пяти кодов закрыто с непустой причиной отказа", description: "Эти матчи в историю игрока уже не попадут: попытки исчерпаны. Разово так бывает у матчей, которых у Valve нет; растущее число означает нашу поломку — чаще всего разбор ответа GC после апдейта игры.", value: '{{ if $values.A }}{{ humanize $values.A.Value }}{{ else }}нет данных{{ end }}', threshold: "больше 5, держится 30 мин", runbook_url: "https://github.com/samoy-love/metrics.samoy.love/blob/main/docs/runbook.md#cs2-summaries-failed", __dashboardUid__: "samoylove-cs2", __panelId__: "801" }
       - uid: cs2-codes-rebind
-        title: "Пристрелка: игроку нужно перевыпустить код Steam"
+        title: "Пристрелка: не работает восстановление истории"
         condition: C
         data:
           - refId: A
             datasourceUid: samoylove-prometheus
             relativeTimeRange: { from: 600, to: 0 }
             model:
-              expr: 'cs2_chain_codes_needing_rebind > 0'
+              expr: '(cs2_chain_codes_recovery_failed + cs2_chain_code_notices_failed) > 0'
               instant: true
               refId: A
           - refId: C
@@ -2954,9 +2954,9 @@ groups:
               refId: C
         noDataState: OK
         execErrState: Error
-        for: 6h
+        for: 15m
         labels: { severity: warning, area: cs2 }
-        annotations: { summary: "Steam отверг код аутентификации у одного из игроков", description: "У этого человека история матчей остановилась совсем: новые матчи не находятся, разбора не будет. Починить может ТОЛЬКО он сам — взять новый код на странице помощи Steam, — и, значит, сказать ему об этом должны мы.", value: '{{ if $values.A }}{{ humanize $values.A.Value }}{{ else }}нет данных{{ end }}', threshold: "больше 0, держится 6 ч", runbook_url: "https://github.com/samoy-love/metrics.samoy.love/blob/main/docs/runbook.md#cs2-codes-rebind", __dashboardUid__: "samoylove-cs2", __panelId__: "205" }
+        annotations: { summary: "Автовосстановление или уведомление игрока не выполнено", description: "Сервис должен сам проверить свежие собственные матчи и при необходимости попросить у игрока нужный код на сайте и через связанного бота. Проверить cs2-chain, codes_recovery_failed и очередь code_notices: отказ Steam, базы или транспорта. Ожидание кода от игрока и отсутствие связанного бота тревогой не считаются. Администратору не нужно перевыпускать коды или писать игроку вручную.", value: '{{ if $values.A }}{{ humanize $values.A.Value }}{{ else }}нет данных{{ end }}', threshold: "больше 0 после 30 минут ожидания, держится 15 мин", runbook_url: "https://github.com/samoy-love/metrics.samoy.love/blob/main/docs/runbook.md#cs2-codes-rebind", __dashboardUid__: "samoylove-cs2", __panelId__: "205" }
       - uid: cs2-worker-disabled
         title: "Пристрелка: работник цепочки выключен"
         condition: C
