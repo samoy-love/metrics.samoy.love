@@ -77,7 +77,7 @@ services:
         max-file: "3"
 
   grafana:
-    image: grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f
+    image: grafana/grafana:13.3.0@sha256:488984b716c0862639f91a698adbe2862677a5a07bad42da5f03f3030883b205
     container_name: samoylove-grafana
     restart: unless-stopped
     depends_on:
@@ -151,7 +151,7 @@ services:
     # достаёт и снаружи недоступен. Нужен исключительно ради скриншота к
     # алерту (see GF_RENDERING_* выше); без него Grafana просто не приложит
     # картинку и пришлёт текстовое сообщение, как раньше.
-    image: grafana/grafana-image-renderer:v5.12.9@sha256:24df1663f600abc6daa8ef006a0749c1d8f532e43a4542baf55ba15c5a3eaeac
+    image: grafana/grafana-image-renderer:v5.12.10@sha256:a7970b826f6e477461e02bf5463d92634e9ad27d525e4e50296978a2e592d2d7
     container_name: samoylove-renderer
     restart: unless-stopped
     env_file:
