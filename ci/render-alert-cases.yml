@@ -793,3 +793,73 @@ tests:
           instance: win
           area: server
           severity: warning
+
+  - name: Music failure alerts despite fresh main dump
+    interval: 1m
+    input_series:
+    - series: cs2_pg_dump_failed
+      values: 1+0x10
+    - series: cs2_pg_dump_age_seconds
+      values: 60+0x10
+    - series: cs2_package_audit_age_seconds
+      values: 60+0x10
+    promql_expr_test:
+    - rule_uid: cs2-pg-dump-failed
+      eval_time: 3m
+      exp_samples:
+      - labels: '{__name__="cs2_pg_dump_failed"}'
+        value: 1
+    - rule_uid: cs2-package-audit-stale
+      eval_time: 3m
+      exp_samples: []
+    alert_rule_test:
+    - alertname: cs2-pg-dump-failed
+      eval_time: 1m
+      exp_alerts: []
+    - alertname: cs2-pg-dump-failed
+      eval_time: 3m
+      exp_alerts:
+      - exp_labels:
+          area: cs2
+          severity: warning
+  - name: Full dump success clears music failure
+    interval: 1m
+    input_series:
+    - series: cs2_pg_dump_failed
+      values: 1+0x3 0+0x10
+    promql_expr_test:
+    - rule_uid: cs2-pg-dump-failed
+      eval_time: 5m
+      exp_samples: []
+    alert_rule_test:
+    - alertname: cs2-pg-dump-failed
+      eval_time: 5m
+      exp_alerts: []
+  - name: Stale package audit remains visible
+    interval: 1m
+    input_series:
+    - series: cs2_package_audit_age_seconds
+      values: 130000+0x150
+    promql_expr_test:
+    - rule_uid: cs2-package-audit-stale
+      eval_time: 121m
+      exp_samples:
+      - labels: '{__name__="cs2_package_audit_age_seconds"}'
+        value: 130000
+        # Comparison keeps the metric name; absent() below has no name.
+    alert_rule_test:
+    - alertname: cs2-package-audit-stale
+      eval_time: 121m
+      exp_alerts:
+      - exp_labels:
+          area: cs2
+          severity: warning
+  - name: Absent package audit is not healthy
+    interval: 1m
+    input_series: []
+    promql_expr_test:
+    - rule_uid: cs2-package-audit-stale
+      eval_time: 121m
+      exp_samples:
+      - labels: '{}'
+        value: 1

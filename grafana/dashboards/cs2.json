@@ -10,7 +10,7 @@
   "editable": false,
   "refresh": "1m",
   "schemaVersion": 39,
-  "version": 7,
+  "version": 8,
   "time": {
     "from": "now-24h",
     "to": "now"
@@ -8966,6 +8966,210 @@
         "w": 24,
         "x": 0,
         "y": 290
+      }
+    },
+    {
+      "id": 2199,
+      "type": "row",
+      "title": "Обслуживание баз и полный дамп",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 291,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Версии баз: возраст проверки",
+      "id": 2201,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 292,
+        "w": 8,
+        "h": 4
+      },
+      "description": "Ежедневный аудит вручную обновляемых баз. Отсутствие данных или возраст более 36 часов требует проверки таймера и журналов APT.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_package_audit_age_seconds",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "noValue": "Нет данных",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 129600
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Базы: доступны обновления",
+      "id": 2202,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 292,
+        "w": 8,
+        "h": 4
+      },
+      "description": "Число пакетов PostgreSQL, ClickHouse и Redis с отличающимся кандидатом APT. Это не число уязвимостей. Версии и дата проверки — journalctl -u cs2-package-audit.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_package_updates_pending",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Нет данных",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Полный дамп: последний запуск",
+      "id": 2203,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "samoylove-prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 292,
+        "w": 8,
+        "h": 4
+      },
+      "description": "Основная база и музыкальная часть. Отказ любой стадии оставляет прежний возраст успешного комплекта. Ноль после полного успеха, один при отказе; отсутствие ряда не считается успехом.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "cs2_pg_dump_failed",
+          "legendFormat": "",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Нет данных",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Полный успех",
+                  "color": "green"
+                },
+                "1": {
+                  "text": "Отказ",
+                  "color": "red"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
       }
     }
   ],

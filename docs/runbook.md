@@ -9,7 +9,7 @@
 
 - [CI](#ci-area) — 11
 - [Сервер](#server-area) — 40
-- [Пристрелка](#cs2-area) — 66
+- [Пристрелка](#cs2-area) — 68
 - [Сайты и проекты](#sites-area) — 39
 - [Мониторинг](#monitoring-area) — 18
 
@@ -1425,6 +1425,26 @@ cs2_reconcile_mismatches{kind=~"clickhouse_orphan|file_orphan|row_no_file"} > 0
 
 </details>
 
+<a id="cs2-package-audit-stale"></a>
+
+### Пристрелка: версии баз давно не проверялись
+
+**предупреждение** · порог: нет отметки или старше 36 ч, держится 2 ч · панель: [Пристрелка — cs.samoy.love → Версии баз: возраст проверки](https://metrics.samoy.love/d/samoylove-cs2?viewPanel=2201)
+
+**Что случилось.** Ежедневная проверка версий баз не подтверждена
+
+**Что это значит и что делать.** Проверить cs2-package-audit.timer и журнал службы в контейнере cs2, затем apt-daily.timer и свежесть индексов APT. cs2_package_updates_pending показывает число кандидатов, а не уязвимостей. Сверить кандидаты с официальными security notices; базы обновлять по порядку обслуживания в репозитории cs2 после освобождения очереди.
+
+<details><summary>Условие</summary>
+
+```promql
+(cs2_package_audit_age_seconds > 129600) or absent(cs2_package_audit_age_seconds)
+```
+
+Держится: 2h · группа `product-cs2` · uid `cs2-package-audit-stale`
+
+</details>
+
 <a id="cs2-pg-dump-old"></a>
 
 ### Пристрелка: дамп Postgres давно не снимался
@@ -1902,6 +1922,26 @@ absent(cs2_pg_dump_age_seconds)
 ```
 
 Держится: 48h · группа `product-cs2` · uid `cs2-pg-dump-absent`
+
+</details>
+
+<a id="cs2-pg-dump-failed"></a>
+
+### Пристрелка: последний комплект дампа не завершён
+
+**предупреждение** · порог: отказ последнего запуска, держится 2 мин · панель: [Пристрелка — cs.samoy.love → Полный дамп: последний запуск](https://metrics.samoy.love/d/samoylove-cs2?viewPanel=2203)
+
+**Что случилось.** Не завершена обязательная стадия локального дампа
+
+**Что это значит и что делать.** Проверить журнал cs2-pgdump: основная база, отпечаток и файл музыки, проверка оглавления, запись отметки. Возраст последнего полного успеха не обновляется при отказе музыки. После исправления выполнить полный запуск; данные и прежние копии не удалять.
+
+<details><summary>Условие</summary>
+
+```promql
+cs2_pg_dump_failed > 0
+```
+
+Держится: 2m · группа `product-cs2` · uid `cs2-pg-dump-failed`
 
 </details>
 
