@@ -4318,6 +4318,102 @@ groups:
         labels: { severity: warning, area: cs2 }
         annotations: { summary: "Последний удачный дамп Postgres старше 26 часов", description: "Дамп снимается каждый день, значит, вчерашний не удался. Если сейчас потерять базу, пропадут учётные записи, коды и очередь с последнего дампа. Смотреть cs2-pgdump в контейнере cs2: таймер, журнал, место под дампы.", value: '{{ if $values.A }}{{ humanizeDuration $values.A.Value }}{{ else }}нет данных{{ end }}', threshold: "дольше 26 ч, держится 30 мин", runbook_url: "https://github.com/samoy-love/metrics.samoy.love/blob/main/docs/runbook.md#cs2-pg-dump-old", __dashboardUid__: "samoylove-cs2", __panelId__: "1501" }
 
+      - uid: cs2-pg-dump-failed
+        title: 'Пристрелка: последний комплект дампа не завершён'
+        condition: C
+        data:
+        - refId: A
+          datasourceUid: samoylove-prometheus
+          relativeTimeRange:
+            from: 600
+            to: 0
+          model:
+            expr: cs2_pg_dump_failed > 0
+            instant: true
+            refId: A
+        - refId: C
+          datasourceUid: __expr__
+          model:
+            type: threshold
+            expression: A
+            conditions:
+            - evaluator:
+                type: gt
+                params:
+                - -1000000000
+              operator:
+                type: and
+              query:
+                params:
+                - C
+              reducer:
+                type: last
+              type: query
+            refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        labels:
+          severity: warning
+          area: cs2
+        annotations:
+          summary: Не завершена обязательная стадия локального дампа
+          description: 'Проверить журнал cs2-pgdump: основная база, отпечаток и файл музыки, проверка оглавления, запись отметки. Возраст последнего полного успеха не обновляется
+            при отказе музыки. После исправления выполнить полный запуск; данные и прежние копии не удалять.'
+          value: '{{ if $values.A }}{{ humanize $values.A.Value }}{{ else }}нет данных{{ end }}'
+          threshold: отказ последнего запуска, держится 2 мин
+          runbook_url: https://github.com/samoy-love/metrics.samoy.love/blob/main/docs/runbook.md#cs2-pg-dump-failed
+          __dashboardUid__: samoylove-cs2
+          __panelId__: '2203'
+      - uid: cs2-package-audit-stale
+        title: 'Пристрелка: версии баз давно не проверялись'
+        condition: C
+        data:
+        - refId: A
+          datasourceUid: samoylove-prometheus
+          relativeTimeRange:
+            from: 600
+            to: 0
+          model:
+            expr: (cs2_package_audit_age_seconds > 129600) or absent(cs2_package_audit_age_seconds)
+            instant: true
+            refId: A
+        - refId: C
+          datasourceUid: __expr__
+          model:
+            type: threshold
+            expression: A
+            conditions:
+            - evaluator:
+                type: gt
+                params:
+                - -1000000000
+              operator:
+                type: and
+              query:
+                params:
+                - C
+              reducer:
+                type: last
+              type: query
+            refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 2h
+        labels:
+          severity: warning
+          area: cs2
+        annotations:
+          summary: Ежедневная проверка версий баз не подтверждена
+          description: Проверить cs2-package-audit.timer и журнал службы в контейнере cs2, затем apt-daily.timer и свежесть индексов APT. cs2_package_updates_pending показывает
+            число кандидатов, а не уязвимостей. Сверить кандидаты с официальными security notices; базы обновлять по порядку обслуживания в репозитории cs2 после освобождения
+            очереди.
+          value: '{{ if $values.A }}{{ humanize $values.A.Value }}{{ else }}нет данных{{ end }}'
+          threshold: нет отметки или старше 36 ч, держится 2 ч
+          runbook_url: https://github.com/samoy-love/metrics.samoy.love/blob/main/docs/runbook.md#cs2-package-audit-stale
+          __dashboardUid__: samoylove-cs2
+          __panelId__: '2201'
+
       - uid: cs2-pg-dump-absent
         title: "Пристрелка: отметки дампа Postgres нет"
         condition: C
